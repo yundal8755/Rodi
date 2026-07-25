@@ -81,10 +81,12 @@ struct RootView: View {
         .onAppear {
             store.send(.launched)
             store.send(.sceneBecameActive)
+            PracticeTrackingService.shared.restoreIfNeeded()
         }
         .onChange(of: scenePhase) { phase in
             guard phase == .active else { return }
             store.send(.sceneBecameActive)
+            PracticeTrackingService.shared.restoreIfNeeded()
         }
         .onOpenURL { url in
             _ = SocialLoginService.handleOpenURL(url)
