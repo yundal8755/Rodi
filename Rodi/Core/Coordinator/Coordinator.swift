@@ -21,6 +21,10 @@ final class Coordinator<Destination: Route>: ObservableObject {
         self.acceptsSystemPath = acceptsSystemPath
     }
 
+    // Xcode 26.5의 Release 최적화기가 generic 소멸자를 인라이닝할 때 충돌하지 않도록 합니다.
+    @inline(never)
+    deinit {}
+
     /// NavigationStack의 시스템 뒤로가기 결과를 Coordinator에 반영하는 Binding입니다.
     var pathBinding: Binding<[Destination]> {
         Binding(
