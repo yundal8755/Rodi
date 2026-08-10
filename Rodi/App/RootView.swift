@@ -28,7 +28,10 @@ struct RootView: View {
                 state: RootReducer.State(),
                 reducer: RootReducer(
                     tokenStore: dependencies.tokenStore,
-                    authRepository: dependencies.authRepository
+                    authRepository: dependencies.authRepository,
+                    placeRepository: dependencies.placeRepository,
+                    practiceRepository: dependencies.practiceRepository,
+                    reviewRepository: dependencies.reviewRepository
                 )
             )
         )
@@ -58,7 +61,14 @@ struct RootView: View {
                 .transition(.opacity)
             }
 
+            ReviewFlowView(
+                state: store.state.review,
+                send: { store.send(.review($0)) }
+            )
+            .zIndex(2)
+
         }
+        .rodiSnackbar(message: store.state.reviewSnackbarMessage)
         .background {
             NetworkUnavailableOverlayHost(presenter: networkUnavailableOverlayPresenter)
                 .frame(width: 0, height: 0)
@@ -111,6 +121,9 @@ extension RootView {
                 requestLogin: appRouter.requireLogin,
                 onLogoutCompleted: appRouter.completeLogout,
                 homeTabSelectionRequestID: appRouter.homeTabSelectionRequestID,
+                reviewReturnToHomeRequestID: store.state.reviewReturnToHomeRequestID,
+                onInitialHomeAppeared: { store.send(.mainTabsAppeared) },
+                onReviewTestRequested: { store.send(.debugReviewTestRequested) },
                 dependencies: dependencies
             )
         }

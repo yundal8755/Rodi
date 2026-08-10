@@ -14,6 +14,7 @@ struct MyView: View {
     let isMyTabSelected: Bool
     let navigate: (MainTabIntent) -> Void
     let onLogoutCompleted: () -> Void
+    let onReviewTestRequested: () -> Void
     private let memberRepository: MemberRepository
     private let placeRepository: PlaceRepository
     private var router: Router<MyRoute> { coordinator.router }
@@ -23,12 +24,14 @@ struct MyView: View {
         isMyTabSelected: Bool,
         navigate: @escaping (MainTabIntent) -> Void,
         onLogoutCompleted: @escaping () -> Void,
+        onReviewTestRequested: @escaping () -> Void,
         dependencies: AppDependencies
     ) {
         self.coordinator = coordinator
         self.isMyTabSelected = isMyTabSelected
         self.navigate = navigate
         self.onLogoutCompleted = onLogoutCompleted
+        self.onReviewTestRequested = onReviewTestRequested
         _store = StateObject(
             wrappedValue: Store(
                 state: MyReducer.State(),
@@ -53,7 +56,8 @@ struct MyView: View {
                 openSettings: { router.push(.settings) },
                 openDrivingGoal: { router.push(.drivingGoal) },
                 openSavedPlaces: { router.push(.savedPlaces) },
-                retry: { store.send(.retryProfileTapped) }
+                retry: { store.send(.retryProfileTapped) },
+                reviewTestAction: onReviewTestRequested
             )
             .navigationDestination(for: MyRoute.self) { route in
                     destinationView(for: route)
