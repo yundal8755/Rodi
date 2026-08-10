@@ -14,6 +14,10 @@ struct RootReducer: Reducer {
         var pendingUpdate: AppVersionUpdate?
         var hasCheckedAppVersion = false
         var isRestoringSession = false
+        var review = ReviewReducer.State()
+        var reviewSnackbarMessage: String?
+        var reviewReturnToHomeRequestID = 0
+        var hasRequestedInitialReviewPrompt = false
     }
 
     enum Action {
@@ -22,6 +26,10 @@ struct RootReducer: Reducer {
         case appVersionCheckCompleted(AppVersionUpdate?)
         case appVersionUpdateDismissed
         case sessionRestoreCompleted(SessionRestoreResult)
+        case mainTabsAppeared
+        case debugReviewTestRequested
+        case review(ReviewReducer.Action)
+        case reviewSnackbarDismissed(String)
     }
 
     enum SessionRestoreResult {
@@ -33,14 +41,29 @@ struct RootReducer: Reducer {
     private enum EffectID {
         case appVersionCheck
         case sessionRestore
+        case reviewSnackbar
     }
 
     private let tokenStore: TokenStoring
     private let authRepository: AuthRepository
+    private let reviewReducer: ReviewReducer
 
-    init(tokenStore: TokenStoring, authRepository: AuthRepository) {
+    init(
+        tokenStore: TokenStoring,
+        authRepository: AuthRepository,
+        placeRepository: PlaceRepository,
+        practiceRepository: PracticeRepository,
+        reviewRepository: ReviewRepository
+    ) {
         self.tokenStore = tokenStore
         self.authRepository = authRepository
+        reviewReducer = ReviewReducer(
+            reviewService: ReviewService(
+                placeRepository: placeRepository,
+                practiceRepository: practiceRepository,
+                reviewRepository: reviewRepository
+            )
+        )
     }
 }
 
@@ -73,6 +96,36 @@ extension RootReducer {
             case .deferred(let message):
                 RodiLogger.warning("Auth session restore deferred: \(message)")
             }
+
+        case .mainTabsAppeared:
+            #if DEBUG
+            guard !state.hasRequestedInitialReviewPrompt,
+                  hasActiveSession
+            else {
+                return .none
+            }
+            state.hasRequestedInitialReviewPrompt = true
+            return .send(.review(.debugPromptRequested))
+            #else
+            return .none
+            #endif
+
+        case .debugReviewTestRequested:
+            #if DEBUG
+            return .send(.review(.debugPromptRequested))
+            #else
+            return .none
+            #endif
+
+        case .review(let action):
+            if case .delegate(let delegate) = action {
+                return reduceReviewDelegate(delegate, state: &state)
+            }
+            return reviewReducer.reduce(&state.review, with: action).map(Action.review)
+
+        case .reviewSnackbarDismissed(let message):
+            guard state.reviewSnackbarMessage == message else { return .none }
+            state.reviewSnackbarMessage = nil
         }
 
         return .none
@@ -119,5 +172,31 @@ extension RootReducer {
             }
         }
         .cancelTask(id: EffectID.sessionRestore)
+    }
+
+    private var hasActiveSession: Bool {
+        [tokenStore.accessToken, tokenStore.refreshToken].contains { $0?.isEmpty == false }
+    }
+
+    private func reduceReviewDelegate(
+        _ delegate: ReviewReducer.Delegate,
+        state: inout State
+    ) -> Effect<Action> {
+        switch delegate {
+        case .finished(let returnToHome):
+            state.review = .init()
+            if returnToHome {
+                state.reviewReturnToHomeRequestID += 1
+            }
+            return .none
+
+        case .showSnackbar(let message):
+            state.reviewSnackbarMessage = message
+            return .run { send in
+                try? await Task.sleep(for: .seconds(3))
+                await send(.reviewSnackbarDismissed(message))
+            }
+            .cancelTask(id: EffectID.reviewSnackbar)
+        }
     }
 }

@@ -14,6 +14,7 @@ struct MyProfileView: View {
     let openDrivingGoal: () -> Void
     let openSavedPlaces: () -> Void
     let retry: () -> Void
+    let reviewTestAction: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -32,6 +33,23 @@ struct MyProfileView: View {
                     savedPlacesRow
                         .padding(.horizontal, 16)
                         .padding(.top, 20)
+
+                    #if DEBUG
+                    Button(action: reviewTestAction) {
+                        Text("후기등록 테스트")
+                            .rodiTypography(.body3Medium)
+                            .foregroundStyle(RodiColor.primary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(RodiColor.primary, lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 24)
+                    #endif
                 }
                 .padding(.bottom, 114)
             }

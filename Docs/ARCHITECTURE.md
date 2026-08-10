@@ -106,17 +106,17 @@ Presentation/<Feature>/
   <Feature>Reducer.swift
 ```
 
-필요가 생긴 폴더만 단수형으로 추가한다.
+Feature root는 진입 View·Reducer와 화면 조립만 담당한다. 여러 단계의 flow나 큰 화면을 만들 때 root View 하나에 화면·공통 UI·I/O·표시 모델을 함께 쌓지 않는다. 필요가 생긴 폴더만 단수형으로 추가한다.
 
-- `Component`: feature 안의 여러 화면이 실제로 재사용하는 UI
-- `SubView`: 특정 View를 시각적으로 분해한 하위 View
-- `SubPage`: navigation destination 또는 독립 하위 화면
+- `Component`: feature 안의 여러 화면이 실제로 재사용하는 UI. Button, header, dialog, selector처럼 독립 화면이 아닌 단위에 사용한다.
+- `SubView`: 특정 상위 View를 시각적으로만 분해한 하위 View. 다른 화면에서도 쓰이면 `Component`로 올린다.
+- `SubPage`: Navigation destination뿐 아니라 full-screen 단계, 독립 modal, flow의 한 화면처럼 독립적으로 렌더링되는 화면.
 - `Section`: 자체 State·Action·Reducer 또는 독립 행동 계약을 가진 큰 영역
-- `Model`: feature 전용 값 모델
-- `Service`: 외부 I/O, SDK runtime, UIKit delegate 또는 상태 없는 계산
+- `Model`: Presentation 전용 표시 단계, payload, 선택값, service 결과처럼 Domain entity와 구분되는 feature 전용 값 모델. 제품 entity·repository protocol은 Domain에 둔다.
+- `Service`: 외부 I/O, SDK runtime, UIKit delegate 또는 State를 모르는 순수 계산. Store·Reducer State·SwiftUI View를 소유하지 않는다.
 - `Adapter`: SwiftUI와 UIKit·외부 SDK 사이의 변환 및 lifecycle 연결
 
-빈 폴더를 미리 만들지 않는다. 한 feature 내부 공유는 가장 가까운 공통 부모의 `Shared`에 두고, 최소 두 top-level feature에서 재사용되는 것이 확인된 뒤 Core로 올린다.
+다단계 Review flow는 `ReviewFlowView`가 presentation을 조립하고, 각 단계는 `SubPage`, 공통 dialog·header·선택 UI는 `Component`, 표시 모델은 `Model`, repository를 사용하는 요청은 `Service`에 둔다. 빈 폴더를 미리 만들지 않는다. 한 feature 내부 공유는 가장 가까운 공통 부모의 `Shared`에 두고, 최소 두 top-level feature에서 재사용되는 것이 확인된 뒤 Core로 올린다.
 
 ## UIKit And Kakao Boundary
 

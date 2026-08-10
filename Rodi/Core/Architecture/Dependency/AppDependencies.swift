@@ -12,7 +12,9 @@ final class AppDependencies {
     let authRepository: AuthRepository
     let memberRepository: MemberRepository
     let placeRepository: PlaceRepository
+    let practiceRepository: PracticeRepository
     let recentSearchRepository: RecentSearchRepository
+    let reviewRepository: ReviewRepository
     let recentLoginProviderStore: RecentLoginProviderStore
 
     init() {
@@ -56,6 +58,18 @@ final class AppDependencies {
             remoteDataSource: PlaceRemoteDataSource(
                 publicNetworkManager: unauthenticatedNetworkManager,
                 authenticatedNetworkManager: authenticatedNetworkManager
+            )
+        )
+
+        practiceRepository = PracticeRepositoryImpl(
+            remoteDataSource: PracticeRemoteDataSource(
+                networkManager: authenticatedNetworkManager
+            )
+        )
+
+        reviewRepository = ReviewRepositoryImpl(
+            remoteDataSource: ReviewRemoteDataSource(
+                networkManager: authenticatedNetworkManager
             )
         )
 

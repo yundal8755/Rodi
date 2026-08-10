@@ -12,11 +12,16 @@ struct MainTabView: View {
     @StateObject private var myCoordinator = Coordinator<MyRoute>()
     @State private var homeListPresentationRequestID = 0
     @State private var consumedHomeTabSelectionRequestID = 0
+    @State private var consumedReviewReturnToHomeRequestID = 0
+    @State private var hasReportedInitialHomeAppearance = false
 
     let consumePendingAuthenticationIntent: () -> MainTabIntent?
     let requestLogin: (MainTabIntent?) -> Void
     let onLogoutCompleted: () -> Void
     let homeTabSelectionRequestID: Int
+    let reviewReturnToHomeRequestID: Int
+    let onInitialHomeAppeared: () -> Void
+    let onReviewTestRequested: () -> Void
     private let dependencies: AppDependencies
 
     init(
@@ -24,12 +29,18 @@ struct MainTabView: View {
         requestLogin: @escaping (MainTabIntent?) -> Void,
         onLogoutCompleted: @escaping () -> Void,
         homeTabSelectionRequestID: Int,
+        reviewReturnToHomeRequestID: Int,
+        onInitialHomeAppeared: @escaping () -> Void,
+        onReviewTestRequested: @escaping () -> Void,
         dependencies: AppDependencies
     ) {
         self.consumePendingAuthenticationIntent = consumePendingAuthenticationIntent
         self.requestLogin = requestLogin
         self.onLogoutCompleted = onLogoutCompleted
         self.homeTabSelectionRequestID = homeTabSelectionRequestID
+        self.reviewReturnToHomeRequestID = reviewReturnToHomeRequestID
+        self.onInitialHomeAppeared = onInitialHomeAppeared
+        self.onReviewTestRequested = onReviewTestRequested
         self.dependencies = dependencies
         
         _store = StateObject(
@@ -66,6 +77,7 @@ struct MainTabView: View {
                 isMyTabSelected: store.state.selectedTab == .my,
                 navigate: { store.send(.navigationRequested($0)) },
                 onLogoutCompleted: onLogoutCompleted,
+                onReviewTestRequested: onReviewTestRequested,
                 dependencies: dependencies
             )
             .opacity(store.state.selectedTab == .my ? 1 : 0)
@@ -86,9 +98,13 @@ struct MainTabView: View {
         .onAppear {
             consumePendingAuthenticationIntentIfNeeded()
             selectHomeAfterAuthenticationIfNeeded()
+            reportInitialHomeAppearanceIfNeeded()
         }
         .onChange(of: homeTabSelectionRequestID) { _ in
             selectHomeAfterAuthenticationIfNeeded()
+        }
+        .onChange(of: reviewReturnToHomeRequestID) { _ in
+            returnToHomeAfterReviewIfNeeded()
         }
         .onChange(of: store.state.navigationIntent) { intent in
             guard let intent else { return }
@@ -123,6 +139,23 @@ private extension MainTabView {
     func selectHomeAfterAuthenticationIfNeeded() {
         guard homeTabSelectionRequestID > consumedHomeTabSelectionRequestID else { return }
         consumedHomeTabSelectionRequestID = homeTabSelectionRequestID
+        store.send(.homeTabSelected)
+    }
+
+    func reportInitialHomeAppearanceIfNeeded() {
+        guard !hasReportedInitialHomeAppearance,
+              store.state.selectedTab == .home
+        else {
+            return
+        }
+        hasReportedInitialHomeAppearance = true
+        onInitialHomeAppeared()
+    }
+
+    func returnToHomeAfterReviewIfNeeded() {
+        guard reviewReturnToHomeRequestID > consumedReviewReturnToHomeRequestID else { return }
+        consumedReviewReturnToHomeRequestID = reviewReturnToHomeRequestID
+        myCoordinator.router.popToRoot()
         store.send(.homeTabSelected)
     }
 
