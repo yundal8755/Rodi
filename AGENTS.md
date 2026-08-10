@@ -65,6 +65,8 @@ Rodi/
 
 Use the live filesystem as the source of truth. Xcode uses filesystem-synchronized groups, but verify file moves and build membership after structural changes.
 
+For a non-trivial Presentation feature, keep the feature root as the entry point and organize implementation by responsibility. Put only real responsibilities in `Component`, `SubView`, `SubPage`, `Section`, `Model`, `Service`, or `Adapter`; do not leave a flow root View to accumulate its pages, reusable UI, models, and I/O. Read `Docs/ARCHITECTURE.md` before making foldering decisions.
+
 ## Skills
 
 - Use `.agents/skills/rodi-swiftui` only for SwiftUI implementation or review.
