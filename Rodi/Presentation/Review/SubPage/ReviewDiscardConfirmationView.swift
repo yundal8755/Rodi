@@ -11,6 +11,7 @@ struct ReviewDiscardConfirmationView: View {
                         Text("작성 중인 화면을 나갈까요?")
                             .rodiTypography(.body1SemiBold)
                             .foregroundStyle(RodiColor.black)
+                        
                         Text("나가면 입력한 내용이 저장되지 않아요.")
                             .rodiTypography(.caption1Medium)
                             .foregroundStyle(RodiColor.black)

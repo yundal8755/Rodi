@@ -50,6 +50,7 @@ struct ReviewFormPageTwoView: View {
             )
         }
         .background(RodiColor.white)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 }
 

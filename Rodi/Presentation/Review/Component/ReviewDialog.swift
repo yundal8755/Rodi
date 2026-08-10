@@ -27,11 +27,8 @@ struct ReviewDialog<Content: View>: View {
                             .frame(width: 20, height: 20)
                     }
                     .buttonStyle(.plain)
-                    .frame(width: 44, height: 44)
                     .accessibilityLabel("닫기")
                 }
-                .frame(height: 44)
-                .padding(.bottom, 12)
             }
             content
         }

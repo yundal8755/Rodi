@@ -1,5 +1,9 @@
 import Foundation
 
+enum ReviewSkipReasonDetailConfiguration {
+    static let characterLimit = 30
+}
+
 enum ReviewPresentation: Equatable {
     case hidden
     case preparing

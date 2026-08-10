@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ReviewSkipReasonView: View {
+    private static let detailFieldID = "review-skip-reason-detail"
+
     let state: ReviewReducer.State
     let send: (ReviewReducer.Action) -> Void
 
@@ -15,37 +17,48 @@ struct ReviewSkipReasonView: View {
             )
             .zIndex(1)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("왜 연습을 다녀오지 않았나요?")
-                        .rodiTypography(.heading2)
-                        .foregroundStyle(RodiColor.black)
+            ScrollViewReader { scrollProxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("왜 연습을 다녀오지 않았나요?")
+                            .rodiTypography(.heading2)
+                            .foregroundStyle(RodiColor.black)
 
-                    Text("이유를 알려주시면 더 나은 코스를 추천해드릴게요!")
-                        .rodiTypography(.body3Medium)
-                        .foregroundStyle(RodiColor.gray600)
-                        .padding(.top, 8)
+                        Text("이유를 알려주시면 더 나은 코스를 추천해드릴게요!")
+                            .rodiTypography(.body3Medium)
+                            .foregroundStyle(RodiColor.gray600)
+                            .padding(.top, 8)
 
-                    formContent
-                        .padding(.top, 28)
+                        formContent
+                            .padding(.top, 28)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 28)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 28)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .scrollDismissesKeyboard(.interactively)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: dismissDetailKeyboard)
+                .onChange(of: isDetailFocused) { isFocused in
+                    guard isFocused else { return }
+                    DispatchQueue.main.async {
+                        withAnimation {
+                            scrollProxy.scrollTo(Self.detailFieldID, anchor: .bottom)
+                        }
+                    }
+                }
             }
-            .scrollDismissesKeyboard(.interactively)
-            .contentShape(Rectangle())
-            .onTapGesture(perform: dismissDetailKeyboard)
 
-            PrimaryBottomButton(
-                title: "완료",
-                isEnabled: state.canSubmitSkipReason,
-                showsDivider: true,
-                action: { send(.skipReasonSubmitTapped) }
-            )
+            if !isDetailFocused {
+                PrimaryBottomButton(
+                    title: "완료",
+                    isEnabled: state.canSubmitSkipReason,
+                    showsDivider: true,
+                    action: { send(.skipReasonSubmitTapped) }
+                )
+            }
         }
         .background(RodiColor.white)
-        .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 }
 
@@ -74,6 +87,7 @@ private extension ReviewSkipReasonView {
                    selectedSkipReason.requiresTextInput {
                     detailField(for: selectedSkipReason)
                         .padding(.top, 4)
+                        .id(Self.detailFieldID)
                 }
             }
 
@@ -101,7 +115,7 @@ private extension ReviewSkipReasonView {
             RodiTextField(
                 text: detailBinding,
                 placeholder: option.textInputPlaceholder ?? "이유를 작성해주세요",
-                characterLimit: option.textInputMaxLength,
+                characterLimit: ReviewSkipReasonDetailConfiguration.characterLimit,
                 isFocused: $isDetailFocused
             )
             .padding(.vertical, 14)
@@ -112,13 +126,12 @@ private extension ReviewSkipReasonView {
                     .stroke(isDetailFocused ? RodiColor.gray850 : RodiColor.gray300, lineWidth: 1)
             }
 
-            if let maximumLength = option.textInputMaxLength {
-                Text("\(state.skipReasonDetail.count) / \(maximumLength)")
-                    .rodiTypography(.body3Medium)
-                    .foregroundStyle(RodiColor.gray600)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-            }
+            Text("\(state.skipReasonDetail.count) / \(ReviewSkipReasonDetailConfiguration.characterLimit)")
+                .rodiTypography(.body3Medium)
+                .foregroundStyle(RodiColor.gray600)
+                .frame(maxWidth: .infinity, alignment: .trailing)
         }
+        .padding(.bottom, 48)
     }
 
     var detailBinding: Binding<String> {

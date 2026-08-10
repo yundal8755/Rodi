@@ -8,7 +8,7 @@ private enum ReviewScaleMetrics {
     static let maximumOptionCount = 5
     static let markerHorizontalPadding: CGFloat = 16
     static let indicatorSize: CGFloat = 16
-    static let connectionHeight: CGFloat = 4
+    static let connectionHeight: CGFloat = 2
 }
 
 private struct ReviewScaleTrackLayout: Layout {

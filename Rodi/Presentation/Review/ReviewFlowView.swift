@@ -20,6 +20,10 @@ struct ReviewFlowView: View {
             if state.presentation == .skipReasonCompletion {
                 ReviewSkipReasonCompletionView(send: send)
             }
+
+            if state.presentation == .completion {
+                ReviewCompletionView(send: send)
+            }
         }
         .accessibilityAddTraits(.isModal)
     }
@@ -30,9 +34,10 @@ private extension ReviewFlowView {
 
     var showsFormBackground: Bool {
         switch state.presentation {
-        case .formPage1, .formPage2, .skipReasonForm, .discardConfirmation, .skipReasonCompletion:
+        case .formPage1, .formPage2, .skipReasonForm, .discardConfirmation, .completion, .skipReasonCompletion:
             true
-        case .hidden, .preparing, .prompt, .completion:
+
+        case .hidden, .preparing, .prompt:
             false
         }
     }
@@ -44,22 +49,26 @@ private extension ReviewFlowView {
             EmptyView()
         case .preparing:
             ReviewPreparingView()
+
         case .prompt:
             ReviewPromptView(
                 target: state.target,
                 isSubmittingVisit: state.isSubmittingVisit,
                 send: send
             )
+
         case .formPage1:
             ReviewFormPageOneView(state: state, send: send)
-        case .formPage2:
+
+        case .formPage2, .completion:
             ReviewFormPageTwoView(state: state, send: send)
+
         case .skipReasonForm, .skipReasonCompletion:
             ReviewSkipReasonView(state: state, send: send)
+
         case .discardConfirmation:
             previousFormPage
-        case .completion:
-            ReviewCompletionView(send: send)
+
         }
     }
 

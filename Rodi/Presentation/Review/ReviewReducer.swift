@@ -67,6 +67,7 @@ struct ReviewReducer: Reducer {
         case submitTapped
         case reviewSubmissionCompleted(ReviewSubmissionResult, generation: UUID)
         case completionConfirmed
+        case completionDismissed
         case delegate(Delegate)
     }
 
@@ -81,6 +82,7 @@ struct ReviewReducer: Reducer {
         case reviewSubmission
         case skipReasonFormLoading
         case skipReasonSubmission
+        case completionDismissal
     }
 
     private let reviewService: ReviewService
@@ -192,7 +194,7 @@ extension ReviewReducer {
 
         case .skipReasonDetailChanged(let value):
             guard state.selectedSkipReason?.requiresTextInput == true,
-                  state.selectedSkipReason?.textInputMaxLength.map({ value.count <= $0 }) ?? true
+                  value.count <= ReviewSkipReasonDetailConfiguration.characterLimit
             else {
                 return .none
             }
@@ -315,6 +317,12 @@ extension ReviewReducer {
             }
 
         case .completionConfirmed:
+            guard state.presentation == .completion else { return .none }
+            state.presentation = .formPage2
+            return completionDismissalEffect()
+
+        case .completionDismissed:
+            guard state.presentation == .formPage2 else { return .none }
             clear(state: &state)
             return .send(.delegate(.finished(returnToHome: true)))
 
@@ -390,6 +398,20 @@ private extension ReviewReducer {
             }
         }
         .cancelTask(id: EffectID.reviewSubmission)
+    }
+
+    func completionDismissalEffect() -> Effect<Action> {
+        .run { send in
+            do {
+                try await Task.sleep(for: .milliseconds(200))
+                await send(.completionDismissed)
+            } catch is CancellationError {
+                return
+            } catch {
+                return
+            }
+        }
+        .cancelTask(id: EffectID.completionDismissal)
     }
 
     func fetchSkipReasonFormEffect(

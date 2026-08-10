@@ -10,12 +10,16 @@ struct ReviewRadioOption: View {
             HStack(spacing: 8) {
                 ZStack {
                     Circle()
+                        .fill(isSelected ? RodiColor.primary : RodiColor.white)
+                        .frame(width: 20, height: 20)
+
+                    Circle()
                         .stroke(isSelected ? RodiColor.primary : RodiColor.gray300, lineWidth: 2)
                         .frame(width: 20, height: 20)
 
                     if isSelected {
                         Circle()
-                            .fill(RodiColor.primary)
+                            .fill(RodiColor.white)
                             .frame(width: 8, height: 8)
                     }
                 }

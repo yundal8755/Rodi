@@ -28,7 +28,7 @@ struct ReviewFormHeader: View {
                     Image("ic_close")
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 20, height: 20)
+                        .frame(width: 24, height: 24)
                 }
                 .buttonStyle(.plain)
                 .frame(width: 44, height: 44)
@@ -36,6 +36,5 @@ struct ReviewFormHeader: View {
             }
         }
         .frame(height: 56)
-        .padding(.horizontal, 16)
     }
 }
