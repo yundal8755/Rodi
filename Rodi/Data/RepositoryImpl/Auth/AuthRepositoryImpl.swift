@@ -34,6 +34,7 @@ final class AuthRepositoryImpl: AuthRepository {
         let trimmedCredential = credential.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
+
         guard !trimmedCredential.isEmpty else {
             throw .apiError(
                 code: "COMMON_400",
