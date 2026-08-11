@@ -9,6 +9,8 @@ enum MyRoute: Route {
     case settings
     case drivingGoal
     case savedPlaces
+    case practiceRecords
+    case myPosts
     case permissions
     case terms
     case licenses
@@ -21,6 +23,8 @@ enum MyRoute: Route {
         case .settings: "my.settings"
         case .drivingGoal: "my.drivingGoal"
         case .savedPlaces: "my.savedPlaces"
+        case .practiceRecords: "my.practiceRecords"
+        case .myPosts: "my.posts"
         case .permissions: "my.permissions"
         case .terms: "my.terms"
         case .licenses: "my.licenses"

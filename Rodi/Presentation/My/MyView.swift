@@ -17,6 +17,7 @@ struct MyView: View {
     let onReviewTestRequested: () -> Void
     private let memberRepository: MemberRepository
     private let placeRepository: PlaceRepository
+    private let reviewRepository: ReviewRepository
     private var router: Router<MyRoute> { coordinator.router }
 
     init(
@@ -38,12 +39,14 @@ struct MyView: View {
                 reducer: MyReducer(
                     authRepository: dependencies.authRepository,
                     memberRepository: dependencies.memberRepository,
+                    reviewRepository: dependencies.reviewRepository,
                     recentLoginProviderStore: dependencies.recentLoginProviderStore
                 )
             )
         )
         memberRepository = dependencies.memberRepository
         placeRepository = dependencies.placeRepository
+        reviewRepository = dependencies.reviewRepository
     }
 
     var body: some View {
@@ -56,7 +59,14 @@ struct MyView: View {
                 openSettings: { router.push(.settings) },
                 openDrivingGoal: { router.push(.drivingGoal) },
                 openSavedPlaces: { router.push(.savedPlaces) },
+                openPracticeRecords: { router.push(.practiceRecords) },
+                openMyPosts: { router.push(.myPosts) },
                 retry: { store.send(.retryProfileTapped) },
+                practiceRecords: store.state.practiceRecordPreview,
+                isLoadingPracticeRecords: store.state.isLoadingPracticeRecords,
+                hasCompletedPracticeRecordLoad: store.state.hasCompletedPracticeRecordLoad,
+                practiceRecordErrorMessage: store.state.practiceRecordErrorMessage,
+                retryPracticeRecords: { store.send(.retryPracticeRecordsTapped) },
                 reviewTestAction: onReviewTestRequested
             )
             .navigationDestination(for: MyRoute.self) { route in
@@ -73,6 +83,7 @@ struct MyView: View {
             guard isMyTabSelected else { return }
             store.send(.networkStatusChanged(networkConnectionMonitor.status))
             store.send(.appeared)
+            store.send(.practiceRecordsAppeared)
         }
         .onChange(of: networkConnectionMonitor.status) { status in
             guard isMyTabSelected else { return }
@@ -115,6 +126,15 @@ private extension MyView {
                     navigate(.openHomePlace(item))
                 }
             )
+
+        case .practiceRecords:
+            MyPracticeRecordsView(
+                reviewRepository: reviewRepository,
+                backAction: { router.pop() }
+            )
+
+        case .myPosts:
+            MyPostsPlaceholderView(backAction: { router.pop() })
             
         case .permissions:
             MyPermissionSettingsView(backAction: { router.pop() })

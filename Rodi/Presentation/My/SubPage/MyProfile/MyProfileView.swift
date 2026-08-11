@@ -13,7 +13,14 @@ struct MyProfileView: View {
     let openSettings: () -> Void
     let openDrivingGoal: () -> Void
     let openSavedPlaces: () -> Void
+    let openPracticeRecords: () -> Void
+    let openMyPosts: () -> Void
     let retry: () -> Void
+    let practiceRecords: [MyReviewItem]
+    let isLoadingPracticeRecords: Bool
+    let hasCompletedPracticeRecordLoad: Bool
+    let practiceRecordErrorMessage: String?
+    let retryPracticeRecords: () -> Void
     let reviewTestAction: () -> Void
 
     var body: some View {
@@ -25,16 +32,36 @@ struct MyProfileView: View {
                     profileSection
                         .padding(.horizontal, 16)
 
-                    Rectangle()
-                        .fill(RodiColor.primaryMinus100)
-                        .frame(height: 2)
-                        .padding(.top, 20)
+                    MySectionDivider()
+                        .padding(.top, 24)
+
+                    MyPracticeRecordSection(
+                        records: practiceRecords,
+                        isLoading: isLoadingPracticeRecords,
+                        hasCompletedInitialLoad: hasCompletedPracticeRecordLoad,
+                        errorMessage: practiceRecordErrorMessage,
+                        openAll: openPracticeRecords,
+                        retry: retryPracticeRecords
+                    )
+                    .padding(.top, 24)
+
+                    MySectionDivider()
+                        .padding(.top, 24)
 
                     savedPlacesRow
                         .padding(.horizontal, 16)
-                        .padding(.top, 20)
+                        .padding(.top, 24)
+
+                    Button(action: openMyPosts) {
+                        MyNavigationRow(title: "내 게시글")
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 16)
 
                     #if DEBUG
+                    MySectionDivider()
+                        .padding(.top, 24)
+
                     Button(action: reviewTestAction) {
                         Text("후기등록 테스트")
                             .rodiTypography(.body3Medium)
@@ -126,6 +153,15 @@ struct MyProfileView: View {
         .buttonStyle(.plain)
         .disabled(profile == nil)
         .accessibilityLabel("저장 목록 \(profile?.savedPlaceCount ?? 0)개")
+    }
+}
+
+private struct MySectionDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(RodiColor.primaryMinus100)
+            .frame(height: 2)
+            .frame(maxWidth: .infinity)
     }
 }
 
