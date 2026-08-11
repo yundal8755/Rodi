@@ -7,14 +7,13 @@ struct ReviewSkipReasonView: View {
     @FocusState private var isDetailFocused: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
-            ReviewFormHeader(
+        ReviewFormScaffold(
+            header: ReviewFormHeader(
                 title: "미방문 사유",
                 showsBack: false,
                 closeAction: { send(.closeTapped) }
             )
-            .zIndex(1)
-
+        ) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     Text("왜 연습을 다녀오지 않았나요?")
@@ -36,7 +35,7 @@ struct ReviewSkipReasonView: View {
             .scrollDismissesKeyboard(.interactively)
             .contentShape(Rectangle())
             .onTapGesture(perform: dismissDetailKeyboard)
-
+        } bottomBar: {
             PrimaryBottomButton(
                 title: "완료",
                 isEnabled: state.canSubmitSkipReason,
@@ -44,7 +43,6 @@ struct ReviewSkipReasonView: View {
                 action: { send(.skipReasonSubmitTapped) }
             )
         }
-        .background(RodiColor.white)
         .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 }
@@ -63,7 +61,7 @@ private extension ReviewSkipReasonView {
         case .loaded(let form):
             VStack(alignment: .leading, spacing: 16) {
                 ForEach(form.options) { option in
-                    ReviewRadioOption(
+                    RodiRadioOption(
                         title: option.label,
                         isSelected: state.selectedSkipReason?.code == option.code,
                         action: { send(.skipReasonSelected(option)) }

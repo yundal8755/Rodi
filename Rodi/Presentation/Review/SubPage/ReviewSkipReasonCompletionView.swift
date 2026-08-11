@@ -4,8 +4,8 @@ struct ReviewSkipReasonCompletionView: View {
     let send: (ReviewReducer.Action) -> Void
 
     var body: some View {
-        ReviewModalBackground {
-            ReviewDialog(contentInsets: .init(top: 32, leading: 20, bottom: 32, trailing: 20)) {
+        RodiModalBackground {
+            RodiDialog(contentInsets: .init(top: 32, leading: 20, bottom: 32, trailing: 20)) {
                 VStack(spacing: 0) {
                     VStack(spacing: 16) {
                         Text("소중한 의견 감사해요!")

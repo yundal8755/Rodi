@@ -4,8 +4,8 @@ struct ReviewCompletionView: View {
     let send: (ReviewReducer.Action) -> Void
 
     var body: some View {
-        ReviewModalBackground {
-            ReviewDialog(contentInsets: .init(top: 32, leading: 20, bottom: 32, trailing: 20)) {
+        RodiModalBackground {
+            RodiDialog(contentInsets: .init(top: 32, leading: 20, bottom: 32, trailing: 20)) {
                 VStack(spacing: 0) {
                 VStack(spacing: 16) {
                     Text("후기 등록을 완료했어요!")

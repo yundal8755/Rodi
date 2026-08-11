@@ -1,6 +1,20 @@
 import SwiftUI
 
-struct ReviewDialog<Content: View>: View {
+struct RodiModalBackground<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        Color.black.opacity(0.45)
+            .ignoresSafeArea()
+            .overlay { content }
+    }
+}
+
+struct RodiDialog<Content: View>: View {
     @ViewBuilder let content: Content
     var closeAction: (() -> Void)?
     private let contentInsets: EdgeInsets

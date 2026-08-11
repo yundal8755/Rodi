@@ -7,15 +7,16 @@ struct ReviewFormPageTwoView: View {
     @State private var isContentFocused = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            ReviewFormHeader(
+        ReviewFormScaffold(
+            header: ReviewFormHeader(
                 title: "후기 남기기",
                 showsBack: true,
                 backAction: { send(.backTapped) },
                 closeAction: { send(.closeTapped) }
             )
-            .zIndex(1)
-            VStack(alignment: .leading, spacing: 0) {
+        ) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
                 Text("연습 방법")
                     .rodiTypography(.body1SemiBold)
                     .foregroundStyle(RodiColor.black)
@@ -35,13 +36,19 @@ struct ReviewFormPageTwoView: View {
                     .foregroundStyle(RodiColor.gray600)
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     .padding(.top, 4)
-                Spacer(minLength: 0)
-                    .frame(maxWidth: .infinity)
+                    Color.clear
+                    .frame(height: 48)
                     .contentShape(Rectangle())
                     .onTapGesture(perform: dismissContentKeyboard)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 28)
+                .padding(.bottom, 24)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 28)
+            .scrollDismissesKeyboard(.interactively)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: dismissContentKeyboard)
+        } bottomBar: {
             PrimaryBottomButton(
                 title: "완료",
                 isEnabled: state.canSubmit,
@@ -49,7 +56,7 @@ struct ReviewFormPageTwoView: View {
                 action: { send(.submitTapped) }
             )
         }
-        .background(RodiColor.white)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 }
 
