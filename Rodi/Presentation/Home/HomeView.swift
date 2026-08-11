@@ -18,6 +18,7 @@ struct HomeView: View {
     @State private var transientBottomSheetHeight: CGFloat?
     @State private var handledListPresentationRequestID = 0
     @State private var handledPlaceSelectionRequestID = 0
+    @State private var handledReviewReturnToHomeRequestID = 0
 
     private let isHomeTabSelected: Bool
     private let onAuthenticationRequired: () -> Void
@@ -25,6 +26,8 @@ struct HomeView: View {
     private let listPresentationRequestID: Int
     private let placeSelectionRequest: HomePlaceSelectionRequest?
     private let onPlaceSelectionHandled: (Int) -> Void
+    private let reviewReturnToHomeRequestID: Int
+    private let onReviewRequested: (ReviewWriteRequest) -> Void
     private let bottomTabBarHeight: CGFloat
     private let dependencies: AppDependencies
 
@@ -35,6 +38,8 @@ struct HomeView: View {
         listPresentationRequestID: Int = 0,
         placeSelectionRequest: HomePlaceSelectionRequest? = nil,
         onPlaceSelectionHandled: @escaping (Int) -> Void = { _ in },
+        reviewReturnToHomeRequestID: Int = 0,
+        onReviewRequested: @escaping (ReviewWriteRequest) -> Void = { _ in },
         bottomTabBarHeight: CGFloat,
         dependencies: AppDependencies
     ) {
@@ -44,6 +49,8 @@ struct HomeView: View {
         self.listPresentationRequestID = listPresentationRequestID
         self.placeSelectionRequest = placeSelectionRequest
         self.onPlaceSelectionHandled = onPlaceSelectionHandled
+        self.reviewReturnToHomeRequestID = reviewReturnToHomeRequestID
+        self.onReviewRequested = onReviewRequested
         self.bottomTabBarHeight = bottomTabBarHeight
         self.dependencies = dependencies
 
@@ -52,7 +59,8 @@ struct HomeView: View {
             state: HomeReducer.State(),
             reducer: HomeReducer(
                 dependencies: dependencies,
-                authenticationRequired: onAuthenticationRequired
+                authenticationRequired: onAuthenticationRequired,
+                reviewWritingRequested: onReviewRequested
             )
         ))
     }
@@ -65,6 +73,7 @@ struct HomeView: View {
                 onBottomTabBarVisibilityChanged(store.state.presentation.isBottomTabBarVisible)
                 handleListPresentationRequest(listPresentationRequestID)
                 handlePlaceSelection(placeSelectionRequest)
+                handleReviewReturnToHome(reviewReturnToHomeRequestID)
             }
             .alert("위치 접근 권한이 필요해요", isPresented: locationSettingsAlertBinding) {
                 Button("취소", role: .cancel) {}
@@ -106,6 +115,9 @@ struct HomeView: View {
             }
             .onChange(of: placeSelectionRequest) { request in
                 handlePlaceSelection(request)
+            }
+            .onChange(of: reviewReturnToHomeRequestID) { requestID in
+                handleReviewReturnToHome(requestID)
             }
     }
 }
@@ -159,23 +171,37 @@ extension HomeView {
                         .accessibilityHidden(true)
                 }
 
-                HomeBottomSheetView(
-                    state: store.state.bottomSheet,
-                    send: { store.send(.bottomSheet($0)) },
-                    userLocation: store.state.map.userLocation,
-                    hasLocationPermission: store.state.map.locationState == .resolved,
-                    bottomTabBarHeight: bottomTabBarHeight,
-                    onCourseDetailHeightChanged: { height in
-                        guard abs(courseBottomSheetHeight - height) > 0.5 else { return }
-                        courseBottomSheetHeight = height
-                    },
-                    onVisibleHeightChanged: { height, isTransient in
-                        transientBottomSheetHeight = isTransient ? height : nil
-                    },
-                    requestLocationPermission: {
-                        store.send(.presentation(.setLocationSettingsAlertPresented(true)))
-                    }
-                )
+                if isCourseDetailExpanded {
+                    CourseDetailBottomSheetView(
+                        state: store.state.bottomSheet.courseDetail,
+                        send: { store.send(.bottomSheet(.courseDetail($0))) },
+                        userLocation: store.state.map.userLocation,
+                        hasLocationPermission: store.state.map.locationState == .resolved,
+                        requestLocationPermission: {
+                            store.send(.presentation(.setLocationSettingsAlertPresented(true)))
+                        }
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(1)
+                } else {
+                    HomeBottomSheetView(
+                        state: store.state.bottomSheet,
+                        send: { store.send(.bottomSheet($0)) },
+                        userLocation: store.state.map.userLocation,
+                        hasLocationPermission: store.state.map.locationState == .resolved,
+                        bottomTabBarHeight: bottomTabBarHeight,
+                        onCourseDetailHeightChanged: { height in
+                            guard abs(courseBottomSheetHeight - height) > 0.5 else { return }
+                            courseBottomSheetHeight = height
+                        },
+                        onVisibleHeightChanged: { height, isTransient in
+                            transientBottomSheetHeight = isTransient ? height : nil
+                        },
+                        requestLocationPermission: {
+                            store.send(.presentation(.setLocationSettingsAlertPresented(true)))
+                        }
+                    )
+                }
             } else {
                 initialMapLoadingView
             }
@@ -204,6 +230,12 @@ extension HomeView {
         store.send(.map(.savedPlaceSelected(request.place)))
         onPlaceSelectionHandled(request.id)
     }
+
+    private func handleReviewReturnToHome(_ requestID: Int) {
+        guard requestID > handledReviewReturnToHomeRequestID else { return }
+        handledReviewReturnToHomeRequestID = requestID
+        store.send(.bottomSheet(.reviewFlowFinished))
+    }
 }
 
 
@@ -227,6 +259,13 @@ extension HomeView {
 
     private var isFilterPresented: Bool {
         store.state.bottomSheet.route == .filter
+    }
+
+    private var isCourseDetailExpanded: Bool {
+        let bottomSheet = store.state.bottomSheet
+        return bottomSheet.route == .courseDetail
+            && bottomSheet.courseDetail.detail != nil
+            && bottomSheet.courseDetail.presentation != .sheet
     }
 
     private var isSavedPlaceLoading: Bool {
@@ -474,9 +513,22 @@ extension HomeView {
                 return 0
             }
 
-        case .filter, .parkingDetail, .courseDetail:
+        case .filter, .parkingDetail:
             let restingHeight = currentLocationButtonRestingSheetHeight
             return 1 - clamped((restingHeight - currentBottomSheetHeight) / controlHeight)
+
+        case .courseDetail:
+            guard store.state.bottomSheet.courseDetail.presentation == .sheet else {
+                return 0
+            }
+            let restingHeight = currentLocationButtonRestingSheetHeight
+            let expansionOpacity = 1 - clamped(
+                (currentBottomSheetHeight - (restingHeight + 12)) / controlHeight
+            )
+            let dismissalOpacity = 1 - clamped(
+                (restingHeight - currentBottomSheetHeight) / controlHeight
+            )
+            return min(expansionOpacity, dismissalOpacity)
 
         }
     }
@@ -495,7 +547,9 @@ extension HomeView {
         case .filter, .parkingDetail:
             return screenHeight * 0.5
         case .courseDetail:
-            return courseBottomSheetHeight
+            return store.state.bottomSheet.courseDetail.presentation == .sheet
+                ? courseBottomSheetHeight
+                : screenHeight
         }
     }
 

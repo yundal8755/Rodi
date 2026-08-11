@@ -107,6 +107,7 @@ struct HomeReducer: Reducer {
     private let hasActiveSession: () -> Bool
     /// NOTE - 확인 필요
     private let authenticationRequired: () -> Void
+    private let reviewWritingRequested: (ReviewWriteRequest) -> Void
     private let markerTierResolver = MapMarkerTierResolver()
     private let markerInteractionResolver = MapMarkerInteractionResolver()
 
@@ -117,7 +118,8 @@ struct HomeReducer: Reducer {
 
     init(
         dependencies: AppDependencies,
-        authenticationRequired: @escaping () -> Void = {}
+        authenticationRequired: @escaping () -> Void = {},
+        reviewWritingRequested: @escaping (ReviewWriteRequest) -> Void = { _ in }
     ) {
         mapService = MapService(
             placeRepository: dependencies.placeRepository,
@@ -134,6 +136,7 @@ struct HomeReducer: Reducer {
                 .contains { $0?.isEmpty == false }
         }
         self.authenticationRequired = authenticationRequired
+        self.reviewWritingRequested = reviewWritingRequested
     }
 }
 
@@ -440,6 +443,9 @@ extension HomeReducer {
 
     case .showSnackbar(let message):
         state.presentation.pendingSnackbar = ToastStruct(message: message, state: .error)
+
+    case .reviewWritingRequested(let request):
+        reviewWritingRequested(request)
     }
 
     return .none

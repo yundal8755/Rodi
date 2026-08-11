@@ -21,6 +21,10 @@ final class MemberRemoteDataSource {
     }
     
     func withdraw() async throws(NetworkError) { try await empty(.withdraw) }
+
+    func block(memberID: Int) async throws(NetworkError) {
+        try await empty(.block(memberID: memberID))
+    }
     
     func updateDrivingGoal(_ request: MemberDrivingGoalUpdateRequestDTO) async throws(NetworkError) {
         try await empty(.updateDrivingGoal(request))

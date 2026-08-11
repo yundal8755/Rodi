@@ -28,6 +28,7 @@ struct HomeBottomSheetReducer: Reducer {
         case resolveRecommendedPlace(id: Int)
         case resolveSavedPlace(PlaceListItem)
         case clearSearchSelection
+        case reviewFlowFinished
         case prepareForCurrentLocation
         case placeResolved(PlaceDetail)
         case placeDetailPresentationFinished(id: Int)
@@ -52,6 +53,7 @@ struct HomeBottomSheetReducer: Reducer {
         )
         case requestAuthentication
         case showSnackbar(String)
+        case reviewWritingRequested(ReviewWriteRequest)
     }
 
     private let placeRepository: PlaceRepository
@@ -77,6 +79,9 @@ struct HomeBottomSheetReducer: Reducer {
         )
         courseDetailReducer = CourseDetailBottomSheetReducer(
             placeRepository: dependencies.placeRepository,
+            memberRepository: dependencies.memberRepository,
+            practiceRepository: dependencies.practiceRepository,
+            reviewRepository: dependencies.reviewRepository,
             hasActiveSession: hasActiveSession
         )
         parkingDetailReducer = ParkingDetailBottomSheetReducer(
@@ -134,6 +139,22 @@ extension HomeBottomSheetReducer {
             state.courseDetail = .init()
             state.parkingDetail = .init()
             return .cancel(id: BottomSheetEffectID.placeDetailLoading)
+
+        case .reviewFlowFinished:
+            guard state.route == .courseDetail || state.courseDetail.detail != nil else { return .none }
+            state.resolvingPlaceID = nil
+            state.isRecommendationPlaceResolution = false
+            state.isSavedPlaceResolution = false
+            state.isDetailPresentationPending = false
+            state.isCurrentLocationRequestPending = false
+            state.route = .recommendList
+            state.recommendList.presentation = .collapsed
+            state.courseDetail = .init()
+            return actions([
+                .courseDetail(.cancelRoadRouteLoading),
+                .courseDetail(.cancelReviewLoading),
+                .delegate(.mapDetailDismissed)
+            ])
 
         case .prepareForCurrentLocation:
             switch state.route {
@@ -290,6 +311,7 @@ extension HomeBottomSheetReducer {
 
         case .showSnackbar(let message):
             return .send(.delegate(.showSnackbar(message)))
+
         }
     }
 
@@ -308,6 +330,9 @@ extension HomeBottomSheetReducer {
 
         case .showSnackbar(let message):
             return .send(.delegate(.showSnackbar(message)))
+
+        case .reviewWritingRequested(let request):
+            return .send(.delegate(.reviewWritingRequested(request)))
         }
     }
 

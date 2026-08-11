@@ -33,6 +33,10 @@ final class MemberRepositoryImpl: MemberRepository {
         try await remoteDataSource.withdraw()
     }
 
+    func block(memberID: Int) async throws(NetworkError) {
+        try await remoteDataSource.block(memberID: memberID)
+    }
+
     func updateDrivingGoal(_ drivingGoal: String) async throws(NetworkError) {
         try await remoteDataSource.updateDrivingGoal(.init(drivingGoal: drivingGoal))
     }

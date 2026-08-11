@@ -28,6 +28,7 @@ struct RootReducer: Reducer {
         case sessionRestoreCompleted(SessionRestoreResult)
         case mainTabsAppeared
         case debugReviewTestRequested
+        case reviewRequested(ReviewWriteRequest)
         case review(ReviewReducer.Action)
         case reviewSnackbarDismissed(String)
     }
@@ -116,6 +117,9 @@ extension RootReducer {
             #else
             return .none
             #endif
+
+        case .reviewRequested(let request):
+            return .send(.review(.directWritingRequested(request)))
 
         case .review(let action):
             if case .delegate(let delegate) = action {
