@@ -1,12 +1,13 @@
 import SwiftUI
 
 struct MyPracticeRecordSection: View {
-    let records: [MyReviewItem]
+    let records: [MyPracticeItem]
     let isLoading: Bool
     let hasCompletedInitialLoad: Bool
     let errorMessage: String?
     let openAll: () -> Void
     let retry: () -> Void
+    let reviewRequested: (ReviewWriteRequest) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -72,7 +73,10 @@ private extension MyPracticeRecordSection {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 8) {
                     ForEach(records) { record in
-                        MyPracticeRecordPreviewCard(record: record)
+                        MyPracticeRecordPreviewCard(
+                            record: record,
+                            reviewRequested: reviewRequested
+                        )
                     }
                 }
                 .padding(.leading, 16)
@@ -83,30 +87,30 @@ private extension MyPracticeRecordSection {
 }
 
 struct MyPracticeRecordPreviewCard: View {
-    let record: MyReviewItem
+    let record: MyPracticeItem
+    let reviewRequested: (ReviewWriteRequest) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(record.placeName)
-                .rodiTypography(.body3Medium)
-                .fontWeight(.semibold)
+                .font(.pretendard(size: 15, weight: .semibold))
+                .tracking(-0.3)
                 .foregroundStyle(RodiColor.black)
                 .lineLimit(1)
 
-            Text(Self.dateFormatter.string(from: record.createdAt))
+            Text(Self.dateFormatter.string(from: record.visitedAt))
                 .rodiTypography(.caption1Medium)
                 .foregroundStyle(RodiColor.gray600)
                 .padding(.top, 4)
 
-            Text(record.content)
-                .rodiTypography(.caption1Medium)
-                .foregroundStyle(RodiColor.gray700)
-                .lineLimit(3)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 12)
+            MyPracticeTypeChipRow(types: record.practiceTypes)
+                .padding(.top, 8)
 
-            Spacer(minLength: 0)
+            MyPracticeReviewStatus(
+                hasReview: record.hasReview,
+                reviewRequested: { reviewRequested(.init(placeID: record.placeID, placeName: record.placeName)) }
+            )
+            .padding(.top, 12)
         }
         .padding(15)
         .frame(width: 179, height: 141, alignment: .topLeading)
@@ -117,7 +121,7 @@ struct MyPracticeRecordPreviewCard: View {
                 .stroke(RodiColor.primary50, lineWidth: 1)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(record.placeName), \(Self.dateFormatter.string(from: record.createdAt)), \(record.content)")
+        .accessibilityLabel("\(record.placeName), \(Self.dateFormatter.string(from: record.visitedAt))")
     }
 
     private static let dateFormatter: DateFormatter = {
@@ -126,6 +130,64 @@ struct MyPracticeRecordPreviewCard: View {
         formatter.dateFormat = "yy.MM.dd"
         return formatter
     }()
+}
+
+struct MyPracticeTypeChipRow: View {
+    let types: [String]
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(Array(types.prefix(2)), id: \.self) { type in
+                Text(PlacePracticeType.displayName(for: type))
+                    .rodiTypography(.caption1Medium)
+                    .foregroundStyle(RodiColor.gray600)
+                    .lineLimit(1)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(RodiColor.gray200)
+                    .clipShape(RoundedRectangle(cornerRadius: 2))
+            }
+        }
+    }
+}
+
+struct MyPracticeReviewStatus: View {
+    let hasReview: Bool
+    let reviewRequested: () -> Void
+
+    var body: some View {
+        if hasReview {
+            Text("후기 작성 완료")
+                .rodiTypography(.body3Medium)
+                .foregroundStyle(RodiColor.primary)
+                .frame(maxWidth: .infinity)
+                .frame(height: 32)
+                .background(RodiColor.primary20)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .accessibilityLabel("후기 작성 완료")
+        } else {
+            Button(action: reviewRequested) {
+                Text("후기 작성")
+                    .rodiTypography(.body3Medium)
+                    .foregroundStyle(RodiColor.primary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 32)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(RodiColor.primary, lineWidth: 1)
+                    }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
+private extension DateFormatter {
+
+    func string(from date: Date?) -> String {
+        guard let date else { return "방문 일자 없음" }
+        return string(from: date)
+    }
 }
 
 private struct MyPracticeRecordEmptyView: View {

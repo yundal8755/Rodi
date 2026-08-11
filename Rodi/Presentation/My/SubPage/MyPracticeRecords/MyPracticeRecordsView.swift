@@ -5,17 +5,21 @@ struct MyPracticeRecordsView: View {
     let backAction: () -> Void
 
     init(
-        reviewRepository: ReviewRepository,
+        practiceRepository: PracticeRepository,
+        reviewRequested: @escaping (ReviewWriteRequest) -> Void,
         backAction: @escaping () -> Void
     ) {
         _store = StateObject(
             wrappedValue: Store(
                 state: MyPracticeRecordsReducer.State(),
-                reducer: MyPracticeRecordsReducer(reviewRepository: reviewRepository)
+                reducer: MyPracticeRecordsReducer(practiceRepository: practiceRepository)
             )
         )
+        self.reviewRequested = reviewRequested
         self.backAction = backAction
     }
+
+    let reviewRequested: (ReviewWriteRequest) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -45,7 +49,7 @@ private extension MyPracticeRecordsView {
         } else {
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    Text("\(store.state.totalCount ?? store.state.items.count)개")
+                    Text("\(store.state.items.count)개")
                         .rodiTypography(.caption2Medium)
                         .foregroundStyle(RodiColor.gray700)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -53,7 +57,7 @@ private extension MyPracticeRecordsView {
                         .padding(.vertical, 8)
 
                     ForEach(store.state.items) { item in
-                        MyPracticeRecordListRow(record: item)
+                        MyPracticeRecordListRow(record: item, reviewRequested: reviewRequested)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 16)
 
@@ -105,31 +109,40 @@ private extension MyPracticeRecordsView {
 }
 
 private struct MyPracticeRecordListRow: View {
-    let record: MyReviewItem
+    let record: MyPracticeItem
+    let reviewRequested: (ReviewWriteRequest) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(record.placeName)
-                    .rodiTypography(.body1SemiBold)
+                    .font(.pretendard(size: 15, weight: .semibold))
+                    .tracking(-0.3)
                     .foregroundStyle(RodiColor.black)
                     .lineLimit(1)
 
                 Spacer(minLength: 0)
 
-                Text(Self.dateFormatter.string(from: record.createdAt))
+                Text(dateText)
                     .rodiTypography(.caption1Medium)
                     .foregroundStyle(RodiColor.gray600)
             }
 
-            Text(record.content)
-                .rodiTypography(.body3Medium)
-                .foregroundStyle(RodiColor.gray700)
-                .lineLimit(3)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            MyPracticeTypeChipRow(types: record.practiceTypes)
+
+            MyPracticeReviewStatus(
+                hasReview: record.hasReview,
+                reviewRequested: { reviewRequested(.init(placeID: record.placeID, placeName: record.placeName)) }
+            )
+            .frame(width: 147)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(record.placeName), \(Self.dateFormatter.string(from: record.createdAt)), \(record.content)")
+        .accessibilityLabel("\(record.placeName), \(dateText)")
+    }
+
+    private var dateText: String {
+        guard let visitedAt = record.visitedAt else { return "방문 일자 없음" }
+        return Self.dateFormatter.string(from: visitedAt)
     }
 
     private static let dateFormatter: DateFormatter = {

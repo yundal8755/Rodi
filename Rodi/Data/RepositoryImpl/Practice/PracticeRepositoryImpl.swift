@@ -20,6 +20,10 @@ final class PracticeRepositoryImpl: PracticeRepository {
         return .init(visitCount: response.visitCount, isVerified: response.isVerified)
     }
 
+    func fetchMyPractices(query: MyPracticeQuery) async throws(NetworkError) -> MyPracticePage {
+        try myPracticePage(from: await remoteDataSource.fetchMyPractices(query: query))
+    }
+
     func fetchSkipReasonForm() async throws(NetworkError) -> PracticeSkipReasonForm {
         let response = try await remoteDataSource.fetchSkipReasonForm()
         return .init(
@@ -39,6 +43,62 @@ final class PracticeRepositoryImpl: PracticeRepository {
             reasonCode: reasonCode,
             detail: detail
         )
+    }
+}
+
+private extension PracticeRepositoryImpl {
+
+    func myPracticePage(from dto: MyPracticeCursorPageResponseDTO) throws(NetworkError) -> MyPracticePage {
+        .init(
+            items: try dto.items.map(myPracticeItem(from:)),
+            hasNext: dto.hasNext,
+            nextCursor: dto.nextCursor,
+            totalCount: try dto.totalCount.map(int(from:))
+        )
+    }
+
+    func myPracticeItem(from dto: MyPracticeItemResponseDTO) throws(NetworkError) -> MyPracticeItem {
+        guard let status = MyPracticeStatus(rawValue: dto.status) else {
+            throw .decodingFail
+        }
+
+        return .init(
+            id: try int(from: dto.practiceId),
+            placeID: try int(from: dto.placeId),
+            placeName: dto.placeName,
+            practiceTypes: dto.practiceTypes,
+            status: status,
+            visitCount: dto.visitCount,
+            visitedAt: dto.visitedAt.flatMap(date(from:)),
+            isVerified: dto.isVerified,
+            hasReview: dto.hasReview
+        )
+    }
+
+    func int(from value: Int64) throws(NetworkError) -> Int {
+        guard let value = Int(exactly: value) else {
+            throw .decodingFail
+        }
+        return value
+    }
+
+    func date(from value: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+
+        for format in [
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSS",
+            "yyyy-MM-dd'T'HH:mm:ss.SSS",
+            "yyyy-MM-dd'T'HH:mm:ss"
+        ] {
+            formatter.dateFormat = format
+            if let date = formatter.date(from: value) {
+                return date
+            }
+        }
+
+        return ISO8601DateFormatter().date(from: value)
     }
 }
 

@@ -15,8 +15,10 @@ struct MyView: View {
     let navigate: (MainTabIntent) -> Void
     let onLogoutCompleted: () -> Void
     let onReviewTestRequested: () -> Void
+    let onReviewRequested: (ReviewWriteRequest) -> Void
     private let memberRepository: MemberRepository
     private let placeRepository: PlaceRepository
+    private let practiceRepository: PracticeRepository
     private let reviewRepository: ReviewRepository
     private var router: Router<MyRoute> { coordinator.router }
 
@@ -26,6 +28,7 @@ struct MyView: View {
         navigate: @escaping (MainTabIntent) -> Void,
         onLogoutCompleted: @escaping () -> Void,
         onReviewTestRequested: @escaping () -> Void,
+        onReviewRequested: @escaping (ReviewWriteRequest) -> Void,
         dependencies: AppDependencies
     ) {
         self.coordinator = coordinator
@@ -33,19 +36,21 @@ struct MyView: View {
         self.navigate = navigate
         self.onLogoutCompleted = onLogoutCompleted
         self.onReviewTestRequested = onReviewTestRequested
+        self.onReviewRequested = onReviewRequested
         _store = StateObject(
             wrappedValue: Store(
                 state: MyReducer.State(),
                 reducer: MyReducer(
                     authRepository: dependencies.authRepository,
                     memberRepository: dependencies.memberRepository,
-                    reviewRepository: dependencies.reviewRepository,
+                    practiceRepository: dependencies.practiceRepository,
                     recentLoginProviderStore: dependencies.recentLoginProviderStore
                 )
             )
         )
         memberRepository = dependencies.memberRepository
         placeRepository = dependencies.placeRepository
+        practiceRepository = dependencies.practiceRepository
         reviewRepository = dependencies.reviewRepository
     }
 
@@ -67,6 +72,7 @@ struct MyView: View {
                 hasCompletedPracticeRecordLoad: store.state.hasCompletedPracticeRecordLoad,
                 practiceRecordErrorMessage: store.state.practiceRecordErrorMessage,
                 retryPracticeRecords: { store.send(.retryPracticeRecordsTapped) },
+                reviewRequested: onReviewRequested,
                 reviewTestAction: onReviewTestRequested
             )
             .navigationDestination(for: MyRoute.self) { route in
@@ -129,7 +135,8 @@ private extension MyView {
 
         case .practiceRecords:
             MyPracticeRecordsView(
-                reviewRepository: reviewRepository,
+                practiceRepository: practiceRepository,
+                reviewRequested: onReviewRequested,
                 backAction: { router.pop() }
             )
 

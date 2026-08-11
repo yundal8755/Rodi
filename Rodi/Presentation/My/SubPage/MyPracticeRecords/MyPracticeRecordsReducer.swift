@@ -3,8 +3,7 @@ import Foundation
 @MainActor
 struct MyPracticeRecordsReducer: Reducer {
     struct State {
-        var items: [MyReviewItem] = []
-        var totalCount: Int?
+        var items: [MyPracticeItem] = []
         var isInitialLoading = false
         var isNextPageLoading = false
         var errorMessage: String?
@@ -16,13 +15,13 @@ struct MyPracticeRecordsReducer: Reducer {
     enum Action {
         case appeared
         case retryTapped
-        case lastItemAppeared(MyReviewItem)
+        case lastItemAppeared(MyPracticeItem)
         case firstPageLoaded(PageLoadResult, requestID: Int)
         case nextPageLoaded(PageLoadResult, requestID: Int)
     }
 
     enum PageLoadResult {
-        case success(MyReviewPage)
+        case success(MyPracticePage)
         case failure(String)
     }
 
@@ -31,10 +30,10 @@ struct MyPracticeRecordsReducer: Reducer {
         case nextPage
     }
 
-    private let reviewRepository: ReviewRepository
+    private let practiceRepository: PracticeRepository
 
-    init(reviewRepository: ReviewRepository) {
-        self.reviewRepository = reviewRepository
+    init(practiceRepository: PracticeRepository) {
+        self.practiceRepository = practiceRepository
     }
 }
 
@@ -65,8 +64,7 @@ extension MyPracticeRecordsReducer {
 
             switch result {
             case .success(let page):
-                state.items = page.items
-                state.totalCount = page.totalCount ?? page.items.count
+                state.items = page.items.filter { $0.status == .visited }
                 state.hasNextPage = page.hasNext
                 state.nextCursor = page.nextCursor
                 state.errorMessage = nil
@@ -81,7 +79,11 @@ extension MyPracticeRecordsReducer {
             switch result {
             case .success(let page):
                 let existingIDs = Set(state.items.map(\.id))
-                state.items.append(contentsOf: page.items.filter { !existingIDs.contains($0.id) })
+                state.items.append(
+                    contentsOf: page.items.filter {
+                        $0.status == .visited && !existingIDs.contains($0.id)
+                    }
+                )
                 state.hasNextPage = page.hasNext
                 state.nextCursor = page.nextCursor
                 state.errorMessage = nil
@@ -99,7 +101,6 @@ private extension MyPracticeRecordsReducer {
 
     func loadFirstPage(state: inout State) -> Effect<Action> {
         state.items = []
-        state.totalCount = nil
         state.nextCursor = nil
         state.hasNextPage = false
         state.isInitialLoading = true
@@ -107,11 +108,11 @@ private extension MyPracticeRecordsReducer {
         state.errorMessage = nil
         state.requestID += 1
         let requestID = state.requestID
-        let reviewRepository = reviewRepository
+        let practiceRepository = practiceRepository
 
         return .run { send in
             do {
-                let page = try await reviewRepository.fetchMyReviews(query: .init(size: 10))
+                let page = try await practiceRepository.fetchMyPractices(query: .init(size: 20))
                 await send(.firstPageLoaded(.success(page), requestID: requestID))
             } catch {
                 await send(.firstPageLoaded(.failure(Self.message(for: error)), requestID: requestID))
@@ -120,7 +121,7 @@ private extension MyPracticeRecordsReducer {
         .cancelTask(id: EffectID.firstPage)
     }
 
-    func loadNextPage(after item: MyReviewItem, state: inout State) -> Effect<Action> {
+    func loadNextPage(after item: MyPracticeItem, state: inout State) -> Effect<Action> {
         guard item.id == state.items.last?.id,
               state.hasNextPage,
               let cursor = state.nextCursor,
@@ -133,11 +134,11 @@ private extension MyPracticeRecordsReducer {
         state.isNextPageLoading = true
         state.errorMessage = nil
         let requestID = state.requestID
-        let reviewRepository = reviewRepository
+        let practiceRepository = practiceRepository
 
         return .run { send in
             do {
-                let page = try await reviewRepository.fetchMyReviews(query: .init(size: 10, cursor: cursor))
+                let page = try await practiceRepository.fetchMyPractices(query: .init(size: 20, cursor: cursor))
                 await send(.nextPageLoaded(.success(page), requestID: requestID))
             } catch {
                 await send(.nextPageLoaded(.failure(Self.message(for: error)), requestID: requestID))

@@ -83,6 +83,7 @@ struct MainTabView: View {
                 navigate: { store.send(.navigationRequested($0)) },
                 onLogoutCompleted: onLogoutCompleted,
                 onReviewTestRequested: onReviewTestRequested,
+                onReviewRequested: onReviewRequested,
                 dependencies: dependencies
             )
             .opacity(store.state.selectedTab == .my ? 1 : 0)

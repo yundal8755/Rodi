@@ -19,7 +19,7 @@ struct MyReducer: Reducer {
         var snackbarMessage: String?
         var didEndSessionRequestID = 0
         var hasTrackedMyOpen = false
-        var practiceRecordPreview: [MyReviewItem] = []
+        var practiceRecordPreview: [MyPracticeItem] = []
         var isLoadingPracticeRecords = false
         var hasCompletedPracticeRecordLoad = false
         var practiceRecordErrorMessage: String?
@@ -30,7 +30,7 @@ struct MyReducer: Reducer {
         case appeared
         case practiceRecordsAppeared
         case retryPracticeRecordsTapped
-        case practiceRecordsLoaded(MyReviewLoadResult, requestID: Int)
+        case practiceRecordsLoaded(MyPracticeLoadResult, requestID: Int)
         case retryProfileTapped
         case networkStatusChanged(NetworkConnectionMonitor.Status)
         case profileLoaded(ProfileLoadResult, requestID: Int)
@@ -46,8 +46,8 @@ struct MyReducer: Reducer {
         case failure(String)
     }
 
-    enum MyReviewLoadResult {
-        case success(MyReviewPage)
+    enum MyPracticeLoadResult {
+        case success(MyPracticePage)
         case failure(String)
     }
 
@@ -65,18 +65,18 @@ struct MyReducer: Reducer {
 
     private let authRepository: AuthRepository
     private let memberRepository: MemberRepository
-    private let reviewRepository: ReviewRepository
+    private let practiceRepository: PracticeRepository
     private let recentLoginProviderStore: RecentLoginProviderStore
 
     init(
         authRepository: AuthRepository,
         memberRepository: MemberRepository,
-        reviewRepository: ReviewRepository,
+        practiceRepository: PracticeRepository,
         recentLoginProviderStore: RecentLoginProviderStore
     ) {
         self.authRepository = authRepository
         self.memberRepository = memberRepository
-        self.reviewRepository = reviewRepository
+        self.practiceRepository = practiceRepository
         self.recentLoginProviderStore = recentLoginProviderStore
     }
 
@@ -118,7 +118,7 @@ extension MyReducer {
 
             switch result {
             case .success(let page):
-                state.practiceRecordPreview = Array(page.items.prefix(5))
+                state.practiceRecordPreview = Array(page.items.filter { $0.status == .visited }.prefix(5))
                 state.practiceRecordErrorMessage = nil
             case .failure(let message):
                 state.practiceRecordErrorMessage = message
@@ -238,11 +238,11 @@ extension MyReducer {
         state.practiceRecordErrorMessage = nil
         state.practiceRecordRequestID += 1
         let requestID = state.practiceRecordRequestID
-        let reviewRepository = reviewRepository
+        let practiceRepository = practiceRepository
 
         return .run { send in
             do {
-                let page = try await reviewRepository.fetchMyReviews(query: .init(size: 5))
+                let page = try await practiceRepository.fetchMyPractices(query: .init(size: 20))
                 await send(.practiceRecordsLoaded(.success(page), requestID: requestID))
             } catch {
                 await send(.practiceRecordsLoaded(.failure(practiceRecordMessage(for: error)), requestID: requestID))

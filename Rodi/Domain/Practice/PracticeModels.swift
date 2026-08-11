@@ -9,6 +9,41 @@ struct PracticeVisit: Equatable {
     let isVerified: Bool
 }
 
+enum MyPracticeStatus: String, Equatable {
+    case planned = "PLANNED"
+    case visited = "VISITED"
+    case notVisited = "NOT_VISITED"
+}
+
+struct MyPracticeItem: Equatable, Identifiable {
+    let id: Int
+    let placeID: Int
+    let placeName: String
+    let practiceTypes: [String]
+    let status: MyPracticeStatus
+    let visitCount: Int
+    let visitedAt: Date?
+    let isVerified: Bool
+    let hasReview: Bool
+}
+
+struct MyPracticePage: Equatable {
+    let items: [MyPracticeItem]
+    let hasNext: Bool
+    let nextCursor: String?
+    let totalCount: Int?
+}
+
+struct MyPracticeQuery: Equatable {
+    let size: Int
+    let cursor: String?
+
+    init(size: Int = 20, cursor: String? = nil) {
+        self.size = size
+        self.cursor = cursor
+    }
+}
+
 struct PracticeSkipReasonForm: Equatable {
     let options: [PracticeSkipReasonOption]
 }

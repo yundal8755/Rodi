@@ -16,11 +16,12 @@ struct MyProfileView: View {
     let openPracticeRecords: () -> Void
     let openMyPosts: () -> Void
     let retry: () -> Void
-    let practiceRecords: [MyReviewItem]
+    let practiceRecords: [MyPracticeItem]
     let isLoadingPracticeRecords: Bool
     let hasCompletedPracticeRecordLoad: Bool
     let practiceRecordErrorMessage: String?
     let retryPracticeRecords: () -> Void
+    let reviewRequested: (ReviewWriteRequest) -> Void
     let reviewTestAction: () -> Void
 
     var body: some View {
@@ -41,7 +42,8 @@ struct MyProfileView: View {
                         hasCompletedInitialLoad: hasCompletedPracticeRecordLoad,
                         errorMessage: practiceRecordErrorMessage,
                         openAll: openPracticeRecords,
-                        retry: retryPracticeRecords
+                        retry: retryPracticeRecords,
+                        reviewRequested: reviewRequested
                     )
                     .padding(.top, 24)
 
@@ -57,26 +59,7 @@ struct MyProfileView: View {
                     }
                     .buttonStyle(.plain)
                     .padding(.horizontal, 16)
-
-                    #if DEBUG
-                    MySectionDivider()
-                        .padding(.top, 24)
-
-                    Button(action: reviewTestAction) {
-                        Text("후기등록 테스트")
-                            .rodiTypography(.body3Medium)
-                            .foregroundStyle(RodiColor.primary)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 44)
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(RodiColor.primary, lineWidth: 1)
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 24)
-                    #endif
+                    .padding(.top, 20)
                 }
                 .padding(.bottom, 114)
             }

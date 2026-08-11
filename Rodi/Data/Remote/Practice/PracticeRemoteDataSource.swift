@@ -25,6 +25,12 @@ final class PracticeRemoteDataSource {
         )
     }
 
+    func fetchMyPractices(
+        query: MyPracticeQuery
+    ) async throws(NetworkError) -> MyPracticeCursorPageResponseDTO {
+        try await request(.myPractices(query: query), as: MyPracticeCursorPageResponseDTO.self)
+    }
+
     func fetchSkipReasonForm() async throws(NetworkError) -> PracticeSkipReasonFormResponseDTO {
         try await request(.skipReasonForm, as: PracticeSkipReasonFormResponseDTO.self)
     }
