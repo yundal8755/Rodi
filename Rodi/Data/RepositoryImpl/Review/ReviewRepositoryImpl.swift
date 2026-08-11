@@ -10,4 +10,144 @@ final class ReviewRepositoryImpl: ReviewRepository {
     func create(placeID: Int, submission: PlaceReviewSubmission) async throws(NetworkError) {
         try await remoteDataSource.create(placeID: placeID, submission: submission)
     }
+
+    func fetchSummary(
+        placeID: Int,
+        level: ReviewLevelFilter
+    ) async throws(NetworkError) -> PlaceReviewSummary {
+        try summary(from: await remoteDataSource.fetchSummary(placeID: placeID, level: level))
+    }
+
+    func fetchReviews(
+        placeID: Int,
+        query: PlaceReviewQuery
+    ) async throws(NetworkError) -> PlaceReviewPage {
+        try page(from: await remoteDataSource.fetchReviews(placeID: placeID, query: query))
+    }
+
+    func fetchReportForm() async throws(NetworkError) -> ReviewReportForm {
+        let response = try await remoteDataSource.fetchReportForm()
+        return .init(
+            title: response.title,
+            description: response.description,
+            options: response.options
+                .sorted { $0.order < $1.order }
+                .map(reportOption(from:))
+        )
+    }
+
+    func report(reviewID: Int, submission: ReviewReportSubmission) async throws(NetworkError) {
+        try await remoteDataSource.report(reviewID: reviewID, submission: submission)
+    }
+}
+
+private extension ReviewRepositoryImpl {
+
+    func reportOption(from dto: ReviewReportOptionDTO) -> ReviewReportOption {
+        .init(
+            code: dto.code,
+            label: dto.label,
+            order: dto.order,
+            requiresTextInput: dto.requiresTextInput,
+            textInputPlaceholder: dto.textInputPlaceholder,
+            textInputMaxLength: dto.textInputMaxLength
+        )
+    }
+    func summary(from dto: ReviewSummaryResponseDTO) throws(NetworkError) -> PlaceReviewSummary {
+        let difficultyCounts = try dictionary(
+            dto.difficultyCounts,
+            key: ReviewDifficulty.init(rawValue:)
+        )
+        let levelCounts = try dictionary(
+            dto.levelCounts,
+            key: ReviewLevel.init(rawValue:)
+        )
+
+        let topDifficulty: ReviewDifficulty?
+        if let topDifficultyDTO = dto.topDifficulty {
+            let rawValue = topDifficultyDTO.difficulty
+            guard let difficulty = ReviewDifficulty(rawValue: rawValue) else {
+                throw NetworkError.decodingFail
+            }
+            topDifficulty = difficulty
+        } else {
+            topDifficulty = nil
+        }
+
+        let topDifficultyCount: Int
+        if let topDifficultyDTO = dto.topDifficulty {
+            topDifficultyCount = try int(from: topDifficultyDTO.count)
+        } else {
+            topDifficultyCount = 0
+        }
+
+        return PlaceReviewSummary(
+            level: try resolvedReviewLevel(from: dto.level),
+            levelReviewCount: try int(from: dto.levelReviewCount),
+            totalReviewCount: try int(from: dto.totalReviewCount),
+            topDifficulty: topDifficulty,
+            topDifficultyCount: topDifficultyCount,
+            recommendCount: try int(from: dto.recommendCount),
+            notRecommendCount: try int(from: dto.notRecommendCount),
+            difficultyCounts: difficultyCounts,
+            levelCounts: levelCounts
+        )
+    }
+
+    func page(from dto: ReviewCursorPageResponseDTO) throws(NetworkError) -> PlaceReviewPage {
+        PlaceReviewPage(
+            items: try dto.items.map(item(from:)),
+            hasNext: dto.hasNext,
+            nextCursor: dto.nextCursor,
+            totalCount: try dto.totalCount.map(int(from:))
+        )
+    }
+
+    func item(from dto: ReviewItemResponseDTO) throws(NetworkError) -> PlaceReviewItem {
+        guard let practiceMethod = ReviewPracticeMethod(rawValue: dto.practiceMethod) else {
+            throw .decodingFail
+        }
+
+        return PlaceReviewItem(
+            id: try int(from: dto.reviewId),
+            memberID: try int(from: dto.memberId),
+            nickname: dto.nickname,
+            practiceMethod: practiceMethod,
+            content: dto.content,
+            isMine: dto.isMine,
+            isEditable: dto.isEditable,
+            isHidden: dto.isHidden,
+            isVerifiedVisit: dto.isVerifiedVisit,
+            createdAt: dto.createdAt
+        )
+    }
+
+    func dictionary<Key: Hashable>(
+        _ rawValues: [String: Int64],
+        key: (String) -> Key?
+    ) throws(NetworkError) -> [Key: Int] {
+        var result: [Key: Int] = [:]
+        for (rawKey, value) in rawValues {
+            guard let resolvedKey = key(rawKey) else {
+                throw .decodingFail
+            }
+            result[resolvedKey] = try int(from: value)
+        }
+        return result
+    }
+
+    func resolvedReviewLevel(from rawValue: String?) throws(NetworkError) -> ReviewLevel? {
+        guard let rawValue else { return nil }
+        guard rawValue == "ALL" || ReviewLevel(rawValue: rawValue) != nil else {
+            throw .decodingFail
+        }
+        return ReviewLevel(rawValue: rawValue)
+    }
+
+    func int(from value: Int64) throws(NetworkError) -> Int {
+        guard let value = Int(exactly: value) else {
+            throw .decodingFail
+        }
+        return value
+    }
 }

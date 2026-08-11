@@ -42,6 +42,8 @@ struct ReviewReducer: Reducer {
 
     enum Action {
         case debugPromptRequested
+        case promptRequested(placeID: Int)
+        case directWritingRequested(ReviewWriteRequest)
         case targetPrepared(ReviewTargetPreparationResult, generation: UUID)
         case visitedTapped
         case visitCompleted(ReviewVisitResult, generation: UUID)
@@ -103,7 +105,23 @@ extension ReviewReducer {
             guard state.presentation == .hidden else { return .none }
             state.flowGeneration = UUID()
             state.presentation = .preparing
-            return prepareDebugTargetEffect(generation: state.flowGeneration)
+            return prepareTargetEffect(placeID: 120, generation: state.flowGeneration)
+
+        case .promptRequested(let placeID):
+            guard state.presentation == .hidden else { return .none }
+            state.flowGeneration = UUID()
+            state.presentation = .preparing
+            return prepareTargetEffect(placeID: placeID, generation: state.flowGeneration)
+
+        case .directWritingRequested(let request):
+            guard state.presentation == .hidden else { return .none }
+            state.flowGeneration = UUID()
+            state.target = .init(
+                placeID: request.placeID,
+                practiceID: nil,
+                placeName: request.placeName
+            )
+            state.presentation = .formPage1
 
         case .targetPrepared(let result, let generation):
             guard state.flowGeneration == generation,
@@ -121,9 +139,14 @@ extension ReviewReducer {
             }
 
         case .visitedTapped:
-            guard let target = state.target, !state.isSubmittingVisit else { return .none }
+            guard let target = state.target,
+                  let practiceID = target.practiceID,
+                  !state.isSubmittingVisit
+            else {
+                return .none
+            }
             state.isSubmittingVisit = true
-            return visitEffect(practiceID: target.practiceID, generation: state.flowGeneration)
+            return visitEffect(practiceID: practiceID, generation: state.flowGeneration)
 
         case .visitCompleted(let result, let generation):
             guard state.flowGeneration == generation,
@@ -204,13 +227,14 @@ extension ReviewReducer {
             guard state.presentation == .skipReasonForm,
                   state.canSubmitSkipReason,
                   let target = state.target,
+                  let practiceID = target.practiceID,
                   let selectedSkipReason = state.selectedSkipReason
             else {
                 return .none
             }
             state.isSubmittingSkipReason = true
             return submitSkipReasonEffect(
-                practiceID: target.practiceID,
+                practiceID: practiceID,
                 reasonCode: selectedSkipReason.code,
                 detail: selectedSkipReason.requiresTextInput
                     ? normalizedOptionalText(state.skipReasonDetail)
@@ -272,7 +296,7 @@ extension ReviewReducer {
 
             case .prompt:
                 clear(state: &state)
-                return .send(.delegate(.finished(returnToHome: false)))
+                return .send(.delegate(.finished(returnToHome: true)))
 
             case .hidden, .preparing, .discardConfirmation, .completion, .skipReasonCompletion:
                 break
@@ -337,11 +361,11 @@ extension ReviewReducer {
 // MARK: - Effect
 private extension ReviewReducer {
 
-    func prepareDebugTargetEffect(generation: UUID) -> Effect<Action> {
+    func prepareTargetEffect(placeID: Int, generation: UUID) -> Effect<Action> {
         let reviewService = reviewService
         return .run { send in
             do {
-                let target = try await reviewService.prepareTarget(placeID: 120)
+                let target = try await reviewService.prepareTarget(placeID: placeID)
                 await send(.targetPrepared(.success(target), generation: generation))
             } catch is CancellationError {
                 return

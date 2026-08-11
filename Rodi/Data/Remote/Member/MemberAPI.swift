@@ -11,6 +11,7 @@ enum MemberAPI: TargetType {
     case updateDrivingGoal(MemberDrivingGoalUpdateRequestDTO)
     case updatePlaceFilterTags(MemberPlaceFilterTagsUpdateRequestDTO)
     case withdraw
+    case block(memberID: Int)
     case submitOnboarding(MemberOnboardingRequestDTO)
 
     var method: HTTPMethod {
@@ -26,6 +27,9 @@ enum MemberAPI: TargetType {
             
         case .withdraw:
             .delete
+
+        case .block:
+            .post
             
         case .submitOnboarding:
             .post
@@ -36,6 +40,9 @@ enum MemberAPI: TargetType {
         switch self {
         case .myProfile, .updateDrivingGoal, .withdraw:
             "/api/v1/members/me"
+
+        case .block(let memberID):
+            "/api/v1/members/\(memberID)/block"
             
         case .updatePlaceFilterTags:
             "/api/v1/members/me/filter-tags"
@@ -51,7 +58,7 @@ enum MemberAPI: TargetType {
 
     var body: Data? {
         switch self {
-        case .myProfile, .withdraw:
+        case .myProfile, .withdraw, .block:
             nil
             
         case .updateDrivingGoal(let request):
@@ -73,7 +80,7 @@ enum MemberAPI: TargetType {
         switch self {
         case .myProfile:
             20
-        case .updateDrivingGoal, .updatePlaceFilterTags, .withdraw, .submitOnboarding:
+        case .updateDrivingGoal, .updatePlaceFilterTags, .withdraw, .block, .submitOnboarding:
             nil
         }
     }

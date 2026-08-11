@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct ReviewRadioOption: View {
+struct RodiRadioOption: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void

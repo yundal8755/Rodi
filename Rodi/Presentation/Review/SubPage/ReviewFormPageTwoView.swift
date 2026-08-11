@@ -7,41 +7,52 @@ struct ReviewFormPageTwoView: View {
     @State private var isContentFocused = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            ReviewFormHeader(
+        ReviewFormScaffold(
+            header: ReviewFormHeader(
                 title: "후기 남기기",
                 showsBack: true,
                 backAction: { send(.backTapped) },
                 closeAction: { send(.closeTapped) }
             )
-            .zIndex(1)
-            VStack(alignment: .leading, spacing: 0) {
-                Text("연습 방법")
-                    .rodiTypography(.body1SemiBold)
-                    .foregroundStyle(RodiColor.black)
+        ) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("연습 방법")
+                        .rodiTypography(.body1SemiBold)
+                        .foregroundStyle(RodiColor.black)
 
-                HStack(spacing: 6) {
-                    methodButton(.solo)
-                    methodButton(.accompanied)
+                    HStack(spacing: 6) {
+                        methodButton(.solo)
+                        methodButton(.accompanied)
+                    }
+                    .padding(.top, 12)
+
+                    Text("후기 작성")
+                        .rodiTypography(.body1SemiBold)
+                        .foregroundStyle(RodiColor.black)
+                        .padding(.top, 40)
+
+                    reviewTextEditor
+
+                    Text("\(state.content.count) / 150")
+                        .rodiTypography(.body3Medium)
+                        .foregroundStyle(RodiColor.gray600)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.top, 4)
+
+                    Color.clear
+                        .frame(height: 48)
+                        .contentShape(Rectangle())
+                        .onTapGesture(perform: dismissContentKeyboard)
                 }
-                .padding(.top, 12)
-                Text("후기 작성")
-                    .rodiTypography(.body1SemiBold)
-                    .foregroundStyle(RodiColor.black)
-                    .padding(.top, 40)
-                reviewTextEditor
-                Text("\(state.content.count) / 150")
-                    .rodiTypography(.body3Medium)
-                    .foregroundStyle(RodiColor.gray600)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .padding(.top, 4)
-                Spacer(minLength: 0)
-                    .frame(maxWidth: .infinity)
-                    .contentShape(Rectangle())
-                    .onTapGesture(perform: dismissContentKeyboard)
+                .padding(.horizontal, 16)
+                .padding(.top, 28)
+                .padding(.bottom, 24)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 28)
+            .scrollDismissesKeyboard(.interactively)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: dismissContentKeyboard)
+        } bottomBar: {
             PrimaryBottomButton(
                 title: "완료",
                 isEnabled: state.canSubmit,
@@ -49,7 +60,6 @@ struct ReviewFormPageTwoView: View {
                 action: { send(.submitTapped) }
             )
         }
-        .background(RodiColor.white)
         .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 }

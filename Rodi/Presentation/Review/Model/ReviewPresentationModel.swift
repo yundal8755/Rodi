@@ -18,7 +18,12 @@ enum ReviewPresentation: Equatable {
 
 struct ReviewTarget: Equatable {
     let placeID: Int
-    let practiceID: Int
+    let practiceID: Int?
+    let placeName: String
+}
+
+struct ReviewWriteRequest: Equatable {
+    let placeID: Int
     let placeName: String
 }
 

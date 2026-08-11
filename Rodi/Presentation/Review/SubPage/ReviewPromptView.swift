@@ -6,8 +6,8 @@ struct ReviewPromptView: View {
     let send: (ReviewReducer.Action) -> Void
 
     var body: some View {
-        ReviewModalBackground {
-            ReviewDialog {
+        RodiModalBackground {
+            RodiDialog {
                 VStack(spacing: 0) {
                     Text("‘\(target?.placeName ?? "")’")
                         .rodiTypography(.body1SemiBold)

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ReviewPreparingView: View {
     var body: some View {
-        ReviewModalBackground {
+        RodiModalBackground {
             ProgressView()
                 .tint(RodiColor.primary)
                 .padding(28)

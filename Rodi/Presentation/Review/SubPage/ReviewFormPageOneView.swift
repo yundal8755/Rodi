@@ -11,13 +11,13 @@ struct ReviewFormPageOneView: View {
     @FocusState private var isCautionFocused: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
-            ReviewFormHeader(
+        ReviewFormScaffold(
+            header: ReviewFormHeader(
                 title: "후기 남기기",
                 showsBack: false,
                 closeAction: { send(.closeTapped) }
             )
-
+        ) {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 32) {
@@ -61,7 +61,7 @@ struct ReviewFormPageOneView: View {
                     }
                 }
             }
-
+        } bottomBar: {
             if !isCautionFocused {
                 PrimaryBottomButton(
                     title: "다음",
@@ -71,7 +71,6 @@ struct ReviewFormPageOneView: View {
                 )
             }
         }
-        .background(RodiColor.white)
     }
 }
 

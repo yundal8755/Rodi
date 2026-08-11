@@ -12,6 +12,9 @@ protocol MemberRepository {
     /// 현재 로그인한 회원을 탈퇴 처리한다.
     func withdraw() async throws(NetworkError)
 
+    /// 특정 회원을 차단한다.
+    func block(memberID: Int) async throws(NetworkError)
+
     /// 마이페이지에서 운전 목표를 부분 수정한다.
     func updateDrivingGoal(_ drivingGoal: String) async throws(NetworkError)
 

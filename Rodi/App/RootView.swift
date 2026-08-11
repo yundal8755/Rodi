@@ -124,6 +124,7 @@ extension RootView {
                 reviewReturnToHomeRequestID: store.state.reviewReturnToHomeRequestID,
                 onInitialHomeAppeared: { store.send(.mainTabsAppeared) },
                 onReviewTestRequested: { store.send(.debugReviewTestRequested) },
+                onReviewRequested: { store.send(.reviewRequested($0)) },
                 dependencies: dependencies
             )
         }

@@ -22,6 +22,7 @@ struct MainTabView: View {
     let reviewReturnToHomeRequestID: Int
     let onInitialHomeAppeared: () -> Void
     let onReviewTestRequested: () -> Void
+    let onReviewRequested: (ReviewWriteRequest) -> Void
     private let dependencies: AppDependencies
 
     init(
@@ -32,6 +33,7 @@ struct MainTabView: View {
         reviewReturnToHomeRequestID: Int,
         onInitialHomeAppeared: @escaping () -> Void,
         onReviewTestRequested: @escaping () -> Void,
+        onReviewRequested: @escaping (ReviewWriteRequest) -> Void,
         dependencies: AppDependencies
     ) {
         self.consumePendingAuthenticationIntent = consumePendingAuthenticationIntent
@@ -41,6 +43,7 @@ struct MainTabView: View {
         self.reviewReturnToHomeRequestID = reviewReturnToHomeRequestID
         self.onInitialHomeAppeared = onInitialHomeAppeared
         self.onReviewTestRequested = onReviewTestRequested
+        self.onReviewRequested = onReviewRequested
         self.dependencies = dependencies
         
         _store = StateObject(
@@ -64,6 +67,8 @@ struct MainTabView: View {
                 onPlaceSelectionHandled: {
                     store.send(.homePlaceSelectionHandled($0))
                 },
+                reviewReturnToHomeRequestID: reviewReturnToHomeRequestID,
+                onReviewRequested: onReviewRequested,
                 bottomTabBarHeight: RodiBottomTabBar.totalHeight(
                     safeAreaBottom: screenSafeAreaInsets.bottom
                 ),
