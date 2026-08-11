@@ -185,6 +185,7 @@ struct CourseDetailBottomSheetReducer: Reducer {
     private let memberRepository: MemberRepository
     private let practiceRepository: PracticeRepository
     private let reviewRepository: ReviewRepository
+    private let practiceReturnPromptStore: PracticeReturnPromptStoring
     private let hasActiveSession: () -> Bool
     private let onDelegate: (Delegate) -> Void
 
@@ -193,6 +194,7 @@ struct CourseDetailBottomSheetReducer: Reducer {
         memberRepository: MemberRepository,
         practiceRepository: PracticeRepository,
         reviewRepository: ReviewRepository,
+        practiceReturnPromptStore: PracticeReturnPromptStoring,
         hasActiveSession: @escaping () -> Bool,
         onDelegate: @escaping (Delegate) -> Void = { _ in }
     ) {
@@ -200,6 +202,7 @@ struct CourseDetailBottomSheetReducer: Reducer {
         self.memberRepository = memberRepository
         self.practiceRepository = practiceRepository
         self.reviewRepository = reviewRepository
+        self.practiceReturnPromptStore = practiceReturnPromptStore
         self.hasActiveSession = hasActiveSession
         self.onDelegate = onDelegate
     }
@@ -286,6 +289,8 @@ extension CourseDetailBottomSheetReducer {
                 return .none
             }
             guard hasActiveSession() else { return .send(.delegate(.requestAuthentication)) }
+            guard let placeName = state.detail?.name else { return .none }
+            practiceReturnPromptStore.save(.init(placeID: placeID, placeName: placeName))
             state.isPracticeRegistrationPending = true
             let revision = UUID()
             state.practiceRegistrationRequestRevision = revision

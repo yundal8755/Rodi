@@ -17,7 +17,7 @@ struct RootReducer: Reducer {
         var review = ReviewReducer.State()
         var reviewSnackbarMessage: String?
         var reviewReturnToHomeRequestID = 0
-        var hasRequestedInitialReviewPrompt = false
+        var pendingPracticeReturnPrompt: PracticeReturnPrompt?
     }
 
     enum Action {
@@ -26,7 +26,6 @@ struct RootReducer: Reducer {
         case appVersionCheckCompleted(AppVersionUpdate?)
         case appVersionUpdateDismissed
         case sessionRestoreCompleted(SessionRestoreResult)
-        case mainTabsAppeared
         case debugReviewTestRequested
         case reviewRequested(ReviewWriteRequest)
         case review(ReviewReducer.Action)
@@ -48,16 +47,19 @@ struct RootReducer: Reducer {
     private let tokenStore: TokenStoring
     private let authRepository: AuthRepository
     private let reviewReducer: ReviewReducer
+    private let practiceReturnPromptStore: PracticeReturnPromptStoring
 
     init(
         tokenStore: TokenStoring,
         authRepository: AuthRepository,
         placeRepository: PlaceRepository,
         practiceRepository: PracticeRepository,
-        reviewRepository: ReviewRepository
+        reviewRepository: ReviewRepository,
+        practiceReturnPromptStore: PracticeReturnPromptStoring
     ) {
         self.tokenStore = tokenStore
         self.authRepository = authRepository
+        self.practiceReturnPromptStore = practiceReturnPromptStore
         reviewReducer = ReviewReducer(
             reviewService: ReviewService(
                 placeRepository: placeRepository,
@@ -77,7 +79,8 @@ extension RootReducer {
             return checkAppVersionIfNeeded(state: &state)
 
         case .sceneBecameActive:
-            return restoreSessionIfNeeded(state: &state)
+            let promptAction = preparePracticeReturnPromptIfNeeded(state: &state)
+            return restoreSessionIfNeeded(state: &state, after: promptAction)
 
         case .appVersionCheckCompleted(let update):
             state.pendingUpdate = update
@@ -98,19 +101,6 @@ extension RootReducer {
                 RodiLogger.warning("Auth session restore deferred: \(message)")
             }
 
-        case .mainTabsAppeared:
-            #if DEBUG
-            guard !state.hasRequestedInitialReviewPrompt,
-                  hasActiveSession
-            else {
-                return .none
-            }
-            state.hasRequestedInitialReviewPrompt = true
-            return .send(.review(.debugPromptRequested))
-            #else
-            return .none
-            #endif
-
         case .debugReviewTestRequested:
             #if DEBUG
             return .send(.review(.debugPromptRequested))
@@ -122,6 +112,7 @@ extension RootReducer {
             return .send(.review(.directWritingRequested(request)))
 
         case .review(let action):
+            removePracticeReturnPromptIfNeeded(for: action, state: &state)
             if case .delegate(let delegate) = action {
                 return reduceReviewDelegate(delegate, state: &state)
             }
@@ -148,16 +139,19 @@ extension RootReducer {
         .cancelTask(id: EffectID.appVersionCheck)
     }
 
-    private func restoreSessionIfNeeded(state: inout State) -> Effect<Action> {
+    private func restoreSessionIfNeeded(
+        state: inout State,
+        after action: Action?
+    ) -> Effect<Action> {
         guard !state.isRestoringSession,
               let refreshToken = tokenStore.refreshToken,
               !refreshToken.isEmpty
         else {
-            return .none
+            return action.map(Effect.send) ?? .none
         }
 
         let needsRefresh = tokenStore.accessToken.map { AccessTokenExpiry.needsRefresh($0) } ?? true
-        guard needsRefresh else { return .none }
+        guard needsRefresh else { return action.map(Effect.send) ?? .none }
 
         state.isRestoringSession = true
         return .run { send in
@@ -174,12 +168,46 @@ extension RootReducer {
             } catch {
                 await send(.sessionRestoreCompleted(.deferred(error.localizedDescription)))
             }
+            if let action {
+                await send(action)
+            }
         }
         .cancelTask(id: EffectID.sessionRestore)
     }
 
     private var hasActiveSession: Bool {
         [tokenStore.accessToken, tokenStore.refreshToken].contains { $0?.isEmpty == false }
+    }
+
+    private func preparePracticeReturnPromptIfNeeded(state: inout State) -> Action? {
+        guard state.review.presentation == .hidden,
+              state.pendingPracticeReturnPrompt == nil,
+              let prompt = practiceReturnPromptStore.load()
+        else {
+            return nil
+        }
+
+        state.pendingPracticeReturnPrompt = prompt
+        return .review(.promptRequested(placeID: prompt.placeID, placeName: prompt.placeName))
+    }
+
+    private func removePracticeReturnPromptIfNeeded(
+        for action: ReviewReducer.Action,
+        state: inout State
+    ) {
+        guard state.review.presentation == .prompt,
+              let prompt = state.pendingPracticeReturnPrompt
+        else {
+            return
+        }
+
+        switch action {
+        case .closeTapped, .notVisitedTapped, .visitedTapped:
+            practiceReturnPromptStore.remove(prompt)
+            state.pendingPracticeReturnPrompt = nil
+        default:
+            break
+        }
     }
 
     private func reduceReviewDelegate(

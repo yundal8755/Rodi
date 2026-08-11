@@ -19,6 +19,7 @@ struct ReviewReducer: Reducer {
         var skipReasonDetail = ""
         var isSubmittingSkipReason = false
         var pageBeforeDiscard: ReviewPresentation?
+        var promptPlaceName: String?
 
         var canProceedToSecondPage: Bool {
             isRecommended != nil
@@ -42,7 +43,7 @@ struct ReviewReducer: Reducer {
 
     enum Action {
         case debugPromptRequested
-        case promptRequested(placeID: Int)
+        case promptRequested(placeID: Int, placeName: String)
         case directWritingRequested(ReviewWriteRequest)
         case targetPrepared(ReviewTargetPreparationResult, generation: UUID)
         case visitedTapped
@@ -104,18 +105,21 @@ extension ReviewReducer {
         case .debugPromptRequested:
             guard state.presentation == .hidden else { return .none }
             state.flowGeneration = UUID()
+            state.promptPlaceName = nil
             state.presentation = .preparing
             return prepareTargetEffect(placeID: 120, generation: state.flowGeneration)
 
-        case .promptRequested(let placeID):
+        case .promptRequested(let placeID, let placeName):
             guard state.presentation == .hidden else { return .none }
             state.flowGeneration = UUID()
+            state.promptPlaceName = placeName
             state.presentation = .preparing
             return prepareTargetEffect(placeID: placeID, generation: state.flowGeneration)
 
         case .directWritingRequested(let request):
             guard state.presentation == .hidden else { return .none }
             state.flowGeneration = UUID()
+            state.promptPlaceName = nil
             state.target = .init(
                 placeID: request.placeID,
                 practiceID: nil,
@@ -131,7 +135,11 @@ extension ReviewReducer {
             }
             switch result {
             case .success(let target):
-                state.target = target
+                state.target = .init(
+                    placeID: target.placeID,
+                    practiceID: target.practiceID,
+                    placeName: state.promptPlaceName ?? target.placeName
+                )
                 state.presentation = .prompt
             case .failure(let message):
                 clear(state: &state)

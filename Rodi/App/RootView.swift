@@ -31,7 +31,8 @@ struct RootView: View {
                     authRepository: dependencies.authRepository,
                     placeRepository: dependencies.placeRepository,
                     practiceRepository: dependencies.practiceRepository,
-                    reviewRepository: dependencies.reviewRepository
+                    reviewRepository: dependencies.reviewRepository,
+                    practiceReturnPromptStore: dependencies.practiceReturnPromptStore
                 )
             )
         )
@@ -122,7 +123,6 @@ extension RootView {
                 onLogoutCompleted: appRouter.completeLogout,
                 homeTabSelectionRequestID: appRouter.homeTabSelectionRequestID,
                 reviewReturnToHomeRequestID: store.state.reviewReturnToHomeRequestID,
-                onInitialHomeAppeared: { store.send(.mainTabsAppeared) },
                 onReviewTestRequested: { store.send(.debugReviewTestRequested) },
                 onReviewRequested: { store.send(.reviewRequested($0)) },
                 dependencies: dependencies

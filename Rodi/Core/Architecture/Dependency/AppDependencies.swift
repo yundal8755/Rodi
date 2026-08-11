@@ -16,6 +16,7 @@ final class AppDependencies {
     let recentSearchRepository: RecentSearchRepository
     let reviewRepository: ReviewRepository
     let recentLoginProviderStore: RecentLoginProviderStore
+    let practiceReturnPromptStore: PracticeReturnPromptStoring
 
     init() {
         let tokenStore = KeychainTokenStore()
@@ -38,6 +39,7 @@ final class AppDependencies {
 
         self.tokenStore = tokenStore
         self.recentLoginProviderStore = recentLoginProviderStore
+        practiceReturnPromptStore = PracticeReturnPromptStore()
 
         authRepository = AuthRepositoryImpl(
             remoteDataSource: AuthRemoteDataSource(

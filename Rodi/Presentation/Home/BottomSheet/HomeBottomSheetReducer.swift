@@ -82,6 +82,7 @@ struct HomeBottomSheetReducer: Reducer {
             memberRepository: dependencies.memberRepository,
             practiceRepository: dependencies.practiceRepository,
             reviewRepository: dependencies.reviewRepository,
+            practiceReturnPromptStore: dependencies.practiceReturnPromptStore,
             hasActiveSession: hasActiveSession
         )
         parkingDetailReducer = ParkingDetailBottomSheetReducer(

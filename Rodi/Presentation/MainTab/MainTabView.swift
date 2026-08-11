@@ -13,14 +13,12 @@ struct MainTabView: View {
     @State private var homeListPresentationRequestID = 0
     @State private var consumedHomeTabSelectionRequestID = 0
     @State private var consumedReviewReturnToHomeRequestID = 0
-    @State private var hasReportedInitialHomeAppearance = false
 
     let consumePendingAuthenticationIntent: () -> MainTabIntent?
     let requestLogin: (MainTabIntent?) -> Void
     let onLogoutCompleted: () -> Void
     let homeTabSelectionRequestID: Int
     let reviewReturnToHomeRequestID: Int
-    let onInitialHomeAppeared: () -> Void
     let onReviewTestRequested: () -> Void
     let onReviewRequested: (ReviewWriteRequest) -> Void
     private let dependencies: AppDependencies
@@ -31,7 +29,6 @@ struct MainTabView: View {
         onLogoutCompleted: @escaping () -> Void,
         homeTabSelectionRequestID: Int,
         reviewReturnToHomeRequestID: Int,
-        onInitialHomeAppeared: @escaping () -> Void,
         onReviewTestRequested: @escaping () -> Void,
         onReviewRequested: @escaping (ReviewWriteRequest) -> Void,
         dependencies: AppDependencies
@@ -41,7 +38,6 @@ struct MainTabView: View {
         self.onLogoutCompleted = onLogoutCompleted
         self.homeTabSelectionRequestID = homeTabSelectionRequestID
         self.reviewReturnToHomeRequestID = reviewReturnToHomeRequestID
-        self.onInitialHomeAppeared = onInitialHomeAppeared
         self.onReviewTestRequested = onReviewTestRequested
         self.onReviewRequested = onReviewRequested
         self.dependencies = dependencies
@@ -104,7 +100,6 @@ struct MainTabView: View {
         .onAppear {
             consumePendingAuthenticationIntentIfNeeded()
             selectHomeAfterAuthenticationIfNeeded()
-            reportInitialHomeAppearanceIfNeeded()
         }
         .onChange(of: homeTabSelectionRequestID) { _ in
             selectHomeAfterAuthenticationIfNeeded()
@@ -146,16 +141,6 @@ private extension MainTabView {
         guard homeTabSelectionRequestID > consumedHomeTabSelectionRequestID else { return }
         consumedHomeTabSelectionRequestID = homeTabSelectionRequestID
         store.send(.homeTabSelected)
-    }
-
-    func reportInitialHomeAppearanceIfNeeded() {
-        guard !hasReportedInitialHomeAppearance,
-              store.state.selectedTab == .home
-        else {
-            return
-        }
-        hasReportedInitialHomeAppearance = true
-        onInitialHomeAppeared()
     }
 
     func returnToHomeAfterReviewIfNeeded() {
