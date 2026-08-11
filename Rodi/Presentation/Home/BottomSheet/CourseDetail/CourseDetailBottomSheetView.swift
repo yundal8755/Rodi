@@ -79,6 +79,9 @@ extension CourseDetailBottomSheetView {
     private func openRouteGuidance(_ app: RouteGuidanceApp, detail: PlaceDetail) {
         Task {
             let result = await RouteGuidanceService.shared.open(app, for: RodiCourseItem(placeDetail: detail), userLocation: userLocation)
+            if case .openedApp = result {
+                send(.externalRouteGuidanceOpened(placeID: detail.id))
+            }
             if let message = result.userMessage { send(.delegate(.showSnackbar(message))) }
         }
     }
