@@ -6,12 +6,14 @@ enum ReviewAPI: TargetType {
     case summary(placeID: Int, level: ReviewLevelFilter)
     case list(placeID: Int, query: PlaceReviewQuery)
     case myReviews(query: MyReviewQuery)
+    case delete(reviewID: Int)
     case reportForm
     case report(reviewID: Int, request: ReviewReportRequestDTO)
 
     var method: HTTPMethod {
         switch self {
         case .create, .report: .post
+        case .delete: .delete
         case .summary, .list, .myReviews, .reportForm: .get
         }
     }
@@ -22,6 +24,7 @@ enum ReviewAPI: TargetType {
         case .summary(let placeID, _): "/api/v1/places/\(placeID)/reviews/summary"
         case .list(let placeID, _): "/api/v1/places/\(placeID)/reviews"
         case .myReviews: "/api/v1/members/me/reviews"
+        case .delete(let reviewID): "/api/v1/reviews/\(reviewID)"
         case .reportForm: "/api/v1/reviews/report-form"
         case .report(let reviewID, _): "/api/v1/reviews/\(reviewID)/report"
         }
@@ -54,7 +57,7 @@ enum ReviewAPI: TargetType {
             }
             return parameters
 
-        case .reportForm, .report:
+        case .delete, .reportForm, .report:
             return nil
         }
     }
@@ -63,14 +66,14 @@ enum ReviewAPI: TargetType {
         switch self {
         case .create(_, let request): requestToBody(request)
         case .report(_, let request): requestToBody(request)
-        case .summary, .list, .myReviews, .reportForm: nil
+        case .summary, .list, .myReviews, .delete, .reportForm: nil
         }
     }
 
     var encodingType: EncodingType {
         switch self {
         case .create, .report: .json
-        case .summary, .list, .myReviews, .reportForm: .url
+        case .summary, .list, .myReviews, .delete, .reportForm: .url
         }
     }
 

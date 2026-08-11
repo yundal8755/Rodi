@@ -46,6 +46,10 @@ final class ReviewRemoteDataSource {
         )
     }
 
+    func delete(reviewID: Int) async throws(NetworkError) {
+        try await empty(.delete(reviewID: reviewID))
+    }
+
     func fetchReportForm() async throws(NetworkError) -> ReviewReportFormResponseDTO {
         try await request(.reportForm, as: ReviewReportFormResponseDTO.self)
     }

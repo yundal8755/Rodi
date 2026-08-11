@@ -141,7 +141,10 @@ private extension MyView {
             )
 
         case .myPosts:
-            MyPostsPlaceholderView(backAction: { router.pop() })
+            MyPostsView(
+                reviewRepository: reviewRepository,
+                backAction: { router.pop() }
+            )
             
         case .permissions:
             MyPermissionSettingsView(backAction: { router.pop() })

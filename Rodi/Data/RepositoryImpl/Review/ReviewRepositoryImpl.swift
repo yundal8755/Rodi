@@ -29,6 +29,10 @@ final class ReviewRepositoryImpl: ReviewRepository {
         try myReviewPage(from: await remoteDataSource.fetchMyReviews(query: query))
     }
 
+    func delete(reviewID: Int) async throws(NetworkError) {
+        try await remoteDataSource.delete(reviewID: reviewID)
+    }
+
     func fetchReportForm() async throws(NetworkError) -> ReviewReportForm {
         let response = try await remoteDataSource.fetchReportForm()
         return .init(
