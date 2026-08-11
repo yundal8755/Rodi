@@ -25,6 +25,10 @@ final class ReviewRepositoryImpl: ReviewRepository {
         try page(from: await remoteDataSource.fetchReviews(placeID: placeID, query: query))
     }
 
+    func fetchMyReviews(query: MyReviewQuery) async throws(NetworkError) -> MyReviewPage {
+        try myReviewPage(from: await remoteDataSource.fetchMyReviews(query: query))
+    }
+
     func fetchReportForm() async throws(NetworkError) -> ReviewReportForm {
         let response = try await remoteDataSource.fetchReportForm()
         return .init(
@@ -122,6 +126,32 @@ private extension ReviewRepositoryImpl {
         )
     }
 
+    func myReviewPage(from dto: MyReviewCursorPageResponseDTO) throws(NetworkError) -> MyReviewPage {
+        .init(
+            items: try dto.items.map(myReviewItem(from:)),
+            hasNext: dto.hasNext,
+            nextCursor: dto.nextCursor,
+            totalCount: try dto.totalCount.map(int(from:))
+        )
+    }
+
+    func myReviewItem(from dto: MyReviewItemResponseDTO) throws(NetworkError) -> MyReviewItem {
+        guard let createdAt = Self.date(from: dto.createdAt) else {
+            throw .decodingFail
+        }
+
+        return .init(
+            id: try int(from: dto.reviewId),
+            placeID: try int(from: dto.placeId),
+            placeName: dto.placeName,
+            content: dto.content,
+            isEditable: dto.isEditable,
+            isHidden: dto.isHidden,
+            isVerifiedVisit: dto.isVerifiedVisit,
+            createdAt: createdAt
+        )
+    }
+
     func dictionary<Key: Hashable>(
         _ rawValues: [String: Int64],
         key: (String) -> Key?
@@ -149,5 +179,18 @@ private extension ReviewRepositoryImpl {
             throw .decodingFail
         }
         return value
+    }
+
+    static let iso8601DateFormatter = ISO8601DateFormatter()
+
+    static let fractionalISO8601DateFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    static func date(from value: String) -> Date? {
+        fractionalISO8601DateFormatter.date(from: value)
+            ?? iso8601DateFormatter.date(from: value)
     }
 }

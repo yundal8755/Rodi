@@ -176,6 +176,34 @@ struct PlaceReviewQuery: Equatable {
     }
 }
 
+struct MyReviewItem: Equatable, Identifiable {
+    let id: Int
+    let placeID: Int
+    let placeName: String
+    let content: String
+    let isEditable: Bool
+    let isHidden: Bool
+    let isVerifiedVisit: Bool
+    let createdAt: Date
+}
+
+struct MyReviewPage: Equatable {
+    let items: [MyReviewItem]
+    let hasNext: Bool
+    let nextCursor: String?
+    let totalCount: Int?
+}
+
+struct MyReviewQuery: Equatable {
+    let size: Int
+    let cursor: String?
+
+    init(size: Int = 10, cursor: String? = nil) {
+        self.size = size
+        self.cursor = cursor
+    }
+}
+
 private extension String {
     var nilIfEmpty: String? {
         isEmpty ? nil : self

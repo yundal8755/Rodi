@@ -37,6 +37,15 @@ final class ReviewRemoteDataSource {
         )
     }
 
+    func fetchMyReviews(
+        query: MyReviewQuery
+    ) async throws(NetworkError) -> MyReviewCursorPageResponseDTO {
+        try await request(
+            .myReviews(query: query),
+            as: MyReviewCursorPageResponseDTO.self
+        )
+    }
+
     func fetchReportForm() async throws(NetworkError) -> ReviewReportFormResponseDTO {
         try await request(.reportForm, as: ReviewReportFormResponseDTO.self)
     }

@@ -5,13 +5,14 @@ enum ReviewAPI: TargetType {
     case create(placeID: Int, request: ReviewRequestDTO)
     case summary(placeID: Int, level: ReviewLevelFilter)
     case list(placeID: Int, query: PlaceReviewQuery)
+    case myReviews(query: MyReviewQuery)
     case reportForm
     case report(reviewID: Int, request: ReviewReportRequestDTO)
 
     var method: HTTPMethod {
         switch self {
         case .create, .report: .post
-        case .summary, .list, .reportForm: .get
+        case .summary, .list, .myReviews, .reportForm: .get
         }
     }
 
@@ -20,6 +21,7 @@ enum ReviewAPI: TargetType {
         case .create(let placeID, _): "/api/v1/places/\(placeID)/reviews"
         case .summary(let placeID, _): "/api/v1/places/\(placeID)/reviews/summary"
         case .list(let placeID, _): "/api/v1/places/\(placeID)/reviews"
+        case .myReviews: "/api/v1/members/me/reviews"
         case .reportForm: "/api/v1/reviews/report-form"
         case .report(let reviewID, _): "/api/v1/reviews/\(reviewID)/report"
         }
@@ -45,6 +47,13 @@ enum ReviewAPI: TargetType {
             }
             return parameters
 
+        case .myReviews(let query):
+            var parameters: Parameters = ["size": query.size]
+            if let cursor = query.cursor, !cursor.isEmpty {
+                parameters["cursor"] = cursor
+            }
+            return parameters
+
         case .reportForm, .report:
             return nil
         }
@@ -54,14 +63,14 @@ enum ReviewAPI: TargetType {
         switch self {
         case .create(_, let request): requestToBody(request)
         case .report(_, let request): requestToBody(request)
-        case .summary, .list, .reportForm: nil
+        case .summary, .list, .myReviews, .reportForm: nil
         }
     }
 
     var encodingType: EncodingType {
         switch self {
         case .create, .report: .json
-        case .summary, .list, .reportForm: .url
+        case .summary, .list, .myReviews, .reportForm: .url
         }
     }
 
