@@ -13,12 +13,14 @@ struct HomeView: View {
     @Environment(\.screenSafeAreaInsets) private var screenSafeAreaInsets
 
     @StateObject private var store: StoreOf<HomeReducer>
+    @ObservedObject private var coordinator: Coordinator<HomeRoute>
     @ObservedObject private var snackbarService: SnackbarService
     @State private var courseBottomSheetHeight: CGFloat = 180
     @State private var transientBottomSheetHeight: CGFloat?
     @State private var handledListPresentationRequestID = 0
     @State private var handledPlaceSelectionRequestID = 0
-    @State private var handledReviewReturnToHomeRequestID = 0
+    @State private var handledReviewFlowFinishedRequestID = 0
+    @State private var courseSheetResetRequestID = 0
 
     private let isHomeTabSelected: Bool
     private let onAuthenticationRequired: () -> Void
@@ -26,30 +28,32 @@ struct HomeView: View {
     private let listPresentationRequestID: Int
     private let placeSelectionRequest: HomePlaceSelectionRequest?
     private let onPlaceSelectionHandled: (Int) -> Void
-    private let reviewReturnToHomeRequestID: Int
+    private let reviewFlowFinishedRequestID: Int
     private let onReviewRequested: (ReviewWriteRequest) -> Void
     private let bottomTabBarHeight: CGFloat
     private let dependencies: AppDependencies
 
     init(
+        coordinator: Coordinator<HomeRoute>,
         isHomeTabSelected: Bool,
         onAuthenticationRequired: @escaping () -> Void = {},
         onBottomTabBarVisibilityChanged: @escaping (Bool) -> Void = { _ in },
         listPresentationRequestID: Int = 0,
         placeSelectionRequest: HomePlaceSelectionRequest? = nil,
         onPlaceSelectionHandled: @escaping (Int) -> Void = { _ in },
-        reviewReturnToHomeRequestID: Int = 0,
+        reviewFlowFinishedRequestID: Int = 0,
         onReviewRequested: @escaping (ReviewWriteRequest) -> Void = { _ in },
         bottomTabBarHeight: CGFloat,
         dependencies: AppDependencies
     ) {
+        self.coordinator = coordinator
         self.isHomeTabSelected = isHomeTabSelected
         self.onAuthenticationRequired = onAuthenticationRequired
         self.onBottomTabBarVisibilityChanged = onBottomTabBarVisibilityChanged
         self.listPresentationRequestID = listPresentationRequestID
         self.placeSelectionRequest = placeSelectionRequest
         self.onPlaceSelectionHandled = onPlaceSelectionHandled
-        self.reviewReturnToHomeRequestID = reviewReturnToHomeRequestID
+        self.reviewFlowFinishedRequestID = reviewFlowFinishedRequestID
         self.onReviewRequested = onReviewRequested
         self.bottomTabBarHeight = bottomTabBarHeight
         self.dependencies = dependencies
@@ -66,14 +70,21 @@ struct HomeView: View {
     }
 
     var body: some View {
-        core
+        NavigationStack(path: coordinator.pathBinding) {
+            core
+                .navigationDestination(for: HomeRoute.self) { route in
+                    destinationView(for: route)
+                        .toolbar(.hidden, for: .navigationBar)
+                }
+        }
             .onAppear {
                 store.send(.map(.tabSelectionChanged(isHomeTabSelected)))
                 store.send(.map(.activityChanged(scenePhase == .active)))
                 onBottomTabBarVisibilityChanged(store.state.presentation.isBottomTabBarVisible)
                 handleListPresentationRequest(listPresentationRequestID)
                 handlePlaceSelection(placeSelectionRequest)
-                handleReviewReturnToHome(reviewReturnToHomeRequestID)
+                handleReviewFlowFinished(reviewFlowFinishedRequestID)
+                synchronizeCourseNavigation()
             }
             .alert("위치 접근 권한이 필요해요", isPresented: locationSettingsAlertBinding) {
                 Button("취소", role: .cancel) {}
@@ -116,8 +127,17 @@ struct HomeView: View {
             .onChange(of: placeSelectionRequest) { request in
                 handlePlaceSelection(request)
             }
-            .onChange(of: reviewReturnToHomeRequestID) { requestID in
-                handleReviewReturnToHome(requestID)
+            .onChange(of: reviewFlowFinishedRequestID) { requestID in
+                handleReviewFlowFinished(requestID)
+            }
+            .onChange(of: coordinator.path) { path in
+                handleHomePathChange(path)
+            }
+            .onChange(of: store.state.bottomSheet.route) { _ in
+                synchronizeCourseNavigation()
+            }
+            .onChange(of: store.state.bottomSheet.courseDetail.detail?.id) { _ in
+                synchronizeCourseNavigation()
             }
     }
 }
@@ -171,37 +191,25 @@ extension HomeView {
                         .accessibilityHidden(true)
                 }
 
-                if isCourseDetailExpanded {
-                    CourseDetailBottomSheetView(
-                        state: store.state.bottomSheet.courseDetail,
-                        send: { store.send(.bottomSheet(.courseDetail($0))) },
-                        userLocation: store.state.map.userLocation,
-                        hasLocationPermission: store.state.map.locationState == .resolved,
-                        requestLocationPermission: {
-                            store.send(.presentation(.setLocationSettingsAlertPresented(true)))
-                        }
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .zIndex(1)
-                } else {
-                    HomeBottomSheetView(
-                        state: store.state.bottomSheet,
-                        send: { store.send(.bottomSheet($0)) },
-                        userLocation: store.state.map.userLocation,
-                        hasLocationPermission: store.state.map.locationState == .resolved,
-                        bottomTabBarHeight: bottomTabBarHeight,
-                        onCourseDetailHeightChanged: { height in
-                            guard abs(courseBottomSheetHeight - height) > 0.5 else { return }
-                            courseBottomSheetHeight = height
-                        },
-                        onVisibleHeightChanged: { height, isTransient in
-                            transientBottomSheetHeight = isTransient ? height : nil
-                        },
-                        requestLocationPermission: {
-                            store.send(.presentation(.setLocationSettingsAlertPresented(true)))
-                        }
-                    )
-                }
+                HomeBottomSheetView(
+                    state: store.state.bottomSheet,
+                    send: { store.send(.bottomSheet($0)) },
+                    userLocation: store.state.map.userLocation,
+                    hasLocationPermission: store.state.map.locationState == .resolved,
+                    bottomTabBarHeight: bottomTabBarHeight,
+                    courseSheetResetRequestID: courseSheetResetRequestID,
+                    onCourseDetailHeightChanged: { height in
+                        guard abs(courseBottomSheetHeight - height) > 0.5 else { return }
+                        courseBottomSheetHeight = height
+                    },
+                    onVisibleHeightChanged: { height, isTransient in
+                        transientBottomSheetHeight = isTransient ? height : nil
+                    },
+                    onCourseExpansionSettled: presentExpandedCourseDetail,
+                    requestLocationPermission: {
+                        store.send(.presentation(.setLocationSettingsAlertPresented(true)))
+                    }
+                )
             } else {
                 initialMapLoadingView
             }
@@ -231,10 +239,88 @@ extension HomeView {
         onPlaceSelectionHandled(request.id)
     }
 
-    private func handleReviewReturnToHome(_ requestID: Int) {
-        guard requestID > handledReviewReturnToHomeRequestID else { return }
-        handledReviewReturnToHomeRequestID = requestID
+    private func handleReviewFlowFinished(_ requestID: Int) {
+        guard requestID > handledReviewFlowFinishedRequestID else { return }
+        handledReviewFlowFinishedRequestID = requestID
         store.send(.bottomSheet(.reviewFlowFinished))
+    }
+
+    @ViewBuilder
+    private func destinationView(for route: HomeRoute) -> some View {
+        switch route {
+        case .courseDetail(let placeID):
+            if store.state.bottomSheet.courseDetail.detail?.id == placeID {
+                CourseDetailBottomSheetView(
+                    state: store.state.bottomSheet.courseDetail,
+                    send: { store.send(.bottomSheet(.courseDetail($0))) },
+                    userLocation: store.state.map.userLocation,
+                    hasLocationPermission: store.state.map.locationState == .resolved,
+                    requestLocationPermission: {
+                        store.send(.presentation(.setLocationSettingsAlertPresented(true)))
+                    },
+                    renderingMode: .expanded,
+                    expandedBackAction: { coordinator.router.pop() }
+                )
+                .background(
+                    RodiInteractivePopGestureEnabler(
+                        isEnabled: store.state.bottomSheet.courseDetail.presentation == .expandedDetail
+                    )
+                )
+                .rodiEdgeSwipeBack(
+                    isEnabled: store.state.bottomSheet.courseDetail.presentation == .expandedDetail,
+                    isTopRoute: coordinator.path.last == route,
+                    router: coordinator.router
+                )
+            } else {
+                RodiColor.white
+                    .ignoresSafeArea()
+                    .onAppear {
+                        coordinator.router.popToRoot(animated: false)
+                    }
+            }
+        }
+    }
+
+    private func presentExpandedCourseDetail() {
+        let courseDetail = store.state.bottomSheet.courseDetail
+        guard let placeID = courseDetail.detail?.id,
+              courseDetail.presentation == .sheet,
+              coordinator.path.isEmpty
+        else {
+            return
+        }
+
+        store.send(.bottomSheet(.courseDetail(.expandRequested)))
+        coordinator.router.push(.courseDetail(placeID: placeID), animated: false)
+
+        Task { @MainActor in
+            await Task.yield()
+            courseSheetResetRequestID &+= 1
+        }
+    }
+
+    private func handleHomePathChange(_ path: [HomeRoute]) {
+        guard path.isEmpty,
+              store.state.bottomSheet.courseDetail.presentation != .sheet
+        else {
+            return
+        }
+        store.send(.bottomSheet(.courseDetail(.collapseRequested)))
+    }
+
+    private func synchronizeCourseNavigation() {
+        let bottomSheet = store.state.bottomSheet
+        guard bottomSheet.route == .courseDetail,
+              let placeID = bottomSheet.courseDetail.detail?.id
+        else {
+            coordinator.router.popToRoot(animated: false)
+            return
+        }
+
+        if case .courseDetail(let routedPlaceID) = coordinator.path.last,
+           routedPlaceID != placeID {
+            coordinator.router.popToRoot(animated: false)
+        }
     }
 }
 
@@ -259,13 +345,6 @@ extension HomeView {
 
     private var isFilterPresented: Bool {
         store.state.bottomSheet.route == .filter
-    }
-
-    private var isCourseDetailExpanded: Bool {
-        let bottomSheet = store.state.bottomSheet
-        return bottomSheet.route == .courseDetail
-            && bottomSheet.courseDetail.detail != nil
-            && bottomSheet.courseDetail.presentation != .sheet
     }
 
     private var isSavedPlaceLoading: Bool {

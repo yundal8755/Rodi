@@ -100,12 +100,17 @@ Environment 주입, 생성자 주입 등 Router를 View에 전달하는 방식�
 | `replace(with:)` | path 전체 교체 |
 | `perform(_:)` | `NavigationPlan`의 최종 path를 한 번에 적용 |
 
+각 전환 메서드는 기본값이 `true`인 `animated` 인자를 제공합니다. 이미 화면을 직접 움직인 gesture가
+최종 destination에 도달한 뒤 NavigationStack의 소유권만 넘길 때는 `animated: false`를 사용합니다.
+일반 버튼 navigation은 기본 애니메이션을 유지합니다.
+
 ```swift
 router.push(.settings)
 router.pop()
 router.pop(count: 2)
 router.popToRoot()
 router.replace(with: [.profile(userID: "42")])
+router.push(.settings, animated: false)
 ```
 
 Preview처럼 Coordinator가 없는 환경에는 `Router.empty`를 사용합니다. 빈 Router는 요청을 무시하며 화면 전환을 시도하지 않습니다.

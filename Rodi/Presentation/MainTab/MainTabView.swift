@@ -9,18 +9,18 @@ struct MainTabView: View {
     @Environment(\.screenSafeAreaInsets) private var screenSafeAreaInsets
 
     @StateObject private var store: StoreOf<MainTabReducer>
+    @StateObject private var homeCoordinator = Coordinator<HomeRoute>()
     @StateObject private var myCoordinator = Coordinator<MyRoute>()
     @State private var homeListPresentationRequestID = 0
     @State private var consumedHomeTabSelectionRequestID = 0
-    @State private var consumedReviewReturnToHomeRequestID = 0
 
     let consumePendingAuthenticationIntent: () -> MainTabIntent?
     let requestLogin: (MainTabIntent?) -> Void
     let onLogoutCompleted: () -> Void
     let homeTabSelectionRequestID: Int
-    let reviewReturnToHomeRequestID: Int
+    let homeReviewFlowFinishedRequestID: Int
     let onReviewTestRequested: () -> Void
-    let onReviewRequested: (ReviewWriteRequest) -> Void
+    let onReviewRequested: (ReviewFlowRequest) -> Void
     private let dependencies: AppDependencies
 
     init(
@@ -28,16 +28,16 @@ struct MainTabView: View {
         requestLogin: @escaping (MainTabIntent?) -> Void,
         onLogoutCompleted: @escaping () -> Void,
         homeTabSelectionRequestID: Int,
-        reviewReturnToHomeRequestID: Int,
+        homeReviewFlowFinishedRequestID: Int,
         onReviewTestRequested: @escaping () -> Void,
-        onReviewRequested: @escaping (ReviewWriteRequest) -> Void,
+        onReviewRequested: @escaping (ReviewFlowRequest) -> Void,
         dependencies: AppDependencies
     ) {
         self.consumePendingAuthenticationIntent = consumePendingAuthenticationIntent
         self.requestLogin = requestLogin
         self.onLogoutCompleted = onLogoutCompleted
         self.homeTabSelectionRequestID = homeTabSelectionRequestID
-        self.reviewReturnToHomeRequestID = reviewReturnToHomeRequestID
+        self.homeReviewFlowFinishedRequestID = homeReviewFlowFinishedRequestID
         self.onReviewTestRequested = onReviewTestRequested
         self.onReviewRequested = onReviewRequested
         self.dependencies = dependencies
@@ -53,6 +53,7 @@ struct MainTabView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             HomeView(
+                coordinator: homeCoordinator,
                 isHomeTabSelected: store.state.selectedTab == .home,
                 onAuthenticationRequired: { requestLogin(nil) },
                 onBottomTabBarVisibilityChanged: {
@@ -63,8 +64,10 @@ struct MainTabView: View {
                 onPlaceSelectionHandled: {
                     store.send(.homePlaceSelectionHandled($0))
                 },
-                reviewReturnToHomeRequestID: reviewReturnToHomeRequestID,
-                onReviewRequested: onReviewRequested,
+                reviewFlowFinishedRequestID: homeReviewFlowFinishedRequestID,
+                onReviewRequested: {
+                    onReviewRequested(.init(writeRequest: $0, entrySource: .home))
+                },
                 bottomTabBarHeight: RodiBottomTabBar.totalHeight(
                     safeAreaBottom: screenSafeAreaInsets.bottom
                 ),
@@ -79,7 +82,9 @@ struct MainTabView: View {
                 navigate: { store.send(.navigationRequested($0)) },
                 onLogoutCompleted: onLogoutCompleted,
                 onReviewTestRequested: onReviewTestRequested,
-                onReviewRequested: onReviewRequested,
+                onReviewRequested: {
+                    onReviewRequested(.init(writeRequest: $0, entrySource: .my))
+                },
                 dependencies: dependencies
             )
             .opacity(store.state.selectedTab == .my ? 1 : 0)
@@ -104,9 +109,6 @@ struct MainTabView: View {
         .onChange(of: homeTabSelectionRequestID) { _ in
             selectHomeAfterAuthenticationIfNeeded()
         }
-        .onChange(of: reviewReturnToHomeRequestID) { _ in
-            returnToHomeAfterReviewIfNeeded()
-        }
         .onChange(of: store.state.navigationIntent) { intent in
             guard let intent else { return }
             handleNavigationIntent(intent)
@@ -125,7 +127,7 @@ private extension MainTabView {
     var shouldShowBottomTabBar: Bool {
         switch store.state.selectedTab {
         case .home:
-            store.state.isHomeBottomTabBarVisible
+            store.state.isHomeBottomTabBarVisible && homeCoordinator.path.isEmpty
             
         case .my:
             myCoordinator.path.isEmpty
@@ -140,13 +142,6 @@ private extension MainTabView {
     func selectHomeAfterAuthenticationIfNeeded() {
         guard homeTabSelectionRequestID > consumedHomeTabSelectionRequestID else { return }
         consumedHomeTabSelectionRequestID = homeTabSelectionRequestID
-        store.send(.homeTabSelected)
-    }
-
-    func returnToHomeAfterReviewIfNeeded() {
-        guard reviewReturnToHomeRequestID > consumedReviewReturnToHomeRequestID else { return }
-        consumedReviewReturnToHomeRequestID = reviewReturnToHomeRequestID
-        myCoordinator.router.popToRoot()
         store.send(.homeTabSelected)
     }
 

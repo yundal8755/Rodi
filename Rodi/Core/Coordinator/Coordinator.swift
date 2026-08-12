@@ -38,11 +38,11 @@ final class Coordinator<Destination: Route>: ObservableObject {
     /// View와 feature에 전달할 typed navigation 인터페이스입니다.
     var router: Router<Destination> {
         Router(
-            submitAction: { [weak self] step in
-                self?.submit(step)
+            submitAction: { [weak self] step, animated in
+                self?.submit(step, animated: animated)
             },
-            performAction: { [weak self] plan in
-                self?.perform(plan)
+            performAction: { [weak self] plan, animated in
+                self?.perform(plan, animated: animated)
             }
         )
     }
@@ -50,27 +50,41 @@ final class Coordinator<Destination: Route>: ObservableObject {
     /// 일반 전환 단계를 현재 경로에 적용합니다.
     ///
     /// 전환 애니메이션 중 추가 요청은 무시해 연속 탭으로 route가 중복되는 일을 막습니다.
-    func submit(_ step: NavigationStep<Destination>) {
+    func submit(_ step: NavigationStep<Destination>, animated: Bool = true) {
         guard !isTransitioning else { return }
 
         let plan = NavigationPlan(steps: [step])
-        transition(to: plan.applying(to: path))
+        transition(to: plan.applying(to: path), animated: animated)
     }
 
     /// 여러 전환 단계를 적용한 최종 경로로 한 번에 이동합니다.
     ///
     /// `A → B → C` 계획은 중간 화면을 순차 표시하지 않고 C가 포함된 최종 경로만 반영합니다.
-    func perform(_ plan: NavigationPlan<Destination>) {
+    func perform(_ plan: NavigationPlan<Destination>, animated: Bool = true) {
         guard !isTransitioning else { return }
-        transition(to: plan.applying(to: path))
+        transition(to: plan.applying(to: path), animated: animated)
     }
 
-    private func transition(to nextPath: [Destination]) {
+    private func transition(to nextPath: [Destination], animated: Bool) {
         guard path != nextPath else { return }
 
         isTransitioning = true
         transitionIdentifier &+= 1
         let identifier = transitionIdentifier
+
+        guard animated else {
+            var transaction = Transaction(animation: nil)
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                path = nextPath
+            }
+
+            Task { @MainActor [weak self] in
+                await Task.yield()
+                self?.finishTransition(identifier: identifier)
+            }
+            return
+        }
 
         if #available(iOS 17.0, *) {
             var transaction = Transaction(animation: .default)

@@ -6,24 +6,50 @@
 import SwiftUI
 
 struct CourseDetailBottomSheetView: View {
+    enum RenderingMode {
+        case sheet
+        case expanded
+    }
+
     let state: CourseDetailBottomSheetReducer.State
     let send: (CourseDetailBottomSheetReducer.Action) -> Void
     let userLocation: RodiCoordinate?
     let hasLocationPermission: Bool
     let requestLocationPermission: () -> Void
+    let renderingMode: RenderingMode
+    let expandedBackAction: () -> Void
 
     @State private var isGuidanceDialogPresented = false
 
+    init(
+        state: CourseDetailBottomSheetReducer.State,
+        send: @escaping (CourseDetailBottomSheetReducer.Action) -> Void,
+        userLocation: RodiCoordinate?,
+        hasLocationPermission: Bool,
+        requestLocationPermission: @escaping () -> Void,
+        renderingMode: RenderingMode = .sheet,
+        expandedBackAction: @escaping () -> Void = {}
+    ) {
+        self.state = state
+        self.send = send
+        self.userLocation = userLocation
+        self.hasLocationPermission = hasLocationPermission
+        self.requestLocationPermission = requestLocationPermission
+        self.renderingMode = renderingMode
+        self.expandedBackAction = expandedBackAction
+    }
+
     var body: some View {
         if let detail = state.detail {
-            if state.presentation == .sheet {
+            if renderingMode == .sheet {
                 sheet(detail: detail)
             } else {
                 CourseDetailExpandedPage(
                     state: state,
                     send: send,
                     bookmarkAction: { send(.toggleBookmark) },
-                    routeGuidanceAction: requestRouteGuidance
+                    routeGuidanceAction: requestRouteGuidance,
+                    expandedBackAction: expandedBackAction
                 )
                 .confirmationDialog("경로 안내 앱 선택", isPresented: $isGuidanceDialogPresented, titleVisibility: .visible) {
                     Button("카카오맵으로 보기") { openRouteGuidance(.kakaoMap, detail: detail) }
