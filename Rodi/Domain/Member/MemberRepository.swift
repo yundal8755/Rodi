@@ -15,6 +15,12 @@ protocol MemberRepository {
     /// 특정 회원을 차단한다.
     func block(memberID: Int) async throws(NetworkError)
 
+    /// 현재 로그인한 회원이 차단한 회원 목록을 조회한다.
+    func fetchBlockedMembers(query: BlockedMemberQuery) async throws(NetworkError) -> BlockedMemberPage
+
+    /// 특정 회원의 차단을 해제한다.
+    func unblock(memberID: Int) async throws(NetworkError)
+
     /// 마이페이지에서 운전 목표를 부분 수정한다.
     func updateDrivingGoal(_ drivingGoal: String) async throws(NetworkError)
 

@@ -19,6 +19,8 @@ enum RodiColor {
     static let primary500 = Color(hex: 0x7062FF)
 
     static let secondary400 = Color(hex: 0xFF740D)
+    static let informationCancel = Color(hex: 0xFF3019)
+    static let informationCancelBackground = Color(hex: 0xFFEDF6)
     static let black = Color(hex: 0x222222)
     static let white = Color.white
     static let tagEasy = Color(hex: 0xCDF2F6)

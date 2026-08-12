@@ -25,6 +25,16 @@ final class MemberRemoteDataSource {
     func block(memberID: Int) async throws(NetworkError) {
         try await empty(.block(memberID: memberID))
     }
+
+    func fetchBlockedMembers(
+        query: BlockedMemberQuery
+    ) async throws(NetworkError) -> BlockedMemberCursorPageResponseDTO {
+        try await response(.blockedMembers(query: query), as: BlockedMemberCursorPageResponseDTO.self)
+    }
+
+    func unblock(memberID: Int) async throws(NetworkError) {
+        try await empty(.unblock(memberID: memberID))
+    }
     
     func updateDrivingGoal(_ request: MemberDrivingGoalUpdateRequestDTO) async throws(NetworkError) {
         try await empty(.updateDrivingGoal(request))

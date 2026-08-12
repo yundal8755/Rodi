@@ -10,10 +10,12 @@ struct MyPostsView: View {
     @State private var activeMenuReviewID: Int?
 
     let backAction: () -> Void
+    let openPracticeRecords: () -> Void
 
     init(
         reviewRepository: ReviewRepository,
-        backAction: @escaping () -> Void
+        backAction: @escaping () -> Void,
+        openPracticeRecords: @escaping () -> Void
     ) {
         _store = StateObject(
             wrappedValue: Store(
@@ -22,6 +24,7 @@ struct MyPostsView: View {
             )
         )
         self.backAction = backAction
+        self.openPracticeRecords = openPracticeRecords
     }
 
     var body: some View {
@@ -58,9 +61,11 @@ private extension MyPostsView {
                 .tint(RodiColor.primary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if store.state.items.isEmpty {
-            MyPostsEmptyState(errorMessage: store.state.errorMessage) {
-                store.send(.retryTapped)
-            }
+            MyPostsEmptyState(
+                errorMessage: store.state.errorMessage,
+                retry: { store.send(.retryTapped) },
+                openPracticeRecords: openPracticeRecords
+            )
         } else {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 24) {
@@ -181,7 +186,7 @@ private extension MyPostsView {
                             .tracking(-0.32)
                             .foregroundStyle(RodiColor.black)
 
-                        Text("이 후기는 다른 초보 운전자에게도 도움이 되고\n있어요. 삭제하면 더 이상 공개되지 않아요.")
+                        Text("이 후기는 다른 초보 운전자에게도 도움이 되고있어요. 삭제하면 더 이상 공개되지 않아요.")
                             .rodiTypography(.caption1Medium)
                             .foregroundStyle(RodiColor.black)
                             .multilineTextAlignment(.center)
@@ -305,6 +310,7 @@ private struct MyPostReviewRow: View {
 private struct MyPostsEmptyState: View {
     let errorMessage: String?
     let retry: () -> Void
+    let openPracticeRecords: () -> Void
 
     var body: some View {
         VStack(spacing: 8) {
@@ -320,9 +326,37 @@ private struct MyPostsEmptyState: View {
                 }
                 .buttonStyle(.plain)
             } else {
-                Text("아직 작성한 후기가 없어요.")
-                    .rodiTypography(.body3Medium)
-                    .foregroundStyle(RodiColor.gray600)
+                VStack(alignment: .center) {
+                    Image("ic_review")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 60, height: 60)
+                        .padding(.bottom, 16)
+
+                    Text("아직 작성한 후기가 없어요!")
+                        .rodiTypography(.headline1)
+                        .foregroundStyle(RodiColor.gray600)
+                        .padding(.bottom, 8)
+
+                    Text("다녀온 코스의 경험을 기록해보세요.")
+                        .rodiTypography(.body3Medium)
+                        .foregroundStyle(RodiColor.gray600)
+
+                    Button(action: openPracticeRecords) {
+                        Text("연습기록 보러가기")
+                            .rodiTypography(.body3Medium)
+                            .foregroundStyle(RodiColor.primary)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 7)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(RodiColor.primary, lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 16)
+                    .accessibilityLabel("연습기록 보러가기")
+                }
             }
         }
         .multilineTextAlignment(.center)

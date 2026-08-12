@@ -77,8 +77,8 @@ struct MyView: View {
             )
             .navigationDestination(for: MyRoute.self) { route in
                     destinationView(for: route)
-                    .background(MyInteractivePopGestureEnabler())
-                    .myEdgeSwipeBack(
+                    .background(RodiInteractivePopGestureEnabler())
+                    .rodiEdgeSwipeBack(
                         isTopRoute: coordinator.path.last == route,
                         router: router
                     )
@@ -112,7 +112,7 @@ private extension MyView {
     private func destinationView(for route: MyRoute) -> some View {
         switch route {
         case .settings:
-            MySettingsView(backAction: { router.pop() }, navigate: router.push)
+            MySettingsView(backAction: { router.pop() }, navigate: { router.push($0) })
             
         case .drivingGoal:
             MyDrivingGoalView(
@@ -143,14 +143,15 @@ private extension MyView {
         case .myPosts:
             MyPostsView(
                 reviewRepository: reviewRepository,
-                backAction: { router.pop() }
+                backAction: { router.pop() },
+                openPracticeRecords: { router.push(.practiceRecords) }
             )
             
         case .permissions:
             MyPermissionSettingsView(backAction: { router.pop() })
             
         case .terms:
-            MyTermsView(backAction: { router.pop() }, navigate: router.push)
+            MyTermsView(backAction: { router.pop() }, navigate: { router.push($0) })
             
         case .licenses:
             MyOpenSourceLicenseView(backAction: { router.pop() })
@@ -158,9 +159,15 @@ private extension MyView {
         case .accountManagement:
             MyAccountManagementView(
                 backAction: { router.pop() },
-                navigate: router.push,
+                navigate: { router.push($0) },
                 logoutAction: { store.send(.logoutConfirmed) },
                 withdrawalAction: { store.send(.withdrawalConfirmed) }
+            )
+
+        case .blockedMembers:
+            MyBlockedMembersView(
+                memberRepository: memberRepository,
+                backAction: { router.pop() }
             )
             
         case .contact:

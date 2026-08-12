@@ -49,24 +49,16 @@ private extension MyPracticeRecordsView {
         } else {
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    Text("\(store.state.items.count)개")
-                        .rodiTypography(.caption2Medium)
-                        .foregroundStyle(RodiColor.gray700)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-
                     ForEach(store.state.items) { item in
                         MyPracticeRecordListRow(record: item, reviewRequested: reviewRequested)
                             .padding(.horizontal, 16)
-                            .padding(.vertical, 16)
+                            .padding(.top, 20)
+                            .padding(.bottom, 20)
 
-                        if item.id != store.state.items.last?.id {
-                            Rectangle()
-                                .fill(RodiColor.primaryMinus100)
-                                .frame(height: 1)
-                                .padding(.horizontal, 16)
-                        }
+                        Rectangle()
+                            .fill(RodiColor.primaryMinus100)
+                            .frame(height: 1)
+                            .padding(.horizontal, 16)
                     }
 
                     paginationFooter
@@ -113,28 +105,46 @@ private struct MyPracticeRecordListRow: View {
     let reviewRequested: (ReviewWriteRequest) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(record.placeName)
-                    .font(.pretendard(size: 15, weight: .semibold))
-                    .tracking(-0.3)
+                    .rodiTypography(.body1SemiBold)
                     .foregroundStyle(RodiColor.black)
                     .lineLimit(1)
 
                 Spacer(minLength: 0)
 
-                Text(dateText)
-                    .rodiTypography(.caption1Medium)
-                    .foregroundStyle(RodiColor.gray600)
+                Text("\(record.visitCount)회차")
+                .rodiTypography(.caption1Medium)
+                .foregroundStyle(RodiColor.primary)
             }
 
-            MyPracticeTypeChipRow(types: record.practiceTypes)
+            Text(dateText)
+                .rodiTypography(.caption1Medium)
+                .foregroundStyle(RodiColor.gray600)
+                .padding(.top, 4)
 
-            MyPracticeReviewStatus(
-                hasReview: record.hasReview,
-                reviewRequested: { reviewRequested(.init(placeID: record.placeID, placeName: record.placeName)) }
-            )
-            .frame(width: 147)
+            MyPracticeTypeChipRow(types: record.practiceTypes)
+                .padding(.top, 4)
+
+            if !record.hasReview {
+                Button {
+                    reviewRequested(.init(placeID: record.placeID, placeName: record.placeName))
+                } label: {
+                    Text("후기 작성")
+                        .rodiTypography(.body3Medium)
+                        .foregroundStyle(RodiColor.primary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 32)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(RodiColor.primary, lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(record.placeName) 후기 작성")
+                .padding(.top, 16)
+            }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(record.placeName), \(dateText)")

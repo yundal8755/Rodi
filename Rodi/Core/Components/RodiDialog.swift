@@ -36,8 +36,10 @@ struct RodiDialog<Content: View>: View {
                     Spacer()
                     Button(action: closeAction) {
                         Image("ic_close")
+                            .renderingMode(.template)
                             .resizable()
                             .scaledToFit()
+                            .foregroundStyle(RodiColor.gray600)
                             .frame(width: 20, height: 20)
                     }
                     .buttonStyle(.plain)

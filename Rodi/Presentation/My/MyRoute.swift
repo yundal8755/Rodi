@@ -15,6 +15,7 @@ enum MyRoute: Route {
     case terms
     case licenses
     case accountManagement
+    case blockedMembers
     case contact
     case legalDocument(LegalDocument)
 
@@ -29,6 +30,7 @@ enum MyRoute: Route {
         case .terms: "my.terms"
         case .licenses: "my.licenses"
         case .accountManagement: "my.accountManagement"
+        case .blockedMembers: "my.blockedMembers"
         case .contact: "my.contact"
         case .legalDocument(let document): "my.legalDocument.\(document.rawValue)"
         }

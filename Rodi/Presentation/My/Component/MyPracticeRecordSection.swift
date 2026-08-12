@@ -27,18 +27,20 @@ private extension MyPracticeRecordSection {
 
             Spacer()
 
-            Button(action: openAll) {
-                HStack(spacing: 2) {
-                    Text("전체보기")
-                        .rodiTypography(.body3Medium)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .medium))
+            if !records.isEmpty {
+                Button(action: openAll) {
+                    HStack(spacing: 2) {
+                        Text("전체보기")
+                            .rodiTypography(.body3Medium)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundStyle(RodiColor.gray400)
+                    .contentShape(Rectangle())
                 }
-                .foregroundStyle(RodiColor.gray400)
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                .accessibilityLabel("연습기록 전체보기")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("연습기록 전체보기")
         }
         .padding(.horizontal, 16)
     }
@@ -157,12 +159,12 @@ struct MyPracticeReviewStatus: View {
 
     var body: some View {
         if hasReview {
-            Text("후기 작성 완료")
+            Text("작성 완료")
                 .rodiTypography(.body3Medium)
-                .foregroundStyle(RodiColor.primary)
+                .foregroundStyle(RodiColor.gray500)
                 .frame(maxWidth: .infinity)
                 .frame(height: 32)
-                .background(RodiColor.primary20)
+                .background(RodiColor.gray300)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .accessibilityLabel("후기 작성 완료")
         } else {
