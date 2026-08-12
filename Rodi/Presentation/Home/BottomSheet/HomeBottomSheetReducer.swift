@@ -153,7 +153,7 @@ extension HomeBottomSheetReducer {
             state.courseDetail = .init()
             return actions([
                 .courseDetail(.cancelRoadRouteLoading),
-                .courseDetail(.cancelReviewLoading),
+                .courseDetail(.reviews(.reset)),
                 .delegate(.mapDetailDismissed)
             ])
 

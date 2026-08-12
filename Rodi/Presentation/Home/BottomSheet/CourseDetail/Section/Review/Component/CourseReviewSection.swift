@@ -117,8 +117,8 @@ private extension CourseReviewSection {
 
     var writeReviewCallToAction: some View {
         VStack(spacing: 0) {
-            VStack(spacing: 12) {
-                Text("이곳에서 연습해보셨나요?")
+            VStack(spacing: 8) {
+                Text("여러분의 연습 경험을 공유해주세요!")
                     .rodiTypography(.body3Medium)
                     .foregroundStyle(RodiColor.gray800)
 
@@ -214,7 +214,7 @@ private extension CourseReviewAllContent {
 
             fullWidthDivider(height: 2)
 
-            reviewContent
+            reviewList
                 .padding(.top, 24)
         }
     }
@@ -306,19 +306,6 @@ private extension CourseReviewAllContent {
         }
         .frame(maxWidth: .infinity)
         .accessibilityLabel("\(Int((progress * 100).rounded()))퍼센트")
-    }
-
-    @ViewBuilder
-    var reviewContent: some View {
-        if let page, page.items.isEmpty {
-            Text("선택한 레벨의 후기가 아직 없어요.")
-                .rodiTypography(.body3Medium)
-                .foregroundStyle(RodiColor.gray600)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
-        } else {
-            reviewList
-        }
     }
 
     var reviewList: some View {
@@ -550,11 +537,8 @@ struct CourseReviewCard: View {
                 Button {
                     onMoreTapped?()
                 } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(RodiColor.gray500)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
+                    Image("ic_more_horizontal")
+                        .frame(width: 18, height: 30, alignment: .trailing)
                 }
                 .buttonStyle(.plain)
                 .disabled(onMoreTapped == nil)

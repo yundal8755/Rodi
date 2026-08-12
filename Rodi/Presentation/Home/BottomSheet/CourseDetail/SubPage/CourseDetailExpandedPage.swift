@@ -1,13 +1,13 @@
 import SwiftUI
 
 struct CourseDetailExpandedPage: View {
-    @Environment(\.screenSafeAreaInsets) private var screenSafeAreaInsets
     @State private var activeReviewDropdown: CourseReviewDropdown?
 
     let state: CourseDetailBottomSheetReducer.State
     let send: (CourseDetailBottomSheetReducer.Action) -> Void
     let bookmarkAction: () -> Void
     let routeGuidanceAction: () -> Void
+    let expandedBackAction: () -> Void
 
     var body: some View {
         if let detail = state.detail {
@@ -21,9 +21,12 @@ private extension CourseDetailExpandedPage {
     @ViewBuilder
     func page(detail: PlaceDetail) -> some View {
         Group {
-            if state.presentation == .reportForm {
-                CourseReviewReportPage(state: state, send: send)
-            } else if state.presentation == .allReviews {
+            if state.reviews.route == .report {
+                CourseReviewReportPage(
+                    state: state.reviews.report,
+                    send: { send(.reviews(.report($0))) }
+                )
+            } else if state.reviews.route == .allReviews {
                 allReviewsPage(detail: detail)
             } else {
                 detailPage(detail: detail)
@@ -33,7 +36,7 @@ private extension CourseDetailExpandedPage {
             reviewLevelDropdownOverlay(anchors: anchors)
         }
         .overlay {
-            if state.isBlockConfirmationPresented {
+            if state.reviews.block.isConfirmationPresented {
                 blockConfirmationDialog
             }
         }
@@ -80,15 +83,10 @@ private extension CourseDetailExpandedPage {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    CourseReviewAllContent(
-                        summary: selectedReviewSummary,
-                        page: state.reviewPages[state.selectedReviewLevel],
-                        isSummaryLoading: selectedReviewSummaryState.isLoading,
-                        summaryErrorMessage: selectedReviewSummaryState.errorMessage,
-                        selectedLevel: state.selectedReviewLevel,
+                    CourseReviewView(
+                        state: state.reviews,
                         activeDropdown: $activeReviewDropdown,
-                        onLoadMore: { send(.nextReviewPageRequested) },
-                        onRetry: { send(.reviewsRetryRequested) }
+                        send: { send(.reviews($0)) }
                     )
                 }
                 .padding(.horizontal, 16)
@@ -114,18 +112,19 @@ private extension CourseDetailExpandedPage {
             .accessibilityHidden(true)
     }
 
-    var topBarInset: CGFloat {
-        max(screenSafeAreaInsets.top, 20)
-    }
-
-    var bottomBarInset: CGFloat {
-        max(screenSafeAreaInsets.bottom, 34)
-    }
-
     func fixedHeader(title: String?) -> some View {
-        header(title: title)
-            .padding(.horizontal, 16)
-            .padding(.top, topBarInset + 4)
+        Group {
+            if let title {
+                RodiCenteredNavigationHeader(title: title) {
+                    backButton
+                } trailing: {
+                    Color.clear
+                        .accessibilityHidden(true)
+                }
+            } else {
+                headerWithoutTitle
+            }
+        }
             .padding(.bottom, 12)
             .frame(maxWidth: .infinity)
             .background(RodiColor.white)
@@ -133,42 +132,50 @@ private extension CourseDetailExpandedPage {
 
     func fixedActionBar(detail: PlaceDetail) -> some View {
         actionBar(detail: detail)
-            .padding(.bottom, bottomBarInset)
             .background(RodiColor.white)
     }
 
-    func header(title: String?) -> some View {
-        ZStack {
-            if let title {
-                Text(title)
-                    .rodiTypography(.body1SemiBold)
-                    .foregroundStyle(RodiColor.black)
-            }
+    var headerWithoutTitle: some View {
+        HStack(spacing: 0) {
+            backButton
+                .frame(width: 44, height: 44)
 
-            HStack {
-                Button {
-                    send(.collapseRequested)
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(RodiColor.black)
-                        .frame(width: 44, height: 44)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(state.presentation == .allReviews ? "코스 상세로 돌아가기" : "코스 시트로 돌아가기")
+            Spacer(minLength: 0)
 
-                Spacer()
-            }
+            Color.clear
+                .frame(width: 44, height: 44)
+                .accessibilityHidden(true)
         }
-        .padding(.leading, -10)
+        .frame(maxWidth: .infinity)
+        .frame(height: 56)
+    }
+
+    var backButton: some View {
+        Button {
+            if state.reviews.route == .allReviews {
+                send(.reviews(.backTapped))
+            } else if state.presentation == .expandedDetail {
+                expandedBackAction()
+            } else {
+                send(.collapseRequested)
+            }
+        } label: {
+            Image("ic_chevron_left_24")
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(state.reviews.route == .allReviews ? "코스 상세로 돌아가기" : "코스 시트로 돌아가기")
     }
 
     func courseInformation(detail: PlaceDetail) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(detail.name)
-                .rodiTypography(.headline1)
-                .foregroundStyle(RodiColor.black)
-                .lineLimit(1)
+            HStack(spacing: 4) {
+                Text(detail.name)
+                    .rodiTypography(.headline1)
+                    .foregroundStyle(RodiColor.black)
+                    .lineLimit(1)
+
+                bookmarkCountLabel(detail: detail)
+            }
 
             HStack(spacing: 4) {
                 if let distance = detail.course?.distanceMeters {
@@ -237,6 +244,21 @@ private extension CourseDetailExpandedPage {
         }
     }
 
+    func bookmarkCountLabel(detail: PlaceDetail) -> some View {
+        HStack(spacing: 2) {
+            Image("ic_bookmark_count")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 16, height: 16)
+
+            Text("\(detail.bookmarkCount)")
+                .rodiTypography(.body3Medium)
+                .foregroundStyle(RodiColor.gray700)
+        }
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityLabel("저장 \(detail.bookmarkCount)개")
+    }
+
     func routeSection(detail: PlaceDetail) -> some View {
         let points = RodiCourseItem(placeDetail: detail).routeOverlayPoints
         return VStack(alignment: .leading, spacing: 14) {
@@ -280,18 +302,10 @@ private extension CourseDetailExpandedPage {
     }
 
     var reviewSection: some View {
-        CourseReviewSection(
-            summary: selectedReviewSummary,
-            page: state.reviewPages[state.selectedReviewLevel],
-            isSummaryLoading: selectedReviewSummaryState.isLoading,
-            summaryErrorMessage: selectedReviewSummaryState.errorMessage,
-            selectedLevel: state.selectedReviewLevel,
-            showsAllReviewsButton: (selectedReviewSummary?.totalReviewCount ?? 0) > 0,
+        CourseReviewView(
+            state: state.reviews,
             activeDropdown: $activeReviewDropdown,
-            onSelectLevel: { send(.reviewLevelSelected($0)) },
-            onShowAllReviews: { send(.allReviewsRequested) },
-            onRetry: { send(.reviewsRetryRequested) },
-            onWriteReview: { send(.reviewWritingRequested) }
+            send: { send(.reviews($0)) }
         )
     }
 
@@ -324,7 +338,7 @@ private extension CourseDetailExpandedPage {
     }
 
     var effectiveSelectedReviewLevel: ReviewLevel? {
-        switch state.selectedReviewLevel {
+        switch state.reviews.selectedLevel {
         case .current:
             selectedReviewSummary?.level
         case .level(let level):
@@ -352,7 +366,7 @@ private extension CourseDetailExpandedPage {
     }
 
     var selectedReviewSummaryState: CourseDetailBottomSheetReducer.ReviewSummaryState {
-        state.reviewSummaries[state.selectedReviewLevel] ?? .init()
+        state.reviews.summaries[state.reviews.selectedLevel] ?? .init()
     }
 
     var selectedReviewSummary: PlaceReviewSummary? {
@@ -367,7 +381,7 @@ private extension CourseDetailExpandedPage {
     }
 
     func selectReviewLevel(_ level: ReviewLevel) {
-        send(.reviewLevelSelected(.level(level)))
+        send(.reviews(.levelSelected(.level(level))))
     }
 
     @ViewBuilder
@@ -398,9 +412,9 @@ private extension CourseDetailExpandedPage {
                 onSelect: { option in
                     self.activeReviewDropdown = nil
                     if option.id == "report" {
-                        send(.reviewReportRequested(reviewID: reviewID))
+                        send(.reviews(.reportRequested(reviewID: reviewID)))
                     } else if option.id == "block" {
-                        send(.reviewBlockRequested(reviewID: reviewID))
+                        send(.reviews(.blockRequested(reviewID: reviewID)))
                     }
                 }
             )
@@ -408,7 +422,7 @@ private extension CourseDetailExpandedPage {
                 dimensions[.trailing] - triggerFrame.maxX
             }
             .alignmentGuide(.top) { dimensions in
-                dimensions[.top] - triggerFrame.maxY - 8
+                dimensions[.top] - triggerFrame.maxY - 4
             }
         }
     }
@@ -464,66 +478,10 @@ private extension CourseDetailExpandedPage {
     }
 
     var blockConfirmationDialog: some View {
-        RodiModalBackground {
-            RodiDialog(contentInsets: .init(top: 32, leading: 20, bottom: 32, trailing: 20)) {
-                VStack(spacing: 0) {
-                    VStack(spacing: 16) {
-                        Text("사용자를 차단하겠습니까?")
-                            .rodiTypography(.body1SemiBold)
-                            .foregroundStyle(RodiColor.black)
-
-                        Text("이 사용자의 모든 리뷰를 보지 않습니다.")
-                            .rodiTypography(.caption1Medium)
-                            .foregroundStyle(RodiColor.black)
-                            .multilineTextAlignment(.center)
-                            .frame(height: 60)
-                    }
-                    .frame(minWidth: 240)
-
-                    HStack(spacing: 8) {
-                        Button {
-                            send(.reviewBlockCancelled)
-                        } label: {
-                            Text("취소")
-                                .rodiTypography(.buttonMedium)
-                                .foregroundStyle(RodiColor.gray800)
-                                .frame(width: 116, height: 42)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(RodiColor.gray300, lineWidth: 1)
-                                }
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(state.isBlockingMember)
-                        .accessibilityLabel("차단 취소")
-
-                        Button {
-                            send(.reviewBlockConfirmed)
-                        } label: {
-                            Group {
-                                if state.isBlockingMember {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                        .tint(RodiColor.white)
-                                } else {
-                                    Text("차단")
-                                        .rodiTypography(.buttonMedium)
-                                }
-                            }
-                            .foregroundStyle(RodiColor.white)
-                            .frame(width: 116, height: 42)
-                            .background(RodiColor.primary)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(state.isBlockingMember)
-                        .accessibilityLabel("사용자 차단")
-                    }
-                    .padding(.top, 24)
-                }
-            }
-        }
-        .accessibilityAddTraits(.isModal)
+        CourseReviewBlockDialog(
+            state: state.reviews.block,
+            send: { send(.reviews(.block($0))) }
+        )
     }
 
     func visibleRoutePoints(_ points: [RodiRouteOverlayPoint]) -> [RodiRouteOverlayPoint] {

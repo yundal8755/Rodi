@@ -1,11 +1,10 @@
 import SwiftUI
 
 struct CourseReviewReportPage: View {
-    @Environment(\.screenSafeAreaInsets) private var screenSafeAreaInsets
     @FocusState private var isDetailFocused: Bool
 
-    let state: CourseDetailBottomSheetReducer.State
-    let send: (CourseDetailBottomSheetReducer.Action) -> Void
+    let state: CourseReviewReportReducer.State
+    let send: (CourseReviewReportReducer.Action) -> Void
 
     var body: some View {
         ZStack {
@@ -35,7 +34,7 @@ struct CourseReviewReportPage: View {
             submitBar
         }
         .overlay {
-            if state.isReportCompletionPresented {
+            if state.isCompletionPresented {
                 completionDialog
             }
         }
@@ -54,12 +53,9 @@ private extension CourseReviewReportPage {
 
             HStack {
                 Button {
-                    send(.reportBackTapped)
+                    send(.backTapped)
                 } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(RodiColor.black)
-                        .frame(width: 24, height: 24)
+                    Image("ic_chevron_left_24")
                 }
                 .buttonStyle(.plain)
                 .frame(width: 44, height: 44)
@@ -70,13 +66,12 @@ private extension CourseReviewReportPage {
             }
         }
         .frame(height: 56)
-        .padding(.top, max(screenSafeAreaInsets.top, 20))
         .background(RodiColor.white)
     }
 
     @ViewBuilder
     var formContent: some View {
-        switch state.reportFormState {
+        switch state.formState {
         case .idle, .loading:
             ProgressView()
                 .tint(RodiColor.primary)
@@ -99,20 +94,21 @@ private extension CourseReviewReportPage {
 
                 VStack(alignment: .leading, spacing: 16) {
                     ForEach(form.options) { option in
-                        RodiRadioOption(
-                            title: option.label,
-                            isSelected: state.selectedReportOption?.code == option.code,
-                            action: { send(.reportOptionSelected(option)) }
-                        )
-                    }
+                        VStack(alignment: .leading, spacing: 4) {
+                            RodiRadioOption(
+                                title: option.label,
+                                isSelected: state.selectedOption?.code == option.code,
+                                action: { send(.optionSelected(option)) }
+                            )
 
-                    if let option = state.selectedReportOption,
-                       option.requiresTextInput {
-                        detailField(for: option)
-                            .padding(.top, 4)
+                            if state.selectedOption?.code == option.code,
+                               option.requiresTextInput {
+                                detailField(for: option)
+                            }
+                        }
                     }
                 }
-                .padding(.top, 28)
+                .padding(.top, 24)
             }
 
         case .failed:
@@ -122,7 +118,7 @@ private extension CourseReviewReportPage {
                     .foregroundStyle(RodiColor.gray600)
 
                 Button {
-                    send(.reportFormRetryTapped)
+                    send(.retryTapped)
                 } label: {
                     Text("다시 시도")
                         .rodiTypography(.buttonMedium)
@@ -139,7 +135,7 @@ private extension CourseReviewReportPage {
             RodiTextField(
                 text: detailBinding,
                 placeholder: option.textInputPlaceholder ?? "이유를 작성해주세요",
-                characterLimit: state.reportDetailMaximumLength,
+                characterLimit: state.maximumLength,
                 isFocused: $isDetailFocused
             )
             .padding(.vertical, 14)
@@ -148,13 +144,6 @@ private extension CourseReviewReportPage {
             .overlay {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(isDetailFocused ? RodiColor.gray850 : RodiColor.gray300, lineWidth: 1)
-            }
-
-            if let maximumLength = state.reportDetailMaximumLength {
-                Text("\(state.reportDetail.count) / \(maximumLength)")
-                    .rodiTypography(.body3Medium)
-                    .foregroundStyle(RodiColor.gray600)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
     }
@@ -166,7 +155,7 @@ private extension CourseReviewReportPage {
                 .frame(height: 1)
 
             Button {
-                send(.reportSubmitTapped)
+                send(.submitTapped)
             } label: {
                 Group {
                     if isProcessingReport {
@@ -190,7 +179,6 @@ private extension CourseReviewReportPage {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
         }
-        .padding(.bottom, max(screenSafeAreaInsets.bottom, 34))
         .background(RodiColor.white)
     }
 
@@ -212,7 +200,7 @@ private extension CourseReviewReportPage {
                     .frame(minWidth: 240)
 
                     Button {
-                        send(.reportCompletionConfirmed)
+                        send(.completionConfirmed)
                     } label: {
                         Text("확인")
                             .rodiTypography(.buttonMedium)
@@ -231,16 +219,16 @@ private extension CourseReviewReportPage {
 
     var detailBinding: Binding<String> {
         Binding(
-            get: { state.reportDetail },
-            set: { send(.reportDetailChanged($0)) }
+            get: { state.detail },
+            set: { send(.detailChanged($0)) }
         )
     }
 
     var isProcessingReport: Bool {
-        state.isReportSubmitting || state.isRefreshingReportedReviews
+        state.isSubmitting
     }
 
     var isSubmitEnabled: Bool {
-        state.canSubmitReport && !isProcessingReport
+        state.canSubmit && !isProcessingReport
     }
 }
