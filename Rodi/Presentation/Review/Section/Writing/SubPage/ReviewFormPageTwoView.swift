@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct ReviewFormPageTwoView: View {
-    let state: ReviewReducer.State
-    let send: (ReviewReducer.Action) -> Void
+    let state: ReviewWritingReducer.State
+    let send: (ReviewWritingReducer.Action) -> Void
 
     @State private var isContentFocused = false
 
@@ -34,7 +34,7 @@ struct ReviewFormPageTwoView: View {
 
                     reviewTextEditor
 
-                    Text("\(state.content.count) / 150")
+                    Text("\(state.draft.content.count) / 150")
                         .rodiTypography(.body3Medium)
                         .foregroundStyle(RodiColor.gray600)
                         .frame(maxWidth: .infinity, alignment: .trailing)
@@ -73,6 +73,7 @@ private extension ReviewFormPageTwoView {
             characterLimit: 150,
             isFocused: $isContentFocused
         )
+            .frame(maxWidth: .infinity)
             .frame(height: 100)
             .background(RodiColor.white)
             .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -81,7 +82,7 @@ private extension ReviewFormPageTwoView {
                     .stroke(isContentFocused ? RodiColor.gray850 : RodiColor.gray300, lineWidth: 1)
             }
             .overlay(alignment: .topLeading) {
-                if state.content.isEmpty {
+                if state.draft.content.isEmpty {
                     Text("자유롭게 후기를 작성해주세요.")
                         .rodiTypography(.body3Medium)
                         .foregroundStyle(RodiColor.gray500)
@@ -94,14 +95,14 @@ private extension ReviewFormPageTwoView {
     }
 
     func methodButton(_ method: ReviewPracticeMethod) -> some View {
-        ReviewChoiceButton(title: method.title, isSelected: state.practiceMethod == method) {
+        ReviewChoiceButton(title: method.title, isSelected: state.draft.practiceMethod == method) {
             send(.practiceMethodSelected(method))
         }
     }
 
     var contentBinding: Binding<String> {
         Binding(
-            get: { state.content },
+            get: { state.draft.content },
             set: { send(.contentChanged($0)) }
         )
     }

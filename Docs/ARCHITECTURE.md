@@ -116,7 +116,7 @@ Feature root는 진입 View·Reducer와 화면 조립만 담당한다. 여러 �
 - `Service`: 외부 I/O, SDK runtime, UIKit delegate 또는 State를 모르는 순수 계산. Store·Reducer State·SwiftUI View를 소유하지 않는다.
 - `Adapter`: SwiftUI와 UIKit·외부 SDK 사이의 변환 및 lifecycle 연결
 
-다단계 Review flow는 `ReviewFlowView`가 presentation을 조립하고, 각 단계는 `SubPage`, 공통 dialog·header·선택 UI는 `Component`, 표시 모델은 `Model`, repository를 사용하는 요청은 `Service`에 둔다. 빈 폴더를 미리 만들지 않는다. 한 feature 내부 공유는 가장 가까운 공통 부모의 `Shared`에 두고, 최소 두 top-level feature에서 재사용되는 것이 확인된 뒤 Core로 올린다.
+다단계 Review flow는 루트 `ReviewReducer`가 진입·Section 전환·최종 Delegate만 중재하고, `Prompt`·`Writing`·`SkipReason` Section reducer가 각 화면 State와 Effect를 소유한다. `ReviewFlowView`는 현재 route의 child State만 전달해 조립한다. 각 단계 화면은 Section의 `SubPage`, 공통 dialog·header·scaffold는 Review `Component`, 표시 모델은 `Model`, repository를 사용하는 요청은 `Service`에 둔다. 빈 폴더를 미리 만들지 않는다. 한 feature 내부 공유는 가장 가까운 공통 부모의 `Shared`에 두고, 최소 두 top-level feature에서 재사용되는 것이 확인된 뒤 Core로 올린다.
 
 ## UIKit And Kakao Boundary
 

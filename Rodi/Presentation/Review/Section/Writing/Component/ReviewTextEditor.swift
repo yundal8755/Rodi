@@ -22,7 +22,7 @@ struct ReviewTextEditor: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
+        let textView = ReviewInputTextView()
         textView.delegate = context.coordinator
         textView.backgroundColor = .clear
         textView.font = .pretendard(size: 14, weight: .medium)
@@ -30,11 +30,15 @@ struct ReviewTextEditor: UIViewRepresentable {
         textView.tintColor = UIColor(RodiColor.primary)
         textView.textContainerInset = .init(top: 16, left: 16, bottom: 16, right: 16)
         textView.textContainer.lineFragmentPadding = 0
-        textView.isScrollEnabled = false
-        textView.alwaysBounceVertical = false
+        textView.textContainer.widthTracksTextView = true
+        textView.textContainer.lineBreakMode = .byCharWrapping
+        textView.isScrollEnabled = true
+        textView.alwaysBounceVertical = true
         textView.keyboardDismissMode = .interactive
         textView.autocorrectionType = .no
         textView.autocapitalizationType = .none
+        textView.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return textView
     }
 
@@ -48,6 +52,12 @@ struct ReviewTextEditor: UIViewRepresentable {
         if !isFocused, textView.isFirstResponder {
             textView.resignFirstResponder()
         }
+    }
+}
+
+private final class ReviewInputTextView: UITextView {
+    override var intrinsicContentSize: CGSize {
+        .init(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
     }
 }
 

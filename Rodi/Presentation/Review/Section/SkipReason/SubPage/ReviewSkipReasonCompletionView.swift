@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ReviewSkipReasonCompletionView: View {
-    let send: (ReviewReducer.Action) -> Void
+    let send: (ReviewSkipReasonReducer.Action) -> Void
 
     var body: some View {
         RodiModalBackground {
@@ -20,7 +20,7 @@ struct ReviewSkipReasonCompletionView: View {
                     }
                     .frame(minWidth: 240)
 
-                    Button(action: { send(.skipReasonCompletionConfirmed) }) {
+                    Button(action: { send(.completionConfirmed) }) {
                         Text("확인")
                             .rodiTypography(.buttonMedium)
                             .foregroundStyle(RodiColor.white)

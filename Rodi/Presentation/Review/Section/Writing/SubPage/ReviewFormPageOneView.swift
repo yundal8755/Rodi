@@ -5,8 +5,8 @@ struct ReviewFormPageOneView: View {
         case cautionKeyboardAnchor
     }
 
-    let state: ReviewReducer.State
-    let send: (ReviewReducer.Action) -> Void
+    let state: ReviewWritingReducer.State
+    let send: (ReviewWritingReducer.Action) -> Void
 
     @FocusState private var isCautionFocused: Bool
 
@@ -28,13 +28,13 @@ struct ReviewFormPageOneView: View {
 
                         ReviewScaleSelector(
                             title: "난이도",
-                            selected: state.difficulty,
+                            selected: state.draft.difficulty,
                             action: { send(.difficultySelected($0)) }
                         )
 
                         ReviewScaleSelector(
                             title: "혼잡도",
-                            selected: state.congestion,
+                            selected: state.draft.congestion,
                             action: { send(.congestionSelected($0)) }
                         )
 
@@ -65,7 +65,7 @@ struct ReviewFormPageOneView: View {
             if !isCautionFocused {
                 PrimaryBottomButton(
                     title: "다음",
-                    isEnabled: state.canProceedToSecondPage,
+                    isEnabled: state.draft.canProceedToSecondPage,
                     showsDivider: true,
                     action: { send(.nextTapped) }
                 )
@@ -94,10 +94,10 @@ private extension ReviewFormPageOneView {
                 .foregroundStyle(RodiColor.black)
 
             HStack(spacing: 6) {
-                ReviewChoiceButton(title: "별로예요", isSelected: state.isRecommended == false) {
+                ReviewChoiceButton(title: "별로예요", isSelected: state.draft.isRecommended == false) {
                     send(.recommendationSelected(false))
                 }
-                ReviewChoiceButton(title: "추천해요", isSelected: state.isRecommended == true) {
+                ReviewChoiceButton(title: "추천해요", isSelected: state.draft.isRecommended == true) {
                     send(.recommendationSelected(true))
                 }
             }
@@ -111,7 +111,7 @@ private extension ReviewFormPageOneView {
                 .foregroundStyle(RodiColor.black)
 
             RodiTextField(
-                text: Binding(get: { state.caution }, set: { send(.cautionChanged($0)) }),
+                text: Binding(get: { state.draft.caution }, set: { send(.cautionChanged($0)) }),
                 placeholder: "예) 갑자기 나오는 자전거 주의!",
                 characterLimit: nil,
                 isFocused: $isCautionFocused

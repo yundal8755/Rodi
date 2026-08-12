@@ -1,15 +1,14 @@
 import SwiftUI
 
 struct ReviewPromptView: View {
-    let target: ReviewTarget?
-    let isSubmittingVisit: Bool
-    let send: (ReviewReducer.Action) -> Void
+    let state: ReviewPromptReducer.State
+    let send: (ReviewPromptReducer.Action) -> Void
 
     var body: some View {
         RodiModalBackground {
             RodiDialog {
                 VStack(spacing: 0) {
-                    Text("‘\(target?.placeName ?? "")’")
+                    Text("‘\(state.target?.placeName ?? "")’")
                         .rodiTypography(.body1SemiBold)
                         .foregroundStyle(RodiColor.primary)
                     
@@ -33,7 +32,7 @@ struct ReviewPromptView: View {
                             send(.visitedTapped)
                         }
                     }
-                    .disabled(isSubmittingVisit)
+                    .disabled(state.isSubmittingVisit)
                     .padding(.top, 24)
                 }
             } closeAction: {

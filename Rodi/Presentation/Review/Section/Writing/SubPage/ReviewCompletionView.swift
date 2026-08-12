@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ReviewCompletionView: View {
-    let send: (ReviewReducer.Action) -> Void
+    let send: (ReviewWritingReducer.Action) -> Void
 
     var body: some View {
         RodiModalBackground {

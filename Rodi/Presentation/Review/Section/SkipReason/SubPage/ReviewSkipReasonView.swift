@@ -3,8 +3,8 @@ import SwiftUI
 struct ReviewSkipReasonView: View {
     private static let detailFieldID = "review-skip-reason-detail"
 
-    let state: ReviewReducer.State
-    let send: (ReviewReducer.Action) -> Void
+    let state: ReviewSkipReasonReducer.State
+    let send: (ReviewSkipReasonReducer.Action) -> Void
 
     @FocusState private var isDetailFocused: Bool
 
@@ -52,9 +52,9 @@ struct ReviewSkipReasonView: View {
             if !isDetailFocused {
                 PrimaryBottomButton(
                     title: "완료",
-                    isEnabled: state.canSubmitSkipReason,
+                    isEnabled: state.canSubmit,
                     showsDivider: true,
-                    action: { send(.skipReasonSubmitTapped) }
+                    action: { send(.submitTapped) }
                 )
             }
         }
@@ -66,25 +66,27 @@ private extension ReviewSkipReasonView {
 
     @ViewBuilder
     var formContent: some View {
-        switch state.skipReasonFormState {
+        switch state.formState {
         case .idle, .loading:
             ProgressView()
                 .tint(RodiColor.primary)
                 .frame(maxWidth: .infinity, minHeight: 184)
 
         case .loaded(let form):
-            VStack(alignment: .leading, spacing: 16) {
-                ForEach(form.options) { option in
-                    RodiRadioOption(
-                        title: option.label,
-                        isSelected: state.selectedSkipReason?.code == option.code,
-                        action: { send(.skipReasonSelected(option)) }
-                    )
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(form.options) { option in
+                        RodiRadioOption(
+                            title: option.label,
+                            isSelected: state.selectedReason?.code == option.code,
+                            action: { send(.reasonSelected(option)) }
+                        )
+                    }
                 }
 
-                if let selectedSkipReason = state.selectedSkipReason,
-                   selectedSkipReason.requiresTextInput {
-                    detailField(for: selectedSkipReason)
+                if let selectedReason = state.selectedReason,
+                   selectedReason.requiresTextInput {
+                    detailField(for: selectedReason)
                         .padding(.top, 4)
                         .id(Self.detailFieldID)
                 }
@@ -97,7 +99,7 @@ private extension ReviewSkipReasonView {
                     .foregroundStyle(RodiColor.gray600)
 
                 Button {
-                    send(.skipReasonFormRetryTapped)
+                    send(.retryTapped)
                 } label: {
                     Text("다시 시도")
                         .rodiTypography(.buttonMedium)
@@ -114,7 +116,7 @@ private extension ReviewSkipReasonView {
             RodiTextField(
                 text: detailBinding,
                 placeholder: option.textInputPlaceholder ?? "이유를 작성해주세요",
-                characterLimit: ReviewSkipReasonDetailConfiguration.characterLimit,
+                characterLimit: state.detailCharacterLimit,
                 isFocused: $isDetailFocused
             )
             .padding(.vertical, 14)
@@ -124,19 +126,14 @@ private extension ReviewSkipReasonView {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(isDetailFocused ? RodiColor.gray850 : RodiColor.gray300, lineWidth: 1)
             }
-
-            Text("\(state.skipReasonDetail.count) / \(ReviewSkipReasonDetailConfiguration.characterLimit)")
-                .rodiTypography(.body3Medium)
-                .foregroundStyle(RodiColor.gray600)
-                .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(.bottom, 48)
     }
 
     var detailBinding: Binding<String> {
         Binding(
-            get: { state.skipReasonDetail },
-            set: { send(.skipReasonDetailChanged($0)) }
+            get: { state.detail },
+            set: { send(.detailChanged($0)) }
         )
     }
 

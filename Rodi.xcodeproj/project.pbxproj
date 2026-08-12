@@ -18,6 +18,7 @@
 		04CA50632FF8E665003FCF19 /* RxRelay in Frameworks */ = {isa = PBXBuildFile; productRef = 04CA50622FF8E665003FCF19 /* RxRelay */; };
 		04CA50652FF8E665003FCF19 /* RxSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 04CA50642FF8E665003FCF19 /* RxSwift */; };
 		04CA50682FF8E67A003FCF19 /* NSObject-Rx in Frameworks */ = {isa = PBXBuildFile; productRef = 04CA50672FF8E67A003FCF19 /* NSObject-Rx */; };
+		A1B200000000000000000001 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B200000000000000000002 /* XCTest.framework */; };
 		C1A000000000000000001001 /* Clarity in Frameworks */ = {isa = PBXBuildFile; productRef = C1A000000000000000003001 /* Clarity */; };
 		F1B000000000000000001001 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = F1B000000000000000003001 /* FirebaseCore */; };
 		F1B000000000000000001002 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = F1B000000000000000003002 /* FirebaseAnalytics */; };
@@ -25,18 +26,35 @@
 		F1B000000000000000001004 /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = F1B000000000000000003004 /* FirebasePerformance */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		A1B200000000000000000006 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 042A22BE2FEE58B100DB67F4 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 042A22C52FEE58B100DB67F4;
+			remoteInfo = Rodi;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		042A22C62FEE58B100DB67F4 /* Rodi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rodi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		045DE9782FEFA1000060C89A /* Secrets.example.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.example.xcconfig; sourceTree = "<group>"; };
 		045DE9792FEFA1000060C89A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		05E100012F00000100E00001 /* Dev.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Dev.xcconfig; sourceTree = "<group>"; };
 		05E100022F00000100E00001 /* Prod.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Prod.xcconfig; sourceTree = "<group>"; };
+		A1B200000000000000000002 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
+		A1B200000000000000000003 /* RodiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RodiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		042A22C82FEE58B100DB67F4 /* Rodi */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Rodi;
+			sourceTree = "<group>";
+		};
+		A1B200000000000000000004 /* RodiTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = RodiTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -65,6 +83,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A1B200000000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B200000000000000000001 /* XCTest.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -73,7 +99,9 @@
 			children = (
 				045DE97A2FEFA1000060C89A /* Config */,
 				042A22C82FEE58B100DB67F4 /* Rodi */,
+				A1B200000000000000000004 /* RodiTests */,
 				042A22C72FEE58B100DB67F4 /* Products */,
+				04B8EF4E302C175F00AC449D /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -81,6 +109,7 @@
 			isa = PBXGroup;
 			children = (
 				042A22C62FEE58B100DB67F4 /* Rodi.app */,
+				A1B200000000000000000003 /* RodiTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -94,6 +123,14 @@
 				045DE9782FEFA1000060C89A /* Secrets.example.xcconfig */,
 			);
 			path = Config;
+			sourceTree = "<group>";
+		};
+		04B8EF4E302C175F00AC449D /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				A1B200000000000000000002 /* XCTest.framework */,
+			);
+			name = "Recovered References";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -139,6 +176,26 @@
 			productName = Rodi;
 			productReference = 042A22C62FEE58B100DB67F4 /* Rodi.app */;
 			productType = "com.apple.product-type.application";
+		};
+		A1B200000000000000000007 /* RodiTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1B200000000000000000008 /* Build configuration list for PBXNativeTarget "RodiTests" */;
+			buildPhases = (
+				A1B200000000000000000009 /* Sources */,
+				A1B200000000000000000005 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A1B200000000000000000010 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A1B200000000000000000004 /* RodiTests */,
+			);
+			name = RodiTests;
+			productName = RodiTests;
+			productReference = A1B200000000000000000003 /* RodiTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -188,6 +245,7 @@
 			projectRoot = "";
 			targets = (
 				042A22C52FEE58B100DB67F4 /* Rodi */,
+				A1B200000000000000000007 /* RodiTests */,
 			);
 		};
 /* End PBXProject section */
@@ -258,7 +316,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A1B200000000000000000009 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A1B200000000000000000010 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 042A22C52FEE58B100DB67F4 /* Rodi */;
+			targetProxy = A1B200000000000000000006 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		042A22CF2FEE58B200DB67F4 /* Debug */ = {
@@ -460,6 +533,38 @@
 			};
 			name = Release;
 		};
+		A1B200000000000000000011 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dororong.rodi.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Rodi.app/Rodi";
+			};
+			name = Debug;
+		};
+		A1B200000000000000000012 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dororong.rodi.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Rodi.app/Rodi";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -477,6 +582,15 @@
 			buildConfigurations = (
 				042A22D22FEE58B200DB67F4 /* Debug */,
 				042A22D32FEE58B200DB67F4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1B200000000000000000008 /* Build configuration list for PBXNativeTarget "RodiTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1B200000000000000000011 /* Debug */,
+				A1B200000000000000000012 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

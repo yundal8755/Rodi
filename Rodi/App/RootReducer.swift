@@ -16,7 +16,8 @@ struct RootReducer: Reducer {
         var isRestoringSession = false
         var review = ReviewReducer.State()
         var reviewSnackbarMessage: String?
-        var reviewReturnToHomeRequestID = 0
+        var reviewEntrySource: ReviewFlowEntrySource?
+        var homeReviewFlowFinishedRequestID = 0
         var pendingPracticeReturnPrompt: PracticeReturnPrompt?
     }
 
@@ -27,7 +28,7 @@ struct RootReducer: Reducer {
         case appVersionUpdateDismissed
         case sessionRestoreCompleted(SessionRestoreResult)
         case debugReviewTestRequested
-        case reviewRequested(ReviewWriteRequest)
+        case reviewRequested(ReviewFlowRequest)
         case review(ReviewReducer.Action)
         case reviewSnackbarDismissed(String)
     }
@@ -61,10 +62,15 @@ struct RootReducer: Reducer {
         self.authRepository = authRepository
         self.practiceReturnPromptStore = practiceReturnPromptStore
         reviewReducer = ReviewReducer(
-            reviewService: ReviewService(
+            promptService: ReviewPromptService(
                 placeRepository: placeRepository,
-                practiceRepository: practiceRepository,
+                practiceRepository: practiceRepository
+            ),
+            writingService: ReviewWritingService(
                 reviewRepository: reviewRepository
+            ),
+            skipReasonService: ReviewSkipReasonService(
+                practiceRepository: practiceRepository
             )
         )
     }
@@ -103,13 +109,17 @@ extension RootReducer {
 
         case .debugReviewTestRequested:
             #if DEBUG
+            guard state.review.route == .hidden else { return .none }
+            state.reviewEntrySource = .home
             return .send(.review(.debugPromptRequested))
             #else
             return .none
             #endif
 
         case .reviewRequested(let request):
-            return .send(.review(.directWritingRequested(request)))
+            guard state.review.route == .hidden else { return .none }
+            state.reviewEntrySource = request.entrySource
+            return .send(.review(.directWritingRequested(request.writeRequest)))
 
         case .review(let action):
             removePracticeReturnPromptIfNeeded(for: action, state: &state)
@@ -180,7 +190,7 @@ extension RootReducer {
     }
 
     private func preparePracticeReturnPromptIfNeeded(state: inout State) -> Action? {
-        guard state.review.presentation == .hidden,
+        guard state.review.route == .hidden,
               state.pendingPracticeReturnPrompt == nil,
               let prompt = practiceReturnPromptStore.load()
         else {
@@ -188,6 +198,7 @@ extension RootReducer {
         }
 
         state.pendingPracticeReturnPrompt = prompt
+        state.reviewEntrySource = .home
         return .review(.promptRequested(placeID: prompt.placeID, placeName: prompt.placeName))
     }
 
@@ -195,14 +206,14 @@ extension RootReducer {
         for action: ReviewReducer.Action,
         state: inout State
     ) {
-        guard state.review.presentation == .prompt,
+        guard state.review.route == .prompt,
               let prompt = state.pendingPracticeReturnPrompt
         else {
             return
         }
 
         switch action {
-        case .closeTapped, .notVisitedTapped, .visitedTapped:
+        case .prompt(.closeTapped), .prompt(.notVisitedTapped), .prompt(.visitedTapped):
             practiceReturnPromptStore.remove(prompt)
             state.pendingPracticeReturnPrompt = nil
         default:
@@ -215,10 +226,12 @@ extension RootReducer {
         state: inout State
     ) -> Effect<Action> {
         switch delegate {
-        case .finished(let returnToHome):
+        case .finished:
+            let entrySource = state.reviewEntrySource
             state.review = .init()
-            if returnToHome {
-                state.reviewReturnToHomeRequestID += 1
+            state.reviewEntrySource = nil
+            if entrySource == .home {
+                state.homeReviewFlowFinishedRequestID += 1
             }
             return .none
 

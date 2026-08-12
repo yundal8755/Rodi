@@ -122,7 +122,7 @@ extension RootView {
                 requestLogin: appRouter.requireLogin,
                 onLogoutCompleted: appRouter.completeLogout,
                 homeTabSelectionRequestID: appRouter.homeTabSelectionRequestID,
-                reviewReturnToHomeRequestID: store.state.reviewReturnToHomeRequestID,
+                homeReviewFlowFinishedRequestID: store.state.homeReviewFlowFinishedRequestID,
                 onReviewTestRequested: { store.send(.debugReviewTestRequested) },
                 onReviewRequested: { store.send(.reviewRequested($0)) },
                 dependencies: dependencies

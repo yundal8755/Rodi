@@ -1,19 +1,10 @@
 import Foundation
 
-enum ReviewSkipReasonDetailConfiguration {
-    static let characterLimit = 30
-}
-
-enum ReviewPresentation: Equatable {
+enum ReviewFlowRoute: Equatable {
     case hidden
-    case preparing
     case prompt
-    case formPage1
-    case formPage2
-    case skipReasonForm
-    case discardConfirmation
-    case completion
-    case skipReasonCompletion
+    case writing
+    case skipReason
 }
 
 struct ReviewTarget: Equatable {
@@ -25,6 +16,23 @@ struct ReviewTarget: Equatable {
 struct ReviewWriteRequest: Equatable {
     let placeID: Int
     let placeName: String
+}
+
+enum ReviewFlowEntrySource: Equatable {
+    case home
+    case my
+}
+
+struct ReviewFlowRequest: Equatable {
+    let writeRequest: ReviewWriteRequest
+    let entrySource: ReviewFlowEntrySource
+}
+
+/// Review feature effects keep a user-facing failure message without exposing
+/// transport types to presentation state.
+enum ReviewRequestResult<Value> {
+    case success(Value)
+    case failure(String)
 }
 
 enum ReviewTargetPreparationError: Error {
@@ -46,36 +54,4 @@ enum ReviewTargetPreparationError: Error {
             error
         }
     }
-}
-
-enum ReviewTargetPreparationResult {
-    case success(ReviewTarget)
-    case failure(String)
-}
-
-enum ReviewVisitResult {
-    case success
-    case failure(String)
-}
-
-enum ReviewSubmissionResult {
-    case success
-    case failure(String)
-}
-
-enum ReviewSkipReasonFormState: Equatable {
-    case idle
-    case loading
-    case loaded(PracticeSkipReasonForm)
-    case failed
-}
-
-enum ReviewSkipReasonFormResult {
-    case success(PracticeSkipReasonForm)
-    case failure(String)
-}
-
-enum ReviewSkipReasonSubmissionResult {
-    case success
-    case failure(String)
 }

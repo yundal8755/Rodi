@@ -1,7 +1,9 @@
 import SwiftUI
 
-struct ReviewDiscardConfirmationView: View {
-    let send: (ReviewReducer.Action) -> Void
+struct ReviewDiscardConfirmationView<Action>: View {
+    let send: (Action) -> Void
+    let confirmAction: Action
+    let cancelAction: Action
 
     var body: some View {
         RodiModalBackground {
@@ -20,10 +22,10 @@ struct ReviewDiscardConfirmationView: View {
                     }
                 HStack(spacing: 8) {
                     ReviewDialogButton(title: "나가기", isPrimary: false) {
-                        send(.discardConfirmed)
+                        send(confirmAction)
                     }
                     ReviewDialogButton(title: "계속 작성", isPrimary: true) {
-                        send(.discardCancelled)
+                        send(cancelAction)
                     }
                 }
                 .padding(.top, 24)
