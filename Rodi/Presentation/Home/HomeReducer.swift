@@ -33,6 +33,8 @@ struct HomeReducer: Reducer {
 
         // MARK: User location
         var locationState: LocationState = .idle
+        var locationAuthorizationState: LocationAuthorizationState = .notDetermined
+        var hasCompletedInitialLocationResolution = false
         var userLocation: RodiCoordinate?
         var userHeadingDegrees: Double?
 
@@ -72,6 +74,7 @@ struct HomeReducer: Reducer {
     enum MapAction {
         case tabSelectionChanged(Bool)
         case activityChanged(Bool)
+        case locationAuthorizationRefreshRequested
         case becameReady
         case viewportChanged(
             center: RodiCoordinate,
@@ -175,6 +178,39 @@ extension HomeReducer {
             let wasMapInteractive = map.isMapInteractive
             map.isAppActive = isActive
             return updateMapVisibility(wasMapInteractive: wasMapInteractive, state: &map)
+
+        case .locationAuthorizationRefreshRequested:
+            let authorizationState = mapService.locationAuthorizationState
+            map.locationAuthorizationState = authorizationState
+
+            switch authorizationState {
+            case .authorized:
+                state.presentation.isLocationSettingsAlertPresented = false
+                guard map.mapLifecycle == .ready,
+                      map.userLocation == nil,
+                      map.locationState != .requesting
+                else {
+                    return .none
+                }
+                map.locationState = .requesting
+                let source: LocationRequestSource = map.hasCompletedInitialLocationResolution
+                    ? .foregroundRefresh
+                    : .initial
+                return mapServiceEffect(.requestCurrentLocation(source: source))
+
+            case .denied, .restricted:
+                map.locationState = .unavailable
+                map.hasCompletedInitialLocationResolution = true
+                map.userLocation = nil
+                map.userHeadingDegrees = nil
+                return .cancel(id: CancellationID.userHeadingUpdates)
+
+            case .notDetermined:
+                if map.userLocation == nil, map.locationState == .unavailable {
+                    map.locationState = .idle
+                }
+                return .none
+            }
 
         case .becameReady:
             guard map.mapLifecycle == .activating else { return .none }
@@ -343,6 +379,7 @@ extension HomeReducer {
             else {
                 return .none
             }
+            map.locationAuthorizationState = mapService.locationAuthorizationState
             map.locationState = .requesting
             return mapServiceEffect(.requestCurrentLocation(source: .initial))
 
@@ -502,19 +539,26 @@ extension HomeReducer {
         _ output: MapServiceOutAction, map: inout MapState, presentation: inout PresentationState
     ) -> Effect<Action> {
         switch output {
-        case .currentLocationResolved(let coordinate):
+        case let .currentLocationResolved(coordinate, source):
             guard map.locationState == .requesting else { return .none }
+            map.locationAuthorizationState = .authorized
             map.locationState = .resolved
+            map.hasCompletedInitialLocationResolution = true
             map.userLocation = coordinate
-            map.cameraTarget = coordinate
-            map.cameraFocus = .currentLocation
-            map.cameraRequestID += 1
-            map.animatedCameraRequestID = nil
+
+            if source != .foregroundRefresh {
+                map.cameraTarget = coordinate
+                map.cameraFocus = .currentLocation
+                map.cameraRequestID += 1
+                map.animatedCameraRequestID = nil
+            }
             return userHeadingUpdatesEffect(origin: coordinate)
 
         case .currentLocationUnavailable(let source):
             guard map.locationState == .requesting else { return .none }
+            map.locationAuthorizationState = mapService.locationAuthorizationState
             map.locationState = .unavailable
+            map.hasCompletedInitialLocationResolution = true
             if source == .userInitiated {
                 presentation.pendingSnackbar = ToastStruct(
                     message: "현재 위치를 확인할 수 없어요. 다시 시도해주세요.",
@@ -523,9 +567,13 @@ extension HomeReducer {
             }
             return .none
 
-        case .currentLocationPermissionDenied(let source):
+        case let .currentLocationPermissionDenied(source, authorizationState):
             guard map.locationState == .requesting else { return .none }
+            map.locationAuthorizationState = authorizationState
             map.locationState = .unavailable
+            map.hasCompletedInitialLocationResolution = true
+            map.userLocation = nil
+            map.userHeadingDegrees = nil
             if source == .userInitiated {
                 resetToKoreaOverview(&map)
                 presentation.isLocationSettingsAlertPresented = true

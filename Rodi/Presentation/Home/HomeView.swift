@@ -79,7 +79,7 @@ struct HomeView: View {
         }
             .onAppear {
                 store.send(.map(.tabSelectionChanged(isHomeTabSelected)))
-                store.send(.map(.activityChanged(scenePhase == .active)))
+                handleScenePhase(scenePhase)
                 onBottomTabBarVisibilityChanged(store.state.presentation.isBottomTabBarVisible)
                 handleListPresentationRequest(listPresentationRequestID)
                 handlePlaceSelection(placeSelectionRequest)
@@ -119,7 +119,7 @@ struct HomeView: View {
                 store.send(.map(.tabSelectionChanged(isSelected)))
             }
             .onChange(of: scenePhase) { phase in
-                store.send(.map(.activityChanged(phase == .active)))
+                handleScenePhase(phase)
             }
             .onChange(of: listPresentationRequestID) { requestID in
                 handleListPresentationRequest(requestID)
@@ -195,7 +195,7 @@ extension HomeView {
                     state: store.state.bottomSheet,
                     send: { store.send(.bottomSheet($0)) },
                     userLocation: store.state.map.userLocation,
-                    hasLocationPermission: store.state.map.locationState == .resolved,
+                    hasLocationPermission: store.state.map.locationAuthorizationState == .authorized,
                     bottomTabBarHeight: bottomTabBarHeight,
                     courseSheetResetRequestID: courseSheetResetRequestID,
                     onCourseDetailHeightChanged: { height in
@@ -254,7 +254,7 @@ extension HomeView {
                     state: store.state.bottomSheet.courseDetail,
                     send: { store.send(.bottomSheet(.courseDetail($0))) },
                     userLocation: store.state.map.userLocation,
-                    hasLocationPermission: store.state.map.locationState == .resolved,
+                    hasLocationPermission: store.state.map.locationAuthorizationState == .authorized,
                     requestLocationPermission: {
                         store.send(.presentation(.setLocationSettingsAlertPresented(true)))
                     },
@@ -322,6 +322,12 @@ extension HomeView {
             coordinator.router.popToRoot(animated: false)
         }
     }
+
+    private func handleScenePhase(_ phase: ScenePhase) {
+        store.send(.map(.activityChanged(phase == .active)))
+        guard phase == .active else { return }
+        store.send(.map(.locationAuthorizationRefreshRequested))
+    }
 }
 
 
@@ -334,12 +340,11 @@ extension HomeView {
 
     private var isInitialMapPresentationReady: Bool {
         let map = store.state.map
-        let hasResolvedInitialLocation = map.locationState == .resolved || map.locationState == .unavailable
         let hasRenderedMarkers = map.markerState == .failed
             || (map.markerState == .loaded && map.hasCompletedInitialMarkerRendering)
 
         return map.mapLifecycle == .ready
-            && hasResolvedInitialLocation
+            && map.hasCompletedInitialLocationResolution
             && hasRenderedMarkers
     }
 

@@ -36,11 +36,11 @@ struct RodiApp: App {
         .onChange(of: scenePhase) { newValue in
             switch newValue {
             case .background:
-                //
+                break
             case .inactive:
-                //
+                break
             case .active:
-                //
+                break
             @unknown default:
                 fatalError()
             }
