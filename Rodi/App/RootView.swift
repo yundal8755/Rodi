@@ -62,11 +62,13 @@ struct RootView: View {
                 .transition(.opacity)
             }
 
-            ReviewFlowView(
-                state: store.state.review,
-                send: { store.send(.review($0)) }
-            )
-            .zIndex(2)
+            if store.state.reviewEntrySource != .courseDetail {
+                ReviewFlowView(
+                    state: store.state.review,
+                    send: { store.send(.review($0)) }
+                )
+                .zIndex(2)
+            }
 
         }
         .rodiSnackbar(message: store.state.reviewSnackbarMessage)
@@ -127,6 +129,11 @@ extension RootView {
                 myPostsReviewFlowFinishedRequestID: store.state.myPostsReviewFlowFinishedRequestID,
                 onReviewTestRequested: { store.send(.debugReviewTestRequested) },
                 onReviewRequested: { store.send(.reviewRequested($0)) },
+                reviewState: store.state.review,
+                reviewSnackbarMessage: store.state.reviewSnackbarMessage,
+                isCourseDetailReviewPresented: store.state.reviewEntrySource == .courseDetail
+                    && store.state.review.route != .hidden,
+                sendReview: { store.send(.review($0)) },
                 dependencies: dependencies
             )
         }

@@ -20,6 +20,7 @@ struct ReviewWriteRequest: Equatable {
 
 enum ReviewFlowEntrySource: Equatable {
     case home
+    case courseDetail
     case my
     case myPosts
 }

@@ -50,6 +50,22 @@ struct HomeBottomSheetView: View {
     }
 
     var body: some View {
+        sheetContainer
+            .ignoresSafeArea(edges: .bottom)
+        .onAppear(perform: reportVisibleHeight)
+        .onChange(of: state.route) { _ in
+            reportVisibleHeight()
+        }
+        .onChange(of: state.recommendList.presentation) { _ in
+            reportVisibleHeight()
+        }
+        .onChange(of: state.courseDetail.presentation) { _ in
+            reportVisibleHeight()
+        }
+        .onDisappear(perform: cancelSettlement)
+    }
+
+    private var sheetContainer: some View {
         ZStack(alignment: .bottom) {
             if isRecommendationCollapsed {
                 HomeListButton(action: presentRecommendationList)
@@ -65,18 +81,6 @@ struct HomeBottomSheetView: View {
 
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .ignoresSafeArea(edges: .bottom)
-        .onAppear(perform: reportVisibleHeight)
-        .onChange(of: state.route) { _ in
-            reportVisibleHeight()
-        }
-        .onChange(of: state.recommendList.presentation) { _ in
-            reportVisibleHeight()
-        }
-        .onChange(of: state.courseDetail.presentation) { _ in
-            reportVisibleHeight()
-        }
-        .onDisappear(perform: cancelSettlement)
     }
 }
 
@@ -269,7 +273,7 @@ extension HomeBottomSheetView {
     private var courseDetailSheet: some View {
         Group {
             if state.courseDetail.presentation == .expandedDetail {
-                expandedCourseDetailSheet
+                Color.clear
             } else {
                 VStack(spacing: 0) {
                     dragHandle(
@@ -310,25 +314,6 @@ extension HomeBottomSheetView {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-    }
-
-    private var expandedCourseDetailSheet: some View {
-        VStack(spacing: 0) {
-            CourseDetailBottomSheetView(
-                state: state.courseDetail,
-                send: handleCourseDetailAction,
-                userLocation: userLocation,
-                hasLocationPermission: hasLocationPermission,
-                requestLocationPermission: requestLocationPermission,
-                renderingMode: .expanded,
-                expandedBackAction: { send(.courseDetail(.collapseRequested)) }
-            )
-        }
-        .padding(.top, screenSafeAreaInsets.top)
-        .padding(.bottom, screenSafeAreaInsets.bottom)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(RodiColor.white)
-        .ignoresSafeArea()
     }
 
     private func fixedSheet<Content: View>(
@@ -396,6 +381,8 @@ extension HomeBottomSheetView {
         onEnded: @escaping (CGFloat) -> Void
     ) -> some View {
         dragIndicator
+            .frame(maxWidth: .infinity)
+            .frame(height: 24, alignment: .top)
             .contentShape(Rectangle())
             .overlay {
                 BottomSheetPanGestureView(
@@ -581,7 +568,7 @@ extension HomeBottomSheetView {
 
         case .expanded:
             targetHeight = screenHeight
-            duration = 0.24
+            duration = 0
         }
 
         beginSettlement(

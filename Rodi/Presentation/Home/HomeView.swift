@@ -28,6 +28,10 @@ struct HomeView: View {
     private let onPlaceSelectionHandled: (Int) -> Void
     private let reviewFlowFinishedRequestID: Int
     private let onReviewRequested: (ReviewWriteRequest) -> Void
+    private let courseDetailReviewState: ReviewReducer.State
+    private let courseDetailReviewSnackbarMessage: String?
+    private let isCourseDetailReviewPresented: Bool
+    private let sendCourseDetailReview: (ReviewReducer.Action) -> Void
     private let bottomTabBarHeight: CGFloat
     private let dependencies: AppDependencies
 
@@ -40,6 +44,10 @@ struct HomeView: View {
         onPlaceSelectionHandled: @escaping (Int) -> Void = { _ in },
         reviewFlowFinishedRequestID: Int = 0,
         onReviewRequested: @escaping (ReviewWriteRequest) -> Void = { _ in },
+        courseDetailReviewState: ReviewReducer.State = .init(),
+        courseDetailReviewSnackbarMessage: String? = nil,
+        isCourseDetailReviewPresented: Bool = false,
+        sendCourseDetailReview: @escaping (ReviewReducer.Action) -> Void = { _ in },
         bottomTabBarHeight: CGFloat,
         dependencies: AppDependencies
     ) {
@@ -51,6 +59,10 @@ struct HomeView: View {
         self.onPlaceSelectionHandled = onPlaceSelectionHandled
         self.reviewFlowFinishedRequestID = reviewFlowFinishedRequestID
         self.onReviewRequested = onReviewRequested
+        self.courseDetailReviewState = courseDetailReviewState
+        self.courseDetailReviewSnackbarMessage = courseDetailReviewSnackbarMessage
+        self.isCourseDetailReviewPresented = isCourseDetailReviewPresented
+        self.sendCourseDetailReview = sendCourseDetailReview
         self.bottomTabBarHeight = bottomTabBarHeight
         self.dependencies = dependencies
 
@@ -102,6 +114,33 @@ struct HomeView: View {
                         state: store.state.search,
                         send: { store.send(.search($0)) }
                     )
+                }
+            }
+            .fullScreenCover(
+                isPresented: courseDetailExpandedPresentationBinding,
+                onDismiss: handleCourseDetailExpandedPresentationDismissed
+            ) {
+                CourseDetailBottomSheetView(
+                    state: store.state.bottomSheet.courseDetail,
+                    send: { store.send(.bottomSheet(.courseDetail($0))) },
+                    userLocation: store.state.map.userLocation,
+                    hasLocationPermission: store.state.map.locationAuthorizationState == .authorized,
+                    requestLocationPermission: {
+                        store.send(.presentation(.setLocationSettingsAlertPresented(true)))
+                    },
+                    renderingMode: .expanded,
+                    expandedBackAction: {
+                        store.send(.bottomSheet(.courseDetail(.collapseRequested)))
+                    }
+                )
+                .interactiveDismissDisabled()
+                .fullScreenCover(isPresented: courseDetailReviewPresentationBinding) {
+                    ReviewFlowView(
+                        state: courseDetailReviewState,
+                        send: sendCourseDetailReview
+                    )
+                    .rodiSnackbar(message: courseDetailReviewSnackbarMessage)
+                    .interactiveDismissDisabled()
                 }
             }
             .onChange(of: isHomeTabSelected) { isSelected in
@@ -567,5 +606,32 @@ extension HomeView {
                 }
             }
         )
+    }
+
+    private var courseDetailExpandedPresentationBinding: Binding<Bool> {
+        Binding(
+            get: { isCourseDetailExpandedPresentation },
+            set: { isPresented in
+                guard !isPresented else { return }
+                store.send(.bottomSheet(.courseDetail(.collapseRequested)))
+            }
+        )
+    }
+
+    private var courseDetailReviewPresentationBinding: Binding<Bool> {
+        Binding(
+            get: { isCourseDetailReviewPresented },
+            set: { _ in }
+        )
+    }
+
+    private func handleCourseDetailExpandedPresentationDismissed() {
+        guard store.state.bottomSheet.courseDetail.presentation == .expandedDetail else { return }
+        store.send(.bottomSheet(.courseDetail(.collapseRequested)))
+    }
+
+    private var isCourseDetailExpandedPresentation: Bool {
+        store.state.bottomSheet.route == .courseDetail
+            && store.state.bottomSheet.courseDetail.presentation == .expandedDetail
     }
 }
