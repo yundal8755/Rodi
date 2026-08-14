@@ -21,11 +21,27 @@ struct ReviewWriteRequest: Equatable {
 enum ReviewFlowEntrySource: Equatable {
     case home
     case my
+    case myPosts
 }
 
 struct ReviewFlowRequest: Equatable {
-    let writeRequest: ReviewWriteRequest
+    enum Entry: Equatable {
+        case writing(ReviewWriteRequest)
+        case editing(reviewID: Int)
+    }
+
+    let entry: Entry
     let entrySource: ReviewFlowEntrySource
+
+    init(writeRequest: ReviewWriteRequest, entrySource: ReviewFlowEntrySource) {
+        entry = .writing(writeRequest)
+        self.entrySource = entrySource
+    }
+
+    init(editingReviewID: Int, entrySource: ReviewFlowEntrySource) {
+        entry = .editing(reviewID: editingReviewID)
+        self.entrySource = entrySource
+    }
 }
 
 /// Review feature effects keep a user-facing failure message without exposing

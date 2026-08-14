@@ -12,10 +12,14 @@ struct MyView: View {
     @StateObject private var store: StoreOf<MyReducer>
 
     let isMyTabSelected: Bool
+    let dataRefreshRequestID: Int
     let navigate: (MainTabIntent) -> Void
     let onLogoutCompleted: () -> Void
     let onReviewTestRequested: () -> Void
     let onReviewRequested: (ReviewWriteRequest) -> Void
+    let onReviewEditRequested: (Int) -> Void
+    let myPracticeRecordsReviewFlowFinishedRequestID: Int
+    let myPostsReviewFlowFinishedRequestID: Int
     private let memberRepository: MemberRepository
     private let placeRepository: PlaceRepository
     private let practiceRepository: PracticeRepository
@@ -25,18 +29,26 @@ struct MyView: View {
     init(
         coordinator: Coordinator<MyRoute>,
         isMyTabSelected: Bool,
+        dataRefreshRequestID: Int,
         navigate: @escaping (MainTabIntent) -> Void,
         onLogoutCompleted: @escaping () -> Void,
         onReviewTestRequested: @escaping () -> Void,
         onReviewRequested: @escaping (ReviewWriteRequest) -> Void,
+        onReviewEditRequested: @escaping (Int) -> Void,
+        myPracticeRecordsReviewFlowFinishedRequestID: Int,
+        myPostsReviewFlowFinishedRequestID: Int,
         dependencies: AppDependencies
     ) {
         self.coordinator = coordinator
         self.isMyTabSelected = isMyTabSelected
+        self.dataRefreshRequestID = dataRefreshRequestID
         self.navigate = navigate
         self.onLogoutCompleted = onLogoutCompleted
         self.onReviewTestRequested = onReviewTestRequested
         self.onReviewRequested = onReviewRequested
+        self.onReviewEditRequested = onReviewEditRequested
+        self.myPracticeRecordsReviewFlowFinishedRequestID = myPracticeRecordsReviewFlowFinishedRequestID
+        self.myPostsReviewFlowFinishedRequestID = myPostsReviewFlowFinishedRequestID
         _store = StateObject(
             wrappedValue: Store(
                 state: MyReducer.State(),
@@ -44,7 +56,8 @@ struct MyView: View {
                     authRepository: dependencies.authRepository,
                     memberRepository: dependencies.memberRepository,
                     practiceRepository: dependencies.practiceRepository,
-                    recentLoginProviderStore: dependencies.recentLoginProviderStore
+                    recentLoginProviderStore: dependencies.recentLoginProviderStore,
+                    levelUpPresentationStore: dependencies.levelUpPresentationStore
                 )
             )
         )
@@ -73,7 +86,9 @@ struct MyView: View {
                 practiceRecordErrorMessage: store.state.practiceRecordErrorMessage,
                 retryPracticeRecords: { store.send(.retryPracticeRecordsTapped) },
                 reviewRequested: onReviewRequested,
-                reviewTestAction: onReviewTestRequested
+                reviewTestAction: onReviewTestRequested,
+                pendingLevelUp: store.state.pendingLevelUp,
+                confirmLevelUp: { store.send(.levelUpDialogConfirmed) }
             )
             .navigationDestination(for: MyRoute.self) { route in
                     destinationView(for: route)
@@ -85,8 +100,8 @@ struct MyView: View {
             }
         }
         .rodiSnackbar(message: store.state.snackbarMessage)
-        .task(id: isMyTabSelected) {
-            guard isMyTabSelected else { return }
+        .task(id: dataRefreshRequestID) {
+            guard isMyTabSelected, dataRefreshRequestID > 0 else { return }
             store.send(.networkStatusChanged(networkConnectionMonitor.status))
             store.send(.appeared)
             store.send(.practiceRecordsAppeared)
@@ -99,6 +114,10 @@ struct MyView: View {
             guard requestID > 0 else { return }
             router.popToRoot()
             onLogoutCompleted()
+        }
+        .onChange(of: myPracticeRecordsReviewFlowFinishedRequestID) { requestID in
+            guard requestID > 0 else { return }
+            store.send(.practiceRecordsAppeared)
         }
         .clarityMask()
     }
@@ -144,7 +163,9 @@ private extension MyView {
             MyPostsView(
                 reviewRepository: reviewRepository,
                 backAction: { router.pop() },
-                openPracticeRecords: { router.push(.practiceRecords) }
+                openPracticeRecords: { router.push(.practiceRecords) },
+                reviewFlowFinishedRequestID: myPostsReviewFlowFinishedRequestID,
+                editRequested: onReviewEditRequested
             )
             
         case .permissions:

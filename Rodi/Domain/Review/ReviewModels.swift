@@ -95,6 +95,22 @@ struct PlaceReviewSubmission: Equatable {
     let caution: String?
 }
 
+struct ReviewDetail: Equatable {
+    let reviewID: Int
+    let placeID: Int
+    let placeName: String
+    let isRecommended: Bool
+    let difficulty: ReviewDifficulty
+    let congestion: ReviewCongestion
+    let practiceMethod: ReviewPracticeMethod
+    let content: String?
+    let caution: String?
+    let isEditable: Bool
+    let isHidden: Bool
+    let isVerifiedVisit: Bool
+    let createdAt: String
+}
+
 struct ReviewReportForm: Equatable {
     let title: String
     let description: String?

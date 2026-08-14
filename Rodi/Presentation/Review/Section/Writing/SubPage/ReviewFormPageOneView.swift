@@ -65,7 +65,7 @@ struct ReviewFormPageOneView: View {
             if !isCautionFocused {
                 PrimaryBottomButton(
                     title: "다음",
-                    isEnabled: state.draft.canProceedToSecondPage,
+                    isEnabled: state.canProceedToSecondPage,
                     showsDivider: true,
                     action: { send(.nextTapped) }
                 )

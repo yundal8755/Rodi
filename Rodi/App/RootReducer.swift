@@ -18,6 +18,8 @@ struct RootReducer: Reducer {
         var reviewSnackbarMessage: String?
         var reviewEntrySource: ReviewFlowEntrySource?
         var homeReviewFlowFinishedRequestID = 0
+        var myPracticeRecordsReviewFlowFinishedRequestID = 0
+        var myPostsReviewFlowFinishedRequestID = 0
         var pendingPracticeReturnPrompt: PracticeReturnPrompt?
     }
 
@@ -119,7 +121,12 @@ extension RootReducer {
         case .reviewRequested(let request):
             guard state.review.route == .hidden else { return .none }
             state.reviewEntrySource = request.entrySource
-            return .send(.review(.directWritingRequested(request.writeRequest)))
+            switch request.entry {
+            case .writing(let writeRequest):
+                return .send(.review(.directWritingRequested(writeRequest)))
+            case .editing(let reviewID):
+                return .send(.review(.editingRequested(reviewID: reviewID)))
+            }
 
         case .review(let action):
             removePracticeReturnPromptIfNeeded(for: action, state: &state)
@@ -233,9 +240,25 @@ extension RootReducer {
             if entrySource == .home {
                 state.homeReviewFlowFinishedRequestID += 1
             }
+            if entrySource == .my {
+                state.myPracticeRecordsReviewFlowFinishedRequestID += 1
+            }
+            if entrySource == .myPosts {
+                state.myPostsReviewFlowFinishedRequestID += 1
+            }
             return .none
 
         case .showSnackbar(let message):
+            state.reviewSnackbarMessage = message
+            return .run { send in
+                try? await Task.sleep(for: .seconds(3))
+                await send(.reviewSnackbarDismissed(message))
+            }
+            .cancelTask(id: EffectID.reviewSnackbar)
+
+        case .editingFailed(let message):
+            state.review = .init()
+            state.reviewEntrySource = nil
             state.reviewSnackbarMessage = message
             return .run { send in
                 try? await Task.sleep(for: .seconds(3))

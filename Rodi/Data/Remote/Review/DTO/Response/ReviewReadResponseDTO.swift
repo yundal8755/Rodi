@@ -1,5 +1,21 @@
 import Foundation
 
+struct ReviewDetailResponseDTO: Decodable {
+    let reviewId: Int64
+    let placeId: Int64
+    let placeName: String
+    let isRecommended: Bool
+    let difficulty: String
+    let congestion: String
+    let practiceMethod: String
+    let content: String?
+    let caution: String?
+    let isEditable: Bool
+    let isHidden: Bool
+    let isVerifiedVisit: Bool
+    let createdAt: String
+}
+
 struct ReviewSummaryResponseDTO: Decodable {
     let level: String?
     let levelReviewCount: Int64
@@ -28,7 +44,8 @@ struct ReviewItemResponseDTO: Decodable {
     let memberId: Int64
     let nickname: String?
     let practiceMethod: String
-    let content: String
+    // Swagger permits a null review body when the author submitted no optional content.
+    let content: String?
     let isMine: Bool
     let isEditable: Bool
     let isHidden: Bool

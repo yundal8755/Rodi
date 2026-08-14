@@ -17,6 +17,14 @@ final class ReviewRemoteDataSource {
         }
     }
 
+    func fetchDetail(reviewID: Int) async throws(NetworkError) -> ReviewDetailResponseDTO {
+        try await request(.detail(reviewID: reviewID), as: ReviewDetailResponseDTO.self)
+    }
+
+    func update(reviewID: Int, submission: PlaceReviewSubmission) async throws(NetworkError) {
+        try await empty(.update(reviewID: reviewID, request: .init(submission)))
+    }
+
     func fetchSummary(
         placeID: Int,
         level: ReviewLevelFilter

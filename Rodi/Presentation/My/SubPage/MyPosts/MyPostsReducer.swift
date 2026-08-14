@@ -20,6 +20,7 @@ struct MyPostsReducer: Reducer {
         var isDeleting = false
         var deleteErrorMessage: String?
         var snackbarMessage: String?
+        var pendingEditReviewID: Int?
     }
 
     enum Action {
@@ -33,6 +34,8 @@ struct MyPostsReducer: Reducer {
         case deleteCancelled
         case deleteConfirmed
         case deleteCompleted(DeleteResult, reviewID: Int)
+        case editRequested(reviewID: Int)
+        case editRequestHandled(reviewID: Int)
         case snackbarDismissed(String)
     }
 
@@ -142,6 +145,14 @@ extension MyPostsReducer {
             case .failure(let message):
                 state.deleteErrorMessage = message
             }
+
+        case .editRequested(let reviewID):
+            guard state.items.contains(where: { $0.id == reviewID }) else { return .none }
+            state.pendingEditReviewID = reviewID
+
+        case .editRequestHandled(let reviewID):
+            guard state.pendingEditReviewID == reviewID else { return .none }
+            state.pendingEditReviewID = nil
 
         case .snackbarDismissed(let message):
             guard state.snackbarMessage == message else { return .none }

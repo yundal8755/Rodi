@@ -4,11 +4,18 @@ struct ReviewWritingReducer: Reducer {
     struct State {
         enum Page: Equatable {
             case hidden
+            case loading
             case first
             case second
         }
 
+        enum Mode: Equatable {
+            case create
+            case edit(reviewID: Int)
+        }
+
         var page: Page = .hidden
+        var mode: Mode = .create
         var target: ReviewWriteRequest?
         var draft = ReviewDraft()
         var isSubmitting = false
@@ -18,6 +25,10 @@ struct ReviewWritingReducer: Reducer {
         var flowID = UUID()
         var requestID = 0
 
+        var canProceedToSecondPage: Bool {
+            draft.canProceedToSecondPage()
+        }
+
         var canSubmit: Bool {
             draft.practiceMethod != nil && !isSubmitting
         }
@@ -25,6 +36,8 @@ struct ReviewWritingReducer: Reducer {
 
     enum Action {
         case start(ReviewWriteRequest)
+        case editStarted(reviewID: Int)
+        case detailLoaded(ReviewRequestResult<ReviewDetail>, flowID: UUID, requestID: Int)
         case recommendationSelected(Bool)
         case difficultySelected(ReviewDifficulty)
         case congestionSelected(ReviewCongestion)
@@ -46,10 +59,12 @@ struct ReviewWritingReducer: Reducer {
 
     enum Delegate {
         case finished
+        case editingFailed(String)
         case showSnackbar(String)
     }
 
     private enum EffectID {
+        case detail
         case submission
         case completionDismissal
     }
@@ -67,7 +82,31 @@ extension ReviewWritingReducer {
     func reduce(_ state: inout State, with action: Action) -> Effect<Action> {
         switch action {
         case .start(let request):
-            state = .init(page: .first, target: request, requestID: state.requestID + 1)
+            state = .init(page: .first, mode: .create, target: request, requestID: state.requestID + 1)
+
+        case .editStarted(let reviewID):
+            state = .init(page: .loading, mode: .edit(reviewID: reviewID), requestID: state.requestID + 1)
+            return detailEffect(reviewID: reviewID, flowID: state.flowID, requestID: state.requestID)
+
+        case .detailLoaded(let result, let flowID, let requestID):
+            guard state.page == .loading,
+                  state.flowID == flowID,
+                  state.requestID == requestID
+            else {
+                return .none
+            }
+
+            switch result {
+            case .success(let detail):
+                guard case .edit(let reviewID) = state.mode, reviewID == detail.reviewID else {
+                    return .none
+                }
+                state.target = .init(placeID: detail.placeID, placeName: detail.placeName)
+                state.draft = .init(detail: detail)
+                state.page = .first
+            case .failure(let message):
+                return .send(.delegate(.editingFailed(message)))
+            }
 
         case .recommendationSelected(let value):
             guard state.page == .first else { return .none }
@@ -86,7 +125,7 @@ extension ReviewWritingReducer {
             state.draft.caution = value
 
         case .nextTapped:
-            guard state.page == .first, state.draft.canProceedToSecondPage else { return .none }
+            guard state.page == .first, state.canProceedToSecondPage else { return .none }
             state.page = .second
 
         case .backTapped:
@@ -127,7 +166,13 @@ extension ReviewWritingReducer {
             }
             state.isSubmitting = true
             state.requestID += 1
-            return submitEffect(placeID: target.placeID, submission: submission, flowID: state.flowID, requestID: state.requestID)
+            return submitEffect(
+                mode: state.mode,
+                placeID: target.placeID,
+                submission: submission,
+                flowID: state.flowID,
+                requestID: state.requestID
+            )
 
         case .submissionCompleted(let result, let flowID, let requestID):
             guard state.page == .second,
@@ -176,7 +221,25 @@ extension ReviewWritingReducer {
 // MARK: - Effect
 private extension ReviewWritingReducer {
 
+    func detailEffect(reviewID: Int, flowID: UUID, requestID: Int) -> Effect<Action> {
+        let service = service
+        return .run { send in
+            do {
+                let detail = try await service.fetchReviewDetail(reviewID: reviewID)
+                await send(.detailLoaded(.success(detail), flowID: flowID, requestID: requestID))
+            } catch is CancellationError {
+                return
+            } catch let error as NetworkError {
+                await send(.detailLoaded(.failure(Self.detailMessage(for: error)), flowID: flowID, requestID: requestID))
+            } catch {
+                await send(.detailLoaded(.failure("후기 상세를 불러오지 못했어요. 다시 시도해주세요."), flowID: flowID, requestID: requestID))
+            }
+        }
+        .cancelTask(id: EffectID.detail)
+    }
+
     func submitEffect(
+        mode: State.Mode,
         placeID: Int,
         submission: PlaceReviewSubmission,
         flowID: UUID,
@@ -185,14 +248,19 @@ private extension ReviewWritingReducer {
         let service = service
         return .run { send in
             do {
-                try await service.submitReview(placeID: placeID, submission: submission)
+                switch mode {
+                case .create:
+                    try await service.createReview(placeID: placeID, submission: submission)
+                case .edit(let reviewID):
+                    try await service.updateReview(reviewID: reviewID, submission: submission)
+                }
                 await send(.submissionCompleted(.success(()), flowID: flowID, requestID: requestID))
             } catch is CancellationError {
                 return
             } catch let error as NetworkError {
-                await send(.submissionCompleted(.failure(error.localizedDescription), flowID: flowID, requestID: requestID))
+                await send(.submissionCompleted(.failure(Self.submissionMessage(for: error, mode: mode)), flowID: flowID, requestID: requestID))
             } catch {
-                await send(.submissionCompleted(.failure("후기를 등록하지 못했어요. 다시 시도해주세요."), flowID: flowID, requestID: requestID))
+                await send(.submissionCompleted(.failure(Self.genericSubmissionMessage(for: mode)), flowID: flowID, requestID: requestID))
             }
         }
         .cancelTask(id: EffectID.submission)
@@ -203,12 +271,39 @@ private extension ReviewWritingReducer {
             do {
                 try await Task.sleep(for: .milliseconds(200))
                 await send(.completionDismissed(flowID: flowID, requestID: requestID))
-            } catch is CancellationError {
-                return
             } catch {
                 return
             }
         }
         .cancelTask(id: EffectID.completionDismissal)
+    }
+
+    static func detailMessage(for error: NetworkError) -> String {
+        if case .networkUnavailable = error {
+            return "인터넷 연결을 확인한 뒤 다시 시도해 주세요."
+        }
+        return "후기 상세를 불러오지 못했어요. 다시 시도해주세요."
+    }
+
+    static func submissionMessage(for error: NetworkError, mode: State.Mode) -> String {
+        if case .networkUnavailable = error {
+            return "인터넷 연결을 확인한 뒤 다시 시도해 주세요."
+        }
+
+        if case .apiError(_, let message, _) = error,
+           !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return message
+        }
+
+        return genericSubmissionMessage(for: mode)
+    }
+
+    static func genericSubmissionMessage(for mode: State.Mode) -> String {
+        switch mode {
+        case .create:
+            return "후기를 등록하지 못했어요. 다시 시도해주세요."
+        case .edit:
+            return "후기를 수정하지 못했어요. 다시 시도해주세요."
+        }
     }
 }

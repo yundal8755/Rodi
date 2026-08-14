@@ -47,6 +47,9 @@ private extension ReviewFlowView {
             switch state.writing.page {
             case .hidden:
                 EmptyView()
+            case .loading:
+                ProgressView()
+                    .tint(RodiColor.primary)
             case .first:
                 ReviewFormPageOneView(
                     state: state.writing,

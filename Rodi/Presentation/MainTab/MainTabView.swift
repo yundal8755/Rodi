@@ -19,6 +19,8 @@ struct MainTabView: View {
     let onLogoutCompleted: () -> Void
     let homeTabSelectionRequestID: Int
     let homeReviewFlowFinishedRequestID: Int
+    let myPracticeRecordsReviewFlowFinishedRequestID: Int
+    let myPostsReviewFlowFinishedRequestID: Int
     let onReviewTestRequested: () -> Void
     let onReviewRequested: (ReviewFlowRequest) -> Void
     private let dependencies: AppDependencies
@@ -29,6 +31,8 @@ struct MainTabView: View {
         onLogoutCompleted: @escaping () -> Void,
         homeTabSelectionRequestID: Int,
         homeReviewFlowFinishedRequestID: Int,
+        myPracticeRecordsReviewFlowFinishedRequestID: Int,
+        myPostsReviewFlowFinishedRequestID: Int,
         onReviewTestRequested: @escaping () -> Void,
         onReviewRequested: @escaping (ReviewFlowRequest) -> Void,
         dependencies: AppDependencies
@@ -38,6 +42,8 @@ struct MainTabView: View {
         self.onLogoutCompleted = onLogoutCompleted
         self.homeTabSelectionRequestID = homeTabSelectionRequestID
         self.homeReviewFlowFinishedRequestID = homeReviewFlowFinishedRequestID
+        self.myPracticeRecordsReviewFlowFinishedRequestID = myPracticeRecordsReviewFlowFinishedRequestID
+        self.myPostsReviewFlowFinishedRequestID = myPostsReviewFlowFinishedRequestID
         self.onReviewTestRequested = onReviewTestRequested
         self.onReviewRequested = onReviewRequested
         self.dependencies = dependencies
@@ -79,12 +85,18 @@ struct MainTabView: View {
             MyView(
                 coordinator: myCoordinator,
                 isMyTabSelected: store.state.selectedTab == .my,
+                dataRefreshRequestID: store.state.myDataRefreshRequestID,
                 navigate: { store.send(.navigationRequested($0)) },
                 onLogoutCompleted: onLogoutCompleted,
                 onReviewTestRequested: onReviewTestRequested,
                 onReviewRequested: {
                     onReviewRequested(.init(writeRequest: $0, entrySource: .my))
                 },
+                onReviewEditRequested: {
+                    onReviewRequested(.init(editingReviewID: $0, entrySource: .myPosts))
+                },
+                myPracticeRecordsReviewFlowFinishedRequestID: myPracticeRecordsReviewFlowFinishedRequestID,
+                myPostsReviewFlowFinishedRequestID: myPostsReviewFlowFinishedRequestID,
                 dependencies: dependencies
             )
             .opacity(store.state.selectedTab == .my ? 1 : 0)

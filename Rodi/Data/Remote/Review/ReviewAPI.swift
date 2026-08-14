@@ -3,6 +3,8 @@ import Foundation
 
 enum ReviewAPI: TargetType {
     case create(placeID: Int, request: ReviewRequestDTO)
+    case detail(reviewID: Int)
+    case update(reviewID: Int, request: ReviewRequestDTO)
     case summary(placeID: Int, level: ReviewLevelFilter)
     case list(placeID: Int, query: PlaceReviewQuery)
     case myReviews(query: MyReviewQuery)
@@ -13,14 +15,16 @@ enum ReviewAPI: TargetType {
     var method: HTTPMethod {
         switch self {
         case .create, .report: .post
+        case .update: .put
         case .delete: .delete
-        case .summary, .list, .myReviews, .reportForm: .get
+        case .summary, .list, .myReviews, .reportForm, .detail: .get
         }
     }
 
     var path: String {
         switch self {
         case .create(let placeID, _): "/api/v1/places/\(placeID)/reviews"
+        case .detail(let reviewID), .update(let reviewID, _): "/api/v1/reviews/\(reviewID)"
         case .summary(let placeID, _): "/api/v1/places/\(placeID)/reviews/summary"
         case .list(let placeID, _): "/api/v1/places/\(placeID)/reviews"
         case .myReviews: "/api/v1/members/me/reviews"
@@ -57,7 +61,7 @@ enum ReviewAPI: TargetType {
             }
             return parameters
 
-        case .delete, .reportForm, .report:
+        case .detail, .update, .delete, .reportForm, .report:
             return nil
         }
     }
@@ -65,15 +69,16 @@ enum ReviewAPI: TargetType {
     var body: Data? {
         switch self {
         case .create(_, let request): requestToBody(request)
+        case .update(_, let request): requestToBody(request)
         case .report(_, let request): requestToBody(request)
-        case .summary, .list, .myReviews, .delete, .reportForm: nil
+        case .summary, .list, .myReviews, .detail, .delete, .reportForm: nil
         }
     }
 
     var encodingType: EncodingType {
         switch self {
-        case .create, .report: .json
-        case .summary, .list, .myReviews, .delete, .reportForm: .url
+        case .create, .update, .report: .json
+        case .summary, .list, .myReviews, .detail, .delete, .reportForm: .url
         }
     }
 

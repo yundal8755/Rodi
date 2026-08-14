@@ -11,7 +11,8 @@ struct MyReviewItemResponseDTO: Decodable {
     let reviewId: Int64
     let placeId: Int64
     let placeName: String
-    let content: String
+    // Swagger permits a null review body when the author submitted no optional content.
+    let content: String?
     let isEditable: Bool
     let isHidden: Bool
     let isVerifiedVisit: Bool

@@ -16,6 +16,7 @@ struct ReviewReducer: Reducer {
         case debugPromptRequested
         case promptRequested(placeID: Int, placeName: String)
         case directWritingRequested(ReviewWriteRequest)
+        case editingRequested(reviewID: Int)
         case prompt(ReviewPromptReducer.Action)
         case writing(ReviewWritingReducer.Action)
         case skipReason(ReviewSkipReasonReducer.Action)
@@ -24,6 +25,7 @@ struct ReviewReducer: Reducer {
 
     enum Delegate {
         case finished
+        case editingFailed(String)
         case showSnackbar(String)
     }
 
@@ -65,6 +67,14 @@ extension ReviewReducer {
             state.route = .writing
             return writingReducer
                 .reduce(&state.writing, with: .start(request))
+                .map(Action.writing)
+
+        case .editingRequested(let reviewID):
+            guard state.route == .hidden else { return .none }
+            resetChildren(state: &state)
+            state.route = .writing
+            return writingReducer
+                .reduce(&state.writing, with: .editStarted(reviewID: reviewID))
                 .map(Action.writing)
 
         case .prompt(let childAction):
@@ -145,6 +155,11 @@ private extension ReviewReducer {
             guard state.route == .writing else { return .none }
             finish(state: &state)
             return .send(.delegate(.finished))
+
+        case .editingFailed(let message):
+            guard state.route == .writing else { return .none }
+            finish(state: &state)
+            return .send(.delegate(.editingFailed(message)))
 
         case .showSnackbar(let message):
             return .send(.delegate(.showSnackbar(message)))

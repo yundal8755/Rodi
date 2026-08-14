@@ -11,6 +11,14 @@ final class ReviewRepositoryImpl: ReviewRepository {
         try await remoteDataSource.create(placeID: placeID, submission: submission)
     }
 
+    func fetchDetail(reviewID: Int) async throws(NetworkError) -> ReviewDetail {
+        try detail(from: await remoteDataSource.fetchDetail(reviewID: reviewID))
+    }
+
+    func update(reviewID: Int, submission: PlaceReviewSubmission) async throws(NetworkError) {
+        try await remoteDataSource.update(reviewID: reviewID, submission: submission)
+    }
+
     func fetchSummary(
         placeID: Int,
         level: ReviewLevelFilter
@@ -50,6 +58,31 @@ final class ReviewRepositoryImpl: ReviewRepository {
 }
 
 private extension ReviewRepositoryImpl {
+
+    func detail(from dto: ReviewDetailResponseDTO) throws(NetworkError) -> ReviewDetail {
+        guard let difficulty = ReviewDifficulty(rawValue: dto.difficulty),
+              let congestion = ReviewCongestion(rawValue: dto.congestion),
+              let practiceMethod = ReviewPracticeMethod(rawValue: dto.practiceMethod)
+        else {
+            throw .decodingFail
+        }
+
+        return .init(
+            reviewID: try int(from: dto.reviewId),
+            placeID: try int(from: dto.placeId),
+            placeName: dto.placeName,
+            isRecommended: dto.isRecommended,
+            difficulty: difficulty,
+            congestion: congestion,
+            practiceMethod: practiceMethod,
+            content: dto.content ?? "",
+            caution: dto.caution,
+            isEditable: dto.isEditable,
+            isHidden: dto.isHidden,
+            isVerifiedVisit: dto.isVerifiedVisit,
+            createdAt: dto.createdAt
+        )
+    }
 
     func reportOption(from dto: ReviewReportOptionDTO) -> ReviewReportOption {
         .init(
@@ -121,7 +154,7 @@ private extension ReviewRepositoryImpl {
             memberID: try int(from: dto.memberId),
             nickname: dto.nickname,
             practiceMethod: practiceMethod,
-            content: dto.content,
+            content: dto.content ?? "",
             isMine: dto.isMine,
             isEditable: dto.isEditable,
             isHidden: dto.isHidden,
@@ -148,7 +181,7 @@ private extension ReviewRepositoryImpl {
             id: try int(from: dto.reviewId),
             placeID: try int(from: dto.placeId),
             placeName: dto.placeName,
-            content: dto.content,
+            content: dto.content ?? "",
             isEditable: dto.isEditable,
             isHidden: dto.isHidden,
             isVerifiedVisit: dto.isVerifiedVisit,

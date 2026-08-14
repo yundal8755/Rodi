@@ -8,11 +8,10 @@ struct ReviewDraft: Equatable {
     var practiceMethod: ReviewPracticeMethod?
     var content = ""
 
-    var canProceedToSecondPage: Bool {
+    func canProceedToSecondPage() -> Bool {
         isRecommended != nil
             && difficulty != nil
             && congestion != nil
-            && !caution.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     func submission() -> PlaceReviewSubmission? {
@@ -32,6 +31,17 @@ struct ReviewDraft: Equatable {
             content: content.normalizedOptionalText,
             caution: caution.normalizedOptionalText
         )
+    }
+}
+
+extension ReviewDraft {
+    init(detail: ReviewDetail) {
+        isRecommended = detail.isRecommended
+        difficulty = detail.difficulty
+        congestion = detail.congestion
+        caution = detail.caution ?? ""
+        practiceMethod = detail.practiceMethod
+        content = detail.content ?? ""
     }
 }
 

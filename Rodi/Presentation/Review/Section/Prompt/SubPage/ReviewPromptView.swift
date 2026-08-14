@@ -32,7 +32,6 @@ struct ReviewPromptView: View {
                             send(.visitedTapped)
                         }
                     }
-                    .disabled(state.isSubmittingVisit)
                     .padding(.top, 24)
                 }
             } closeAction: {

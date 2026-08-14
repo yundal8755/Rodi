@@ -11,11 +11,15 @@ struct MyPostsView: View {
 
     let backAction: () -> Void
     let openPracticeRecords: () -> Void
+    let reviewFlowFinishedRequestID: Int
+    let editRequested: (Int) -> Void
 
     init(
         reviewRepository: ReviewRepository,
         backAction: @escaping () -> Void,
-        openPracticeRecords: @escaping () -> Void
+        openPracticeRecords: @escaping () -> Void,
+        reviewFlowFinishedRequestID: Int,
+        editRequested: @escaping (Int) -> Void
     ) {
         _store = StateObject(
             wrappedValue: Store(
@@ -25,6 +29,8 @@ struct MyPostsView: View {
         )
         self.backAction = backAction
         self.openPracticeRecords = openPracticeRecords
+        self.reviewFlowFinishedRequestID = reviewFlowFinishedRequestID
+        self.editRequested = editRequested
     }
 
     var body: some View {
@@ -47,6 +53,15 @@ struct MyPostsView: View {
         .rodiSnackbar(message: store.state.snackbarMessage)
         .onAppear {
             store.send(.appeared)
+        }
+        .onChange(of: reviewFlowFinishedRequestID) { requestID in
+            guard requestID > 0 else { return }
+            store.send(.reloadRequested)
+        }
+        .onChange(of: store.state.pendingEditReviewID) { reviewID in
+            guard let reviewID else { return }
+            editRequested(reviewID)
+            store.send(.editRequestHandled(reviewID: reviewID))
         }
     }
 }
@@ -153,7 +168,9 @@ private extension MyPostsView {
                         ],
                         onSelect: { option in
                             activeMenuReviewID = nil
-                            if option.id == "delete" {
+                            if option.id == "edit" {
+                                store.send(.editRequested(reviewID: reviewID))
+                            } else if option.id == "delete" {
                                 store.send(.deleteRequested(reviewID: reviewID))
                             }
                         }
@@ -263,11 +280,11 @@ private struct MyPostReviewRow: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .overlay(alignment: .trailing) {
                         Button(action: menuTapped) {
-                            Image("ic_more_horizontal")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 18, height: 18)
-                                .frame(maxWidth: .infinity, alignment: .trailing)
+                            Image("ic_more_horizontal_circle")
+//                                .resizable()
+//                                .scaledToFit()
+//                                .frame(width: 18, height: 18)
+//                                .frame(maxWidth: .infinity, alignment: .trailing)
                         }
                         .buttonStyle(.plain)
                         .frame(width: 44, height: 44)

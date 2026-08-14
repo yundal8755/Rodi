@@ -2,7 +2,6 @@ import Foundation
 
 protocol ReviewPromptServicing {
     func prepareTarget(placeID: Int) async throws -> ReviewTarget
-    func recordVisit(practiceID: Int) async throws
 }
 
 struct ReviewPromptService: ReviewPromptServicing {
@@ -37,10 +36,4 @@ struct ReviewPromptService: ReviewPromptServicing {
         }
     }
 
-    func recordVisit(practiceID: Int) async throws {
-        _ = try await practiceRepository.recordVisit(
-            practiceID: practiceID,
-            certifiedDistanceMeters: nil
-        )
-    }
 }
