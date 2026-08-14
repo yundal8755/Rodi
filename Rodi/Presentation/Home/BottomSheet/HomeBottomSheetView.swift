@@ -1,9 +1,16 @@
 import SwiftUI
 
+private enum CourseSheetDestination {
+    case dismissed
+    case resting
+    case expanded
+}
+
 struct HomeBottomSheetView: View {
     @Environment(\.screenBounds) private var screenBounds
     @Environment(\.screenSafeAreaInsets) private var screenSafeAreaInsets
     @State private var settlingRecommendationHeight: CGFloat?
+    @State private var settlingCourseHeight: CGFloat?
     @State private var settlingDetailOffset: CGFloat?
     @State private var settlementToken = UUID()
     @State private var settlementTask: Task<Void, Never>?
@@ -17,6 +24,7 @@ struct HomeBottomSheetView: View {
     let bottomTabBarHeight: CGFloat
     let onCourseDetailHeightChanged: (CGFloat) -> Void
     let onVisibleHeightChanged: (CGFloat, Bool) -> Void
+    let onCourseExpansionSettled: () -> Void
     let requestLocationPermission: () -> Void
 
     init(
@@ -27,6 +35,7 @@ struct HomeBottomSheetView: View {
         bottomTabBarHeight: CGFloat,
         onCourseDetailHeightChanged: @escaping (CGFloat) -> Void = { _ in },
         onVisibleHeightChanged: @escaping (CGFloat, Bool) -> Void = { _, _ in },
+        onCourseExpansionSettled: @escaping () -> Void = {},
         requestLocationPermission: @escaping () -> Void
     ) {
         self.state = state
@@ -36,10 +45,27 @@ struct HomeBottomSheetView: View {
         self.bottomTabBarHeight = bottomTabBarHeight
         self.onCourseDetailHeightChanged = onCourseDetailHeightChanged
         self.onVisibleHeightChanged = onVisibleHeightChanged
+        self.onCourseExpansionSettled = onCourseExpansionSettled
         self.requestLocationPermission = requestLocationPermission
     }
 
     var body: some View {
+        sheetContainer
+            .ignoresSafeArea(edges: .bottom)
+        .onAppear(perform: reportVisibleHeight)
+        .onChange(of: state.route) { _ in
+            reportVisibleHeight()
+        }
+        .onChange(of: state.recommendList.presentation) { _ in
+            reportVisibleHeight()
+        }
+        .onChange(of: state.courseDetail.presentation) { _ in
+            reportVisibleHeight()
+        }
+        .onDisappear(perform: cancelSettlement)
+    }
+
+    private var sheetContainer: some View {
         ZStack(alignment: .bottom) {
             if isRecommendationCollapsed {
                 HomeListButton(action: presentRecommendationList)
@@ -55,15 +81,6 @@ struct HomeBottomSheetView: View {
 
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .ignoresSafeArea(edges: .bottom)
-        .onAppear(perform: reportVisibleHeight)
-        .onChange(of: state.route) { _ in
-            reportVisibleHeight()
-        }
-        .onChange(of: state.recommendList.presentation) { _ in
-            reportVisibleHeight()
-        }
-        .onDisappear(perform: cancelSettlement)
     }
 }
 
@@ -103,6 +120,18 @@ extension HomeBottomSheetView {
         return min(max(baseHeight - panTranslation, 0), screenHeight)
     }
 
+    private var courseSheetHeight: CGFloat {
+        if let settlingCourseHeight {
+            return settlingCourseHeight
+        }
+
+        guard state.courseDetail.presentation == .sheet else {
+            return screenHeight
+        }
+
+        return sheetHeight(baseHeight: courseDetailHeight, translation: panTranslation)
+    }
+
     private var fixedSheetOffset: CGFloat {
         if let settlingDetailOffset {
             return settlingDetailOffset
@@ -117,13 +146,17 @@ extension HomeBottomSheetView {
         switch state.route {
         case .recommendList:
             return recommendationHeight
-        case .filter, .parkingDetail, .courseDetail:
+        case .filter, .parkingDetail:
             return max(fixedSheetHeight - fixedSheetOffset, 0)
+        case .courseDetail:
+            return courseSheetHeight
         }
     }
 
     private var isSettling: Bool {
-        settlingRecommendationHeight != nil || settlingDetailOffset != nil
+        settlingRecommendationHeight != nil
+            || settlingCourseHeight != nil
+            || settlingDetailOffset != nil
     }
 
     private var fixedSheetOpacity: CGFloat {
@@ -138,7 +171,7 @@ extension HomeBottomSheetView {
         case .filter, .parkingDetail:
             return mediumHeight
         case .courseDetail:
-            return courseDetailHeight
+            return courseSheetHeight
         case .recommendList:
             return recommendationHeight(for: state.recommendList.presentation)
         }
@@ -238,29 +271,49 @@ extension HomeBottomSheetView {
     }
 
     private var courseDetailSheet: some View {
-        sheetChrome {
-            VStack(spacing: 0) {
-                dragHandle(
-                    onChanged: updateDetailPan,
-                    onEnded: { settleDetail(translation: $0, dismissThreshold: 48) }
-                )
+        Group {
+            if state.courseDetail.presentation == .expandedDetail {
+                Color.clear
+            } else {
+                VStack(spacing: 0) {
+                    dragHandle(
+                        onChanged: updateCoursePan,
+                        onEnded: settleCourse
+                    )
 
-                CourseDetailBottomSheetView(
-                    state: state.courseDetail,
-                    send: handleCourseDetailAction,
-                    userLocation: userLocation,
-                    hasLocationPermission: hasLocationPermission,
-                    requestLocationPermission: requestLocationPermission
+                    CourseDetailBottomSheetView(
+                        state: state.courseDetail,
+                        send: handleCourseDetailAction,
+                        userLocation: userLocation,
+                        hasLocationPermission: hasLocationPermission,
+                        requestLocationPermission: requestLocationPermission
+                    )
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .background {
+                    BottomSheetContentHeightObserver(onHeightChanged: updateCourseDetailHeight)
+                }
+                .frame(maxWidth: .infinity, alignment: .top)
+                .frame(height: courseSheetHeight, alignment: .top)
+                .background(RodiColor.white)
+                .clipShape(
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 20,
+                        bottomLeadingRadius: 0,
+                        bottomTrailingRadius: 0,
+                        topTrailingRadius: 20
+                    )
+                )
+                .shadow(color: RodiColor.black.opacity(0.08), radius: 4, x: 0, y: -3)
+                .opacity(
+                    dismissalOpacity(
+                        visibleHeight: courseSheetHeight,
+                        totalHeight: courseDetailHeight
+                    )
                 )
             }
         }
-        .fixedSize(horizontal: false, vertical: true)
-        .frame(maxWidth: .infinity, alignment: .bottom)
-        .offset(y: fixedSheetOffset)
-        .opacity(fixedSheetOpacity)
-        .background {
-            BottomSheetContentHeightObserver(onHeightChanged: updateCourseDetailHeight)
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 
     private func fixedSheet<Content: View>(
@@ -327,10 +380,7 @@ extension HomeBottomSheetView {
         onChanged: @escaping (CGFloat) -> Void,
         onEnded: @escaping (CGFloat) -> Void
     ) -> some View {
-        Capsule()
-            .fill(RodiColor.gray400)
-            .frame(width: 60, height: 4)
-            .padding(.top, 8)
+        dragIndicator
             .frame(maxWidth: .infinity)
             .frame(height: 24, alignment: .top)
             .contentShape(Rectangle())
@@ -341,6 +391,15 @@ extension HomeBottomSheetView {
                     onEnded: onEnded
                 )
             }
+    }
+
+    private var dragIndicator: some View {
+        Capsule()
+            .fill(RodiColor.gray400)
+            .frame(width: 60, height: 4)
+            .padding(.top, 8)
+            .frame(maxWidth: .infinity)
+            .frame(height: 24, alignment: .top)
     }
 
 }
@@ -405,9 +464,21 @@ extension HomeBottomSheetView {
         onVisibleHeightChanged(max(fixedSheetHeight - panTranslation, 0), true)
     }
 
+    private func updateCoursePan(_ translation: CGFloat) {
+        guard !isSettling else { return }
+        panTranslation = translation
+        onVisibleHeightChanged(courseSheetHeight, true)
+    }
+
     private func recommendationHeight(for translation: CGFloat) -> CGFloat {
-        let baseHeight = state.recommendList.presentation == .expanded ? screenHeight : mediumHeight
-        return min(max(baseHeight - translation, 0), screenHeight)
+        sheetHeight(
+            baseHeight: state.recommendList.presentation == .expanded ? screenHeight : mediumHeight,
+            translation: translation
+        )
+    }
+
+    private func sheetHeight(baseHeight: CGFloat, translation: CGFloat) -> CGFloat {
+        min(max(baseHeight - translation, 0), screenHeight)
     }
 
     private func settleRecommendation(translation: CGFloat) {
@@ -478,6 +549,63 @@ extension HomeBottomSheetView {
             },
             duration: shouldDismiss ? 0.25 : 0.22
         )
+    }
+
+    private func settleCourse(translation: CGFloat) {
+        let currentHeight = sheetHeight(baseHeight: courseDetailHeight, translation: translation)
+        let destination = courseDestination(for: currentHeight)
+        let targetHeight: CGFloat
+        let duration: TimeInterval
+
+        switch destination {
+        case .dismissed:
+            targetHeight = 0
+            duration = 0.25
+
+        case .resting:
+            targetHeight = courseDetailHeight
+            duration = 0.22
+
+        case .expanded:
+            targetHeight = screenHeight
+            duration = 0
+        }
+
+        beginSettlement(
+            immediately: {
+                settlingCourseHeight = currentHeight
+                panTranslation = 0
+            },
+            animate: {
+                settlingCourseHeight = targetHeight
+                onVisibleHeightChanged(targetHeight, true)
+            },
+            completion: {
+                switch destination {
+                case .dismissed:
+                    send(.courseDetail(.dismiss))
+
+                case .resting:
+                    break
+
+                case .expanded:
+                    onCourseExpansionSettled()
+                }
+                settlingCourseHeight = nil
+                onVisibleHeightChanged(0, false)
+            },
+            duration: duration
+        )
+    }
+
+    private func courseDestination(for height: CGFloat) -> CourseSheetDestination {
+        if height <= max(courseDetailHeight - 48, 0) {
+            return .dismissed
+        }
+        if height / screenHeight >= 0.55 {
+            return .expanded
+        }
+        return .resting
     }
 
     private func dismissCurrentDetail() {

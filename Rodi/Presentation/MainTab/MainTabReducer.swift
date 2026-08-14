@@ -25,6 +25,7 @@ struct MainTabReducer: Reducer {
         var authenticationIntent: MainTabIntent?
         var isHomeBottomTabBarVisible = true
         var homePlaceSelectionRequest: HomePlaceSelectionRequest?
+        var myDataRefreshRequestID = 0
         fileprivate var nextHomePlaceSelectionRequestID = 0
     }
 
@@ -70,13 +71,18 @@ extension MainTabReducer {
         case .myTabTapped:
             guard !hasActiveSession else {
                 state.selectedTab = .my
+                requestMyDataRefresh(state: &state)
                 return .none
             }
 
             state.authenticationIntent = .openMyProfile
 
         case .navigationRequested(let intent):
-            state.selectedTab = tab(for: intent)
+            let selectedTab = tab(for: intent)
+            state.selectedTab = selectedTab
+            if selectedTab == .my {
+                requestMyDataRefresh(state: &state)
+            }
             state.navigationIntent = intent
             if case .openHomePlace(let place) = intent {
                 state.nextHomePlaceSelectionRequestID += 1
@@ -114,5 +120,9 @@ extension MainTabReducer {
         case .openMyProfile, .openMySavedPlaces:
             .my
         }
+    }
+
+    private func requestMyDataRefresh(state: inout State) {
+        state.myDataRefreshRequestID += 1
     }
 }

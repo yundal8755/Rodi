@@ -10,12 +10,12 @@ struct RodiTextField: View {
     private var isFocused: FocusState<Bool>.Binding
 
     private let placeholder: String
-    private let characterLimit: Int
+    private let characterLimit: Int?
 
     init(
         text: Binding<String>,
         placeholder: String,
-        characterLimit: Int,
+        characterLimit: Int? = nil,
         isFocused: FocusState<Bool>.Binding
     ) {
         _text = text
@@ -48,7 +48,7 @@ struct RodiTextField: View {
         Binding(
             get: { text },
             set: { updatedText in
-                guard updatedText.count <= characterLimit else { return }
+                if let characterLimit, updatedText.count > characterLimit { return }
                 text = updatedText
             }
         )

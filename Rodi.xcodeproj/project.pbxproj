@@ -19,10 +19,14 @@
 		04CA50652FF8E665003FCF19 /* RxSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 04CA50642FF8E665003FCF19 /* RxSwift */; };
 		04CA50682FF8E67A003FCF19 /* NSObject-Rx in Frameworks */ = {isa = PBXBuildFile; productRef = 04CA50672FF8E67A003FCF19 /* NSObject-Rx */; };
 <<<<<<< HEAD
+<<<<<<< HEAD
 		AAB100000000000000000001 /* RodiPracticeLiveActivity.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = AAB100000000000000000002 /* RodiPracticeLiveActivity.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		AAB100000000000000000003 /* PracticeLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB100000000000000000004 /* PracticeLiveActivity.swift */; };
 		AAB100000000000000000005 /* PracticeLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB100000000000000000006 /* PracticeLiveActivityAttributes.swift */; };
 =======
+=======
+		A1B200000000000000000001 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B200000000000000000002 /* XCTest.framework */; };
+>>>>>>> release/1.3.0
 		C1A000000000000000001001 /* Clarity in Frameworks */ = {isa = PBXBuildFile; productRef = C1A000000000000000003001 /* Clarity */; };
 		F1B000000000000000001001 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = F1B000000000000000003001 /* FirebaseCore */; };
 		F1B000000000000000001002 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = F1B000000000000000003002 /* FirebaseAnalytics */; };
@@ -32,6 +36,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+<<<<<<< HEAD
 		AAB100000000000000000016 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 042A22BE2FEE58B100DB67F4 /* Project object */;
@@ -55,6 +60,17 @@
 		};
 /* End PBXCopyFilesBuildPhase section */
 
+=======
+		A1B200000000000000000006 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 042A22BE2FEE58B100DB67F4 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 042A22C52FEE58B100DB67F4;
+			remoteInfo = Rodi;
+		};
+/* End PBXContainerItemProxy section */
+
+>>>>>>> release/1.3.0
 /* Begin PBXFileReference section */
 		042A22C62FEE58B100DB67F4 /* Rodi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rodi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		045DE9782FEFA1000060C89A /* Secrets.example.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.example.xcconfig; sourceTree = "<group>"; };
@@ -67,13 +83,23 @@
 =======
 		05E100012F00000100E00001 /* Dev.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Dev.xcconfig; sourceTree = "<group>"; };
 		05E100022F00000100E00001 /* Prod.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Prod.xcconfig; sourceTree = "<group>"; };
+<<<<<<< HEAD
 >>>>>>> release/1.1.1
+=======
+		A1B200000000000000000002 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
+		A1B200000000000000000003 /* RodiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RodiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+>>>>>>> release/1.3.0
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		042A22C82FEE58B100DB67F4 /* Rodi */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Rodi;
+			sourceTree = "<group>";
+		};
+		A1B200000000000000000004 /* RodiTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = RodiTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -102,10 +128,18 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+<<<<<<< HEAD
 		AAB100000000000000000008 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+=======
+		A1B200000000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B200000000000000000001 /* XCTest.framework in Frameworks */,
+>>>>>>> release/1.3.0
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -117,8 +151,13 @@
 			children = (
 				045DE97A2FEFA1000060C89A /* Config */,
 				042A22C82FEE58B100DB67F4 /* Rodi */,
+<<<<<<< HEAD
 				AAB100000000000000000009 /* RodiPracticeLiveActivity */,
+=======
+				A1B200000000000000000004 /* RodiTests */,
+>>>>>>> release/1.3.0
 				042A22C72FEE58B100DB67F4 /* Products */,
+				04B8EF4E302C175F00AC449D /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -126,7 +165,11 @@
 			isa = PBXGroup;
 			children = (
 				042A22C62FEE58B100DB67F4 /* Rodi.app */,
+<<<<<<< HEAD
 				AAB100000000000000000002 /* RodiPracticeLiveActivity.appex */,
+=======
+				A1B200000000000000000003 /* RodiTests.xctest */,
+>>>>>>> release/1.3.0
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -142,6 +185,7 @@
 			path = Config;
 			sourceTree = "<group>";
 		};
+<<<<<<< HEAD
 		AAB100000000000000000009 /* RodiPracticeLiveActivity */ = {
 			isa = PBXGroup;
 			children = (
@@ -150,6 +194,14 @@
 				AAB100000000000000000007 /* Info.plist */,
 			);
 			path = RodiPracticeLiveActivity;
+=======
+		04B8EF4E302C175F00AC449D /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				A1B200000000000000000002 /* XCTest.framework */,
+			);
+			name = "Recovered References";
+>>>>>>> release/1.3.0
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -201,6 +253,7 @@
 			productReference = 042A22C62FEE58B100DB67F4 /* Rodi.app */;
 			productType = "com.apple.product-type.application";
 		};
+<<<<<<< HEAD
 		AAB100000000000000000010 /* RodiPracticeLiveActivity */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = AAB100000000000000000011 /* Build configuration list for PBXNativeTarget "RodiPracticeLiveActivity" */;
@@ -208,15 +261,35 @@
 				AAB100000000000000000012 /* Sources */,
 				AAB100000000000000000008 /* Frameworks */,
 				AAB100000000000000000013 /* Resources */,
+=======
+		A1B200000000000000000007 /* RodiTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1B200000000000000000008 /* Build configuration list for PBXNativeTarget "RodiTests" */;
+			buildPhases = (
+				A1B200000000000000000009 /* Sources */,
+				A1B200000000000000000005 /* Frameworks */,
+>>>>>>> release/1.3.0
 			);
 			buildRules = (
 			);
 			dependencies = (
+<<<<<<< HEAD
 			);
 			name = RodiPracticeLiveActivity;
 			productName = RodiPracticeLiveActivity;
 			productReference = AAB100000000000000000002 /* RodiPracticeLiveActivity.appex */;
 			productType = "com.apple.product-type.app-extension";
+=======
+				A1B200000000000000000010 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A1B200000000000000000004 /* RodiTests */,
+			);
+			name = RodiTests;
+			productName = RodiTests;
+			productReference = A1B200000000000000000003 /* RodiTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+>>>>>>> release/1.3.0
 		};
 /* End PBXNativeTarget section */
 
@@ -269,7 +342,11 @@
 			projectRoot = "";
 			targets = (
 				042A22C52FEE58B100DB67F4 /* Rodi */,
+<<<<<<< HEAD
 				AAB100000000000000000010 /* RodiPracticeLiveActivity */,
+=======
+				A1B200000000000000000007 /* RodiTests */,
+>>>>>>> release/1.3.0
 			);
 		};
 /* End PBXProject section */
@@ -347,22 +424,36 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+<<<<<<< HEAD
 		AAB100000000000000000012 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				AAB100000000000000000003 /* PracticeLiveActivity.swift in Sources */,
 				AAB100000000000000000005 /* PracticeLiveActivityAttributes.swift in Sources */,
+=======
+		A1B200000000000000000009 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+>>>>>>> release/1.3.0
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+<<<<<<< HEAD
 		AAB100000000000000000015 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = AAB100000000000000000010 /* RodiPracticeLiveActivity */;
 			targetProxy = AAB100000000000000000016 /* PBXContainerItemProxy */;
+=======
+		A1B200000000000000000010 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 042A22C52FEE58B100DB67F4 /* Rodi */;
+			targetProxy = A1B200000000000000000006 /* PBXContainerItemProxy */;
+>>>>>>> release/1.3.0
 		};
 /* End PBXTargetDependency section */
 
@@ -545,7 +636,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.1;
+				MARKETING_VERSION = 1.3.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -566,6 +657,7 @@
 			};
 			name = Release;
 		};
+<<<<<<< HEAD
 		AAB100000000000000000017 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -615,6 +707,37 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+=======
+		A1B200000000000000000011 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dororong.rodi.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Rodi.app/Rodi";
+			};
+			name = Debug;
+		};
+		A1B200000000000000000012 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dororong.rodi.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Rodi.app/Rodi";
+>>>>>>> release/1.3.0
 			};
 			name = Release;
 		};
@@ -639,11 +762,19 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+<<<<<<< HEAD
 		AAB100000000000000000011 /* Build configuration list for PBXNativeTarget "RodiPracticeLiveActivity" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				AAB100000000000000000017 /* Debug */,
 				AAB100000000000000000018 /* Release */,
+=======
+		A1B200000000000000000008 /* Build configuration list for PBXNativeTarget "RodiTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1B200000000000000000011 /* Debug */,
+				A1B200000000000000000012 /* Release */,
+>>>>>>> release/1.3.0
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

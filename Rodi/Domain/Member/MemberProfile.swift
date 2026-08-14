@@ -12,6 +12,18 @@ struct MemberProfile: Equatable {
     let recommendationTags: [String]
     let drivingGoal: String?
     let savedPlaceCount: Int
+    let levelProgress: LevelProgress?
+
+    struct LevelProgress: Equatable {
+        let totalDistanceKm: Double
+        let currentLevelStartKm: Double
+        let nextLevelKm: Double?
+        let progressPercent: Int
+
+        var progressFraction: Double {
+            Double(min(max(progressPercent, 0), 100)) / 100
+        }
+    }
 
     enum Level: String, Equatable {
         case seed = "SEED"

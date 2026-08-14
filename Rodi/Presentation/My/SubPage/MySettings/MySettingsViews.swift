@@ -19,6 +19,7 @@ struct MySettingsView: View {
                 navigationButton("약관 다시보기", to: .terms)
                 navigationButton("오픈소스 라이센스", to: .licenses)
                 navigationButton("계정정보 관리", to: .accountManagement)
+                navigationButton("차단목록", to: .blockedMembers)
                 HStack {
                     Text("버전").rodiTypography(.body1Medium)
                     Spacer()

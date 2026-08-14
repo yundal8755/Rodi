@@ -1,17 +1,21 @@
-//
-//  CourseDetailBottomSheetReducer.swift
-//  Rodi
-//
-
 import Foundation
 
 struct CourseDetailBottomSheetReducer: Reducer {
+    enum Presentation: Equatable { case sheet, expandedDetail }
+    typealias ReviewPageState = CourseReviewReducer.PageState
+    typealias ReviewSummaryState = CourseReviewReducer.SummaryState
+
     struct State {
         var detail: PlaceDetail?
         var routeOverlay: RodiRouteOverlay?
         var isRouteLoading = false
         var routeStatusMessage: String?
         var isBookmarkUpdating = false
+        var isPracticeRegistrationPending = false
+        var practiceRegistrationRequestRevision = UUID()
+        var presentation: Presentation = .sheet
+        var isRouteTimelineExpanded = false
+        var reviews = CourseReviewReducer.State()
     }
 
     enum Action {
@@ -23,150 +27,200 @@ struct CourseDetailBottomSheetReducer: Reducer {
         case bookmarkFailed(previousDetail: PlaceDetail, message: String)
         case roadRouteLoaded(courseID: Int, path: [RodiCoordinate])
         case roadRouteFailed(courseID: Int, message: String?)
+        case externalRouteGuidanceOpened(placeID: Int)
+        case practiceRegistrationCompleted(PracticeRegistrationResult, placeID: Int, revision: UUID)
+        case practiceVisitCompleted(PracticeVisitRecordingResult, placeID: Int, revision: UUID)
+        case cancelPracticeRegistration
+        case cancelPracticeVisit
+        case expandRequested
+        case collapseRequested
+        case routeTimelineToggled
+        case reviews(CourseReviewReducer.Action)
         case delegate(Delegate)
     }
-
-    enum Delegate {
-        case dismissed
-        case routeOverlayChanged(RodiRouteOverlay?)
-        case requestAuthentication
-        case showSnackbar(String)
-    }
+    enum Delegate { case dismissed, routeOverlayChanged(RodiRouteOverlay?), requestAuthentication, showSnackbar(String), reviewWritingRequested(ReviewWriteRequest) }
+    enum PracticeRegistrationResult { case success(practiceID: Int), failure(String) }
+    enum PracticeVisitRecordingResult { case success(PracticeVisit), failure(String) }
+    private enum EffectID: Hashable { case practiceRegistration, practiceVisit }
 
     private let placeRepository: PlaceRepository
+    private let practiceRepository: PracticeRepository
+    private let practiceReturnPromptStore: PracticeReturnPromptStoring
     private let hasActiveSession: () -> Bool
+    private let reviewsReducer: CourseReviewReducer
     private let onDelegate: (Delegate) -> Void
 
-    init(placeRepository: PlaceRepository,
-         hasActiveSession: @escaping () -> Bool,
-         onDelegate: @escaping (Delegate) -> Void = { _ in }) {
+    init(placeRepository: PlaceRepository, memberRepository: MemberRepository, practiceRepository: PracticeRepository, reviewRepository: ReviewRepository, practiceReturnPromptStore: PracticeReturnPromptStoring, hasActiveSession: @escaping () -> Bool, onDelegate: @escaping (Delegate) -> Void = { _ in }) {
         self.placeRepository = placeRepository
+        self.practiceRepository = practiceRepository
+        self.practiceReturnPromptStore = practiceReturnPromptStore
         self.hasActiveSession = hasActiveSession
         self.onDelegate = onDelegate
+        reviewsReducer = .init(repository: reviewRepository, memberRepository: memberRepository, hasActiveSession: hasActiveSession)
     }
 }
 
-
-// MARK: - Core Logics
+// MARK: - Reduce
 extension CourseDetailBottomSheetReducer {
-
     func reduce(_ state: inout State, with action: Action) -> Effect<Action> {
         switch action {
         case .present(let detail, _):
             guard detail.type == .course else { return .none }
-            state.detail = detail
-            state.isBookmarkUpdating = false
-            state.routeStatusMessage = nil
-            let item = RodiCourseItem(placeDetail: detail)
+            state = .init(detail: detail)
             RodiAnalytics.track(.placeDetailOpened(source: "home", placeType: detail.type.rawValue))
-            let effect = configureRoute(for: item, state: &state)
-            return effect
-
+            return configureRoute(for: .init(placeDetail: detail), state: &state)
         case .dismiss:
             guard state.detail != nil else { return .none }
-            state = State()
+            state = .init()
             return .run { send in
                 await send(.cancelRoadRouteLoading)
+                await send(.cancelPracticeRegistration)
+                await send(.cancelPracticeVisit)
+                await send(.reviews(.report(.reset)))
+                await send(.reviews(.block(.reset)))
+                await send(.reviews(.reset))
                 await send(.delegate(.dismissed))
             }
-
-        case .cancelRoadRouteLoading:
-            return .cancel(id: BottomSheetEffectID.routeLoading)
-
+        case .cancelRoadRouteLoading: return .cancel(id: BottomSheetEffectID.routeLoading)
+        case .cancelPracticeRegistration: return .cancel(id: EffectID.practiceRegistration)
+        case .cancelPracticeVisit: return .cancel(id: EffectID.practiceVisit)
         case .toggleBookmark:
             guard let detail = state.detail, !state.isBookmarkUpdating else { return .none }
             guard hasActiveSession() else { return .send(.delegate(.requestAuthentication)) }
-            let previousDetail = detail
-            let isBookmarked = !detail.isBookmarked
-            state.detail = detail.updatingBookmark(isBookmarked: isBookmarked)
-            state.isBookmarkUpdating = true
-            return updateBookmarkEffect(placeID: detail.id, isBookmarked: isBookmarked, previousDetail: previousDetail)
-
-        case .bookmarkUpdated(let id, let isBookmarked, let source):
-            guard state.detail?.id == id else { return .none }
-            state.detail = state.detail?.updatingBookmark(isBookmarked: isBookmarked)
-            state.isBookmarkUpdating = false
-            RodiAnalytics.track(.bookmarkUpdated(isBookmarked: isBookmarked, source: source, placeType: PlaceType.course.rawValue))
-            return .send(.delegate(.showSnackbar(isBookmarked ? "북마크를 저장했어요." : "북마크를 해제했어요.")))
-
-        case .bookmarkFailed(let previousDetail, let message):
-            guard state.detail?.id == previousDetail.id else { return .none }
-            state.detail = previousDetail
-            state.isBookmarkUpdating = false
+            let previous = detail; let bookmarked = !detail.isBookmarked
+            state.detail = detail.updatingBookmark(isBookmarked: bookmarked); state.isBookmarkUpdating = true
+            return bookmarkEffect(placeID: detail.id, isBookmarked: bookmarked, previous: previous)
+        case let .bookmarkUpdated(placeID, bookmarked, source):
+            guard state.detail?.id == placeID else { return .none }
+            state.detail = state.detail?.updatingBookmark(isBookmarked: bookmarked); state.isBookmarkUpdating = false
+            RodiAnalytics.track(.bookmarkUpdated(isBookmarked: bookmarked, source: source, placeType: PlaceType.course.rawValue))
+            return .send(.delegate(.showSnackbar(bookmarked ? "북마크를 저장했어요." : "북마크를 해제했어요.")))
+        case .bookmarkFailed(let previous, let message):
+            guard state.detail?.id == previous.id else { return .none }; state.detail = previous; state.isBookmarkUpdating = false
             return .send(.delegate(.showSnackbar(message)))
-
         case .roadRouteLoaded(let courseID, let path):
             guard let overlay = state.routeOverlay, overlay.courseID == courseID else { return .none }
-            state.routeOverlay = RodiRouteOverlay(courseID: courseID, points: overlay.points, path: path, isRoadRoute: true)
-            state.isRouteLoading = false
-            state.routeStatusMessage = nil
+            state.routeOverlay = .init(courseID: courseID, points: overlay.points, path: path, isRoadRoute: true); state.isRouteLoading = false; state.routeStatusMessage = nil
             return .send(.delegate(.routeOverlayChanged(state.routeOverlay)))
-
         case .roadRouteFailed(let courseID, let message):
-            guard state.routeOverlay?.courseID == courseID else { return .none }
-            state.isRouteLoading = false
-            state.routeStatusMessage = message
+            guard state.routeOverlay?.courseID == courseID else { return .none }; state.isRouteLoading = false; state.routeStatusMessage = message
             return .send(.delegate(.routeOverlayChanged(state.routeOverlay)))
+        case .externalRouteGuidanceOpened(let placeID):
+            guard state.detail?.id == placeID, !state.isPracticeRegistrationPending else { return .none }
+            guard hasActiveSession(), let name = state.detail?.name else { return .send(.delegate(.requestAuthentication)) }
+            practiceReturnPromptStore.save(.init(placeID: placeID, placeName: name)); state.isPracticeRegistrationPending = true; state.practiceRegistrationRequestRevision = UUID()
+            return registerPractice(placeID: placeID, revision: state.practiceRegistrationRequestRevision)
+        case let .practiceRegistrationCompleted(result, placeID, revision):
+            guard state.detail?.id == placeID, state.practiceRegistrationRequestRevision == revision, state.isPracticeRegistrationPending else { return .none }
+            switch result {
+            case .success(let practiceID):
+                return recordVisit(practiceID: practiceID, placeID: placeID, revision: revision)
 
-        case .delegate(let delegate):
-            onDelegate(delegate)
+            case .failure(let message):
+                state.isPracticeRegistrationPending = false
+                return .send(.delegate(.showSnackbar(message)))
+            }
+
+        case let .practiceVisitCompleted(result, placeID, revision):
+            guard state.detail?.id == placeID, state.practiceRegistrationRequestRevision == revision, state.isPracticeRegistrationPending else { return .none }
+            state.isPracticeRegistrationPending = false
+            switch result {
+            case .success(let visit):
+                logPracticeVisit(visit)
+
+            case .failure(let message):
+                return .send(.delegate(.showSnackbar(message)))
+            }
+        case .expandRequested:
+            guard let placeID = state.detail?.id, state.presentation == .sheet else { return .none }
+            state.presentation = .expandedDetail
+            return reviewsReducer.reduce(&state.reviews, with: .start(placeID: placeID)).map(Action.reviews)
+        case .collapseRequested:
+            guard state.presentation == .expandedDetail else { return .none }; state.presentation = .sheet
+        case .routeTimelineToggled:
+            guard state.presentation == .expandedDetail else { return .none }; state.isRouteTimelineExpanded.toggle()
+        case .reviews(let child):
+            if case .delegate(let delegate) = child { return reduceReviewsDelegate(delegate, state: &state) }
+            return reviewsReducer.reduce(&state.reviews, with: child).map(Action.reviews)
+        case .delegate(let delegate): onDelegate(delegate)
         }
-
         return .none
     }
+}
 
-    private func configureRoute(for item: RodiCourseItem, state: inout State) -> Effect<Action> {
-        let points = item.routeOverlayPoints
-        guard points.count >= 2 else {
-            state.routeOverlay = nil
-            state.isRouteLoading = false
-            state.routeStatusMessage = "경로 좌표가 아직 준비되지 않았어요."
-            return .cancel(id: BottomSheetEffectID.routeLoading)
+// MARK: - Child Delegate
+private extension CourseDetailBottomSheetReducer {
+    func reduceReviewsDelegate(_ delegate: CourseReviewReducer.Delegate, state: inout State) -> Effect<Action> {
+        switch delegate {
+        case .writingRequested:
+            guard let detail = state.detail else { return .none }
+            return .send(.delegate(.reviewWritingRequested(.init(placeID: detail.id, placeName: detail.name))))
+        case .requestAuthentication: return .send(.delegate(.requestAuthentication))
+        case .showSnackbar(let message): return .send(.delegate(.showSnackbar(message)))
         }
-        state.routeOverlay = RodiRouteOverlay(courseID: item.id, points: points, path: points.map(\.coordinate), isRoadRoute: false)
-        state.isRouteLoading = true
-        return loadRoadRouteEffect(courseID: item.id, points: points)
+    }
+}
+
+// MARK: - Effect
+private extension CourseDetailBottomSheetReducer {
+    func configureRoute(for item: RodiCourseItem, state: inout State) -> Effect<Action> {
+        let points = item.routeOverlayPoints
+        guard points.count >= 2 else { state.routeOverlay = nil; state.routeStatusMessage = "경로 좌표가 아직 준비되지 않았어요."; return .cancel(id: BottomSheetEffectID.routeLoading) }
+        state.routeOverlay = .init(courseID: item.id, points: points, path: points.map(\.coordinate), isRoadRoute: false); state.isRouteLoading = true
+        return .run { send in
+            do { await send(.roadRouteLoaded(courseID: item.id, path: try await KakaoDirectionsService().fetchRoute(points: points))) }
+            catch is CancellationError { }
+            catch let error as KakaoDirectionsError { await send(.roadRouteFailed(courseID: item.id, message: error.fallbackMessage)) }
+            catch { await send(.roadRouteFailed(courseID: item.id, message: "도로 경로를 불러오지 못해 대체 경로로 표시 중이에요.")) }
+        }.cancelTask(id: BottomSheetEffectID.routeLoading)
+    }
+    func bookmarkEffect(placeID: Int, isBookmarked: Bool, previous: PlaceDetail) -> Effect<Action> {
+        let repository = placeRepository
+        return .run { send in do { if isBookmarked { try await repository.bookmark(placeID: placeID) } else { try await repository.unbookmark(placeID: placeID) }; await send(.bookmarkUpdated(placeID: placeID, isBookmarked: isBookmarked, source: "home")) } catch is CancellationError {} catch { await send(.bookmarkFailed(previousDetail: previous, message: "북마크를 \(isBookmarked ? "저장" : "해제")하지 못했어요.")) } }.cancelTask(id: BottomSheetEffectID.bookmarkUpdating)
+    }
+    func registerPractice(placeID: Int, revision: UUID) -> Effect<Action> {
+        let repository = practiceRepository
+        return .run { send in do { let practice = try await repository.register(placeID: placeID); await send(.practiceRegistrationCompleted(.success(practiceID: practice.practiceID), placeID: placeID, revision: revision)) } catch is CancellationError {} catch { await send(.practiceRegistrationCompleted(.failure("연습 목록에 담지 못했어요. 다시 시도해주세요."), placeID: placeID, revision: revision)) } }.cancelTask(id: EffectID.practiceRegistration)
     }
 
-    private func updateBookmarkEffect(placeID: Int, isBookmarked: Bool, previousDetail: PlaceDetail) -> Effect<Action> {
-        let repository = placeRepository
+    func recordVisit(practiceID: Int, placeID: Int, revision: UUID) -> Effect<Action> {
+        let repository = practiceRepository
+        let distanceMeters = certifiedDistanceMeters
         return .run { send in
             do {
-                if isBookmarked { try await repository.bookmark(placeID: placeID) }
-                else { try await repository.unbookmark(placeID: placeID) }
-                await send(.bookmarkUpdated(placeID: placeID, isBookmarked: isBookmarked, source: "home"))
+                #if DEBUG
+                let requestDistance = distanceMeters.map(String.init) ?? "nil"
+                RodiLogger.debug(
+                    "방문 기록 요청: certifiedDistanceMeters=\(requestDistance)"
+                )
+                #endif
+                let visit = try await repository.recordVisit(
+                    practiceID: practiceID,
+                    certifiedDistanceMeters: distanceMeters
+                )
+                await send(.practiceVisitCompleted(.success(visit), placeID: placeID, revision: revision))
             } catch is CancellationError {
-                return
             } catch {
-                if requiresAuthentication(error) { await send(.delegate(.requestAuthentication)) }
-                else { await send(.bookmarkFailed(previousDetail: previousDetail, message: "북마크를 \(isBookmarked ? "저장" : "해제")하지 못했어요.")) }
+                await send(.practiceVisitCompleted(.failure("방문 기록을 남기지 못했어요. 다시 시도해주세요."), placeID: placeID, revision: revision))
             }
         }
-        .cancelTask(id: BottomSheetEffectID.bookmarkUpdating)
+        .cancelTask(id: EffectID.practiceVisit)
     }
 
-    private func loadRoadRouteEffect(courseID: Int, points: [RodiRouteOverlayPoint]) -> Effect<Action> {
-        .run { send in
-            do {
-                let path = try await KakaoDirectionsService().fetchRoute(points: points)
-                await send(.roadRouteLoaded(courseID: courseID, path: path))
-            } catch is CancellationError {
-                return
-            } catch let error as KakaoDirectionsError {
-                await send(.roadRouteFailed(courseID: courseID, message: error.fallbackMessage))
-            } catch {
-                await send(.roadRouteFailed(courseID: courseID, message: "도로 경로를 불러오지 못해 대체 경로로 표시 중이에요."))
-            }
-        }
-        .cancelTask(id: BottomSheetEffectID.routeLoading)
+    var certifiedDistanceMeters: Int? {
+        #if DEBUG
+        55000
+        #else
+        nil
+        #endif
     }
 
-    private func requiresAuthentication(_ error: Error) -> Bool {
-        guard let networkError = error as? NetworkError else { return false }
-        return switch networkError {
-        case .refreshFailGoRoot, .httpStatusCode(401): true
-        case .apiError(let code, _, _): code.hasPrefix("AUTH_401") || code == "AUTH_400_1"
-        default: false
-        }
+    func logPracticeVisit(_ visit: PracticeVisit) {
+        #if DEBUG
+        let newLevel = visit.newLevel?.rawValue ?? "nil"
+        RodiLogger.debug(
+            "방문 기록 응답: visitCount=\(visit.visitCount), addedCertifiedDistanceMeters=\(visit.addedCertifiedDistanceMeters), requiredDistanceMeters=\(visit.requiredDistanceMeters), isCertifiedNow=\(visit.isCertifiedNow), totalDistanceKm=\(visit.totalDistanceKm), levelUp=\(visit.levelUp), newLevel=\(newLevel)"
+        )
+        #endif
     }
 }

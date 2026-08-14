@@ -28,7 +28,11 @@ struct RootView: View {
                 state: RootReducer.State(),
                 reducer: RootReducer(
                     tokenStore: dependencies.tokenStore,
-                    authRepository: dependencies.authRepository
+                    authRepository: dependencies.authRepository,
+                    placeRepository: dependencies.placeRepository,
+                    practiceRepository: dependencies.practiceRepository,
+                    reviewRepository: dependencies.reviewRepository,
+                    practiceReturnPromptStore: dependencies.practiceReturnPromptStore
                 )
             )
         )
@@ -58,7 +62,16 @@ struct RootView: View {
                 .transition(.opacity)
             }
 
+            if store.state.reviewEntrySource != .courseDetail {
+                ReviewFlowView(
+                    state: store.state.review,
+                    send: { store.send(.review($0)) }
+                )
+                .zIndex(2)
+            }
+
         }
+        .rodiSnackbar(message: store.state.reviewSnackbarMessage)
         .background {
             NetworkUnavailableOverlayHost(presenter: networkUnavailableOverlayPresenter)
                 .frame(width: 0, height: 0)
@@ -111,6 +124,16 @@ extension RootView {
                 requestLogin: appRouter.requireLogin,
                 onLogoutCompleted: appRouter.completeLogout,
                 homeTabSelectionRequestID: appRouter.homeTabSelectionRequestID,
+                homeReviewFlowFinishedRequestID: store.state.homeReviewFlowFinishedRequestID,
+                myPracticeRecordsReviewFlowFinishedRequestID: store.state.myPracticeRecordsReviewFlowFinishedRequestID,
+                myPostsReviewFlowFinishedRequestID: store.state.myPostsReviewFlowFinishedRequestID,
+                onReviewTestRequested: { store.send(.debugReviewTestRequested) },
+                onReviewRequested: { store.send(.reviewRequested($0)) },
+                reviewState: store.state.review,
+                reviewSnackbarMessage: store.state.reviewSnackbarMessage,
+                isCourseDetailReviewPresented: store.state.reviewEntrySource == .courseDetail
+                    && store.state.review.route != .hidden,
+                sendReview: { store.send(.review($0)) },
                 dependencies: dependencies
             )
         }
