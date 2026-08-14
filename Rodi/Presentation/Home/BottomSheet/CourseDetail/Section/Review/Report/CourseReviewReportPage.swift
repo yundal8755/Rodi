@@ -38,6 +38,7 @@ struct CourseReviewReportPage: View {
                 completionDialog
             }
         }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .accessibilityAddTraits(.isModal)
     }
 }

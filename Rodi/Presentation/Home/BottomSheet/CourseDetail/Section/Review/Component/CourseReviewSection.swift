@@ -80,10 +80,28 @@ private extension CourseReviewSection {
                 fullWidthDivider(height: 1)
                     .padding(.top, 24)
                 writeReviewCallToAction
+            } else if hasAnyReviews {
+                selectedLevelEmptyContent
             } else {
                 emptyReviewCallToAction
             }
         }
+    }
+
+    var selectedLevelEmptyContent: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Spacer(minLength: 0)
+                reviewLevelDropdown
+            }
+            .padding(.top, 12)
+
+            emptyReviewCallToAction
+        }
+    }
+
+    var hasAnyReviews: Bool {
+        (summary?.totalReviewCount ?? 0) > 0
     }
 
     var emptyReviewCallToAction: some View {
@@ -107,7 +125,7 @@ private extension CourseReviewSection {
                 .buttonStyle(.plain)
                 .accessibilityLabel("후기 쓰기")
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .trailing)
             .padding(.top, 20)
             .padding(.bottom, 32)
 
@@ -563,11 +581,16 @@ struct CourseReviewCard: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                Text(review.createdAt.reviewDisplayDate)
-                    .rodiTypography(.caption2Medium)
-                    .foregroundStyle(RodiColor.gray500)
+                HStack(spacing: 0) {
+                    Spacer(minLength: 0)
+
+                    Text(review.createdAt.reviewDisplayDate)
+                        .rodiTypography(.caption2Medium)
+                        .foregroundStyle(RodiColor.gray500)
+                }
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 }
