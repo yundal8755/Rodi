@@ -125,7 +125,7 @@ private extension CourseReviewSection {
                 .buttonStyle(.plain)
                 .accessibilityLabel("후기 쓰기")
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .frame(maxWidth: .infinity, alignment: .center)
             .padding(.top, 20)
             .padding(.bottom, 32)
 

@@ -47,33 +47,33 @@ private extension CourseDetailExpandedPage {
             RodiColor.white
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                fixedHeader(title: nil)
-
-                ScrollView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
                     VStack(alignment: .leading, spacing: 0) {
-                        VStack(alignment: .leading, spacing: 0) {
-                            courseInformation(detail: detail)
-                            routeSection(detail: detail)
-                                .padding(.top, 28)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 20)
-
-                        fullWidthDivider(height: 2)
-                            .padding(.vertical, 24)
-
-                        reviewSection
-                            .padding(.horizontal, 16)
+                        courseInformation(detail: detail)
+                        routeSection(detail: detail)
+                            .padding(.top, 28)
                     }
-                    .padding(.bottom, 24)
-                }
-                .scrollIndicators(.hidden)
-                .simultaneousGesture(dropdownDismissDragGesture)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
 
-                fixedActionBar(detail: detail)
+                    fullWidthDivider(height: 2)
+                        .padding(.vertical, 24)
+
+                    reviewSection
+                        .padding(.horizontal, 16)
+                }
+                .padding(.bottom, 24)
             }
+            .scrollIndicators(.hidden)
+            .simultaneousGesture(dropdownDismissDragGesture)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            fixedHeader(title: nil)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            fixedActionBar(detail: detail)
         }
     }
 
@@ -82,27 +82,27 @@ private extension CourseDetailExpandedPage {
             RodiColor.white
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                fixedHeader(title: "레벨별 후기")
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        CourseReviewView(
-                            state: state.reviews,
-                            activeDropdown: $activeReviewDropdown,
-                            send: { send(.reviews($0)) }
-                        )
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 20)
-                    .padding(.bottom, 24)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    CourseReviewView(
+                        state: state.reviews,
+                        activeDropdown: $activeReviewDropdown,
+                        send: { send(.reviews($0)) }
+                    )
                 }
-                .scrollIndicators(.hidden)
-                .simultaneousGesture(dropdownDismissDragGesture)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                fixedActionBar(detail: detail)
+                .padding(.horizontal, 16)
+                .padding(.top, 20)
+                .padding(.bottom, 24)
             }
+            .scrollIndicators(.hidden)
+            .simultaneousGesture(dropdownDismissDragGesture)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            fixedHeader(title: "레벨별 후기")
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            fixedActionBar(detail: detail)
         }
     }
 
@@ -226,7 +226,6 @@ private extension CourseDetailExpandedPage {
                         .truncationMode(.tail)
                 }
                 .foregroundStyle(RodiColor.secondary400)
-                .padding(.top, 8)
                 .padding(.bottom, 4)
             }
 
