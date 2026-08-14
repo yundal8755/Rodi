@@ -139,7 +139,11 @@ struct HomeSearchReducer: Reducer {
             state.query = recentSearch.keyword
             switch recentSearch.kind {
             case .region:
-                return beginPlaceSearch(keyword: recentSearch.keyword, state: &state)
+                return beginPlaceSearch(
+                    keyword: recentSearch.keyword,
+                    state: &state,
+                    registration: .init(kind: .region, keyword: recentSearch.keyword)
+                )
 
             case .place:
                 guard let placeID = recentSearch.placeID else {
@@ -148,7 +152,11 @@ struct HomeSearchReducer: Reducer {
                 return selectPlaceEffect(
                     id: placeID,
                     name: recentSearch.keyword,
-                    registration: nil
+                    registration: .init(
+                        kind: .place,
+                        keyword: recentSearch.keyword,
+                        placeID: placeID
+                    )
                 )
             }
 
