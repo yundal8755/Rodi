@@ -281,10 +281,10 @@ private struct MyPostReviewRow: View {
                     .overlay(alignment: .trailing) {
                         Button(action: menuTapped) {
                             Image("ic_more_horizontal_circle")
-//                                .resizable()
-//                                .scaledToFit()
-//                                .frame(width: 18, height: 18)
-//                                .frame(maxWidth: .infinity, alignment: .trailing)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 18, height: 18)
+                                .frame(maxWidth: .infinity, alignment: .trailing)
                         }
                         .buttonStyle(.plain)
                         .frame(width: 44, height: 44)
