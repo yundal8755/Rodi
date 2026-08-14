@@ -260,7 +260,35 @@ private struct PlaceListMessageView: View {
 private struct PlaceListEmptyResultView: View {
     let isExpanded: Bool
 
+    #if DEBUG
+    @State private var isLiveActivityTestPickerPresented = false
+    #endif
+
     var body: some View {
+        #if DEBUG
+        layout
+            .confirmationDialog(
+                "Live Activity 테스트",
+                isPresented: $isLiveActivityTestPickerPresented,
+                titleVisibility: .visible
+            ) {
+                Button("연습 코스로 이동중") {
+                    PracticeLiveActivityService.shared.showPreview(phase: .headingToCourse)
+                }
+                Button("코스 주행중") {
+                    PracticeLiveActivityService.shared.showPreview(phase: .drivingCourse)
+                }
+                Button("코스 주행 완료") {
+                    PracticeLiveActivityService.shared.showPreview(phase: .completed)
+                }
+                Button("취소", role: .cancel) {}
+            }
+        #else
+        layout
+        #endif
+    }
+
+    private var layout: some View {
         Group {
             if isExpanded {
                 VStack {
@@ -282,10 +310,7 @@ private struct PlaceListEmptyResultView: View {
 
     private var emptyContent: some View {
         VStack(spacing: 16) {
-            Image("img_empty_radius_result")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 80, height: 80)
+            emptyImage
 
             VStack(spacing: 8) {
                 Text("추천할 수 있는 연습 코스를 찾지 못했어요.")
@@ -300,5 +325,19 @@ private struct PlaceListEmptyResultView: View {
             }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private var emptyImage: some View {
+        Image("img_empty_radius_result")
+            .resizable()
+            .scaledToFit()
+            .frame(width: 80, height: 80)
+            #if DEBUG
+            .onTapGesture(count: 3) {
+                isLiveActivityTestPickerPresented = true
+            }
+            .accessibilityHint("개발용 Live Activity 테스트를 열려면 세 번 탭하세요.")
+            #endif
     }
 }

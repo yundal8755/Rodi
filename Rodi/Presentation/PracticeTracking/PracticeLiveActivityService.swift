@@ -109,6 +109,42 @@ final class PracticeLiveActivityService {
         lastCourseProgress = nil
     }
 
+    #if DEBUG
+    /// 추천 목록의 빈 상태에서 Live Activity 외형을 빠르게 확인하기 위한 개발용 진입점입니다.
+    func showPreview(phase: PracticeTrackingPhase) {
+        cancel()
+
+        let routePath = [
+            RodiCoordinate(latitude: 37.582, longitude: 126.984),
+            RodiCoordinate(latitude: 37.586, longitude: 126.991)
+        ]
+        let session = PracticeTrackingSession(
+            id: UUID(),
+            courseID: 0,
+            courseName: "북악스카이웨이 드라이브",
+            routePath: routePath,
+            cumulativeRouteDistanceMeters: [0, 1_000],
+            startedAt: .now,
+            phase: phase,
+            drivingStartedAt: phase == .drivingCourse || phase == .completed ? .now.addingTimeInterval(-240) : nil,
+            lastAcceptedLocationAt: .now,
+            courseProgress: phase == .completed ? 1 : 0.45,
+            activeDrivingSeconds: phase == .headingToCourse ? 0 : 240,
+            matchedSampleCount: phase == .headingToCourse ? 0 : 12,
+            initialDistanceToCourseStartMeters: 1_000,
+            distanceToCourseStartMeters: phase == .headingToCourse ? 650 : 0,
+            lastMatchedLocationAt: .now,
+            initialMatchedRouteDistanceMeters: 0,
+            furthestMatchedRouteDistanceMeters: phase == .completed ? 1_000 : 450,
+            drivenRouteDistanceMeters: phase == .completed ? 1_000 : 450,
+            completedAt: phase == .completed ? .now : nil
+        )
+
+        start(for: session)
+        RodiLogger.debug("Practice Live Activity preview requested: phase=\(phase.rawValue)")
+    }
+    #endif
+
     private func contentState(for session: PracticeTrackingSession) -> PracticeLiveActivityAttributes.ContentState {
         PracticeLiveActivityAttributes.ContentState(
             phaseRawValue: session.phase.rawValue,
