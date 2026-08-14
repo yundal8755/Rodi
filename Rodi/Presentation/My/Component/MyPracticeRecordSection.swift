@@ -100,7 +100,7 @@ struct MyPracticeRecordPreviewCard: View {
                 .foregroundStyle(RodiColor.black)
                 .lineLimit(1)
 
-            Text(Self.dateFormatter.string(from: record.visitedAt))
+            Text(Self.dateFormatter.string(from: record.lastActivityAt))
                 .rodiTypography(.caption1Medium)
                 .foregroundStyle(RodiColor.gray600)
                 .padding(.top, 4)
@@ -123,7 +123,7 @@ struct MyPracticeRecordPreviewCard: View {
                 .stroke(RodiColor.primary50, lineWidth: 1)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(record.placeName), \(Self.dateFormatter.string(from: record.visitedAt))")
+        .accessibilityLabel("\(record.placeName), \(Self.dateFormatter.string(from: record.lastActivityAt))")
     }
 
     private static let dateFormatter: DateFormatter = {

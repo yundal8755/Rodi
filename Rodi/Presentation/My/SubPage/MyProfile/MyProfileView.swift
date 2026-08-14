@@ -23,48 +23,56 @@ struct MyProfileView: View {
     let retryPracticeRecords: () -> Void
     let reviewRequested: (ReviewWriteRequest) -> Void
     let reviewTestAction: () -> Void
+    let pendingLevelUp: MemberProfile.Level?
+    let confirmLevelUp: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
+        ZStack {
+            VStack(spacing: 0) {
+                header
 
-            ScrollView {
-                VStack(spacing: 0) {
-                    profileSection
+                ScrollView {
+                    VStack(spacing: 0) {
+                        profileSection
+                            .padding(.horizontal, 16)
+
+                        MySectionDivider()
+                            .padding(.top, 24)
+
+                        MyPracticeRecordSection(
+                            records: practiceRecords,
+                            isLoading: isLoadingPracticeRecords,
+                            hasCompletedInitialLoad: hasCompletedPracticeRecordLoad,
+                            errorMessage: practiceRecordErrorMessage,
+                            openAll: openPracticeRecords,
+                            retry: retryPracticeRecords,
+                            reviewRequested: reviewRequested
+                        )
+                        .padding(.top, 24)
+
+                        MySectionDivider()
+                            .padding(.top, 24)
+
+                        savedPlacesRow
+                            .padding(.horizontal, 16)
+                            .padding(.top, 24)
+
+                        Button(action: openMyPosts) {
+                            MyNavigationRow(title: "내 게시글")
+                        }
+                        .buttonStyle(.plain)
                         .padding(.horizontal, 16)
-
-                    MySectionDivider()
-                        .padding(.top, 24)
-
-                    MyPracticeRecordSection(
-                        records: practiceRecords,
-                        isLoading: isLoadingPracticeRecords,
-                        hasCompletedInitialLoad: hasCompletedPracticeRecordLoad,
-                        errorMessage: practiceRecordErrorMessage,
-                        openAll: openPracticeRecords,
-                        retry: retryPracticeRecords,
-                        reviewRequested: reviewRequested
-                    )
-                    .padding(.top, 24)
-
-                    MySectionDivider()
-                        .padding(.top, 24)
-
-                    savedPlacesRow
-                        .padding(.horizontal, 16)
-                        .padding(.top, 24)
-
-                    Button(action: openMyPosts) {
-                        MyNavigationRow(title: "내 게시글")
+                        .padding(.top, 20)
                     }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 20)
+                    .padding(.bottom, 114)
                 }
-                .padding(.bottom, 114)
+            }
+            .background(RodiColor.white)
+
+            if let pendingLevelUp {
+                MyLevelUpDialog(level: pendingLevelUp, confirm: confirmLevelUp)
             }
         }
-        .background(RodiColor.white)
         .toolbar(.hidden, for: .navigationBar)
     }
 
@@ -215,9 +223,26 @@ private struct MyProfileCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(profile.nickname).rodiTypography(.body1SemiBold).foregroundStyle(RodiColor.black).lineLimit(1)
                     Text("레벨").rodiTypography(.caption1Medium).foregroundStyle(RodiColor.gray700).padding(.top, 8)
-                    Text(profile.level.displayName).rodiTypography(.body3Medium).foregroundStyle(RodiColor.black)
+                    HStack(spacing: 8) {
+                        Text(profile.level.displayName)
+                            .rodiTypography(.body3Medium)
+                            .foregroundStyle(RodiColor.black)
+
+                        Spacer(minLength: 0)
+
+                        if let nextLevelKm = profile.levelProgress?.nextLevelKm {
+                            Text("\(nextLevelKm.formatted(.number.precision(.fractionLength(0))))km")
+                                .rodiTypography(.caption2Medium)
+                                .foregroundStyle(RodiColor.gray700)
+                        }
+                    }
+
+                    if let levelProgress = profile.levelProgress {
+                        MyLevelProgressGauge(progressFraction: levelProgress.progressFraction)
+                            .padding(.top, 10)
+                    }
                 }
-                Spacer(minLength: 0)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text("추천 연습 유형").rodiTypography(.caption1Medium).foregroundStyle(RodiColor.gray700)
@@ -237,8 +262,10 @@ private struct MyProfileCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("운전 목표").rodiTypography(.caption1Medium).foregroundStyle(RodiColor.gray700)
                     HStack(spacing: 8) {
-                        Text(profile.drivingGoal?.isEmpty == false ? profile.drivingGoal! : "아직 설정한 운전 목표가 없어요.")
-                            .rodiTypography(.body3Medium).foregroundStyle(RodiColor.black).lineLimit(1)
+                        Text(drivingGoalText)
+                            .rodiTypography(.body3Medium)
+                            .foregroundStyle(hasDrivingGoal ? RodiColor.black : RodiColor.gray400)
+                            .lineLimit(1)
                         Spacer(minLength: 0)
                         Image(systemName: "chevron.right").font(.system(size: 12, weight: .medium)).foregroundStyle(RodiColor.gray700)
                     }
@@ -271,6 +298,14 @@ private struct MyProfileCard: View {
         .offset(y: cardOffsetY)
         .scaleEffect(cardScale)
         .onAppear(perform: playEntrance)
+    }
+
+    private var hasDrivingGoal: Bool {
+        !(profile.drivingGoal?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
+
+    private var drivingGoalText: String {
+        hasDrivingGoal ? profile.drivingGoal! : "나만의 운전 목표를 입력해보세요!"
     }
 
     private func playEntrance() {
@@ -313,5 +348,31 @@ private struct MyProfileCard: View {
                 stampRotation = 0
             }
         }
+    }
+}
+
+private struct MyLevelProgressGauge: View {
+    let progressFraction: Double
+
+    var body: some View {
+        Canvas { context, size in
+            let track = CGRect(origin: .zero, size: size)
+            context.fill(
+                Path(roundedRect: track, cornerRadius: 6),
+                with: .color(RodiColor.gray300)
+            )
+
+            let fillWidth = size.width * min(max(progressFraction, 0), 1)
+            guard fillWidth > 0 else { return }
+
+            let fill = CGRect(x: 0, y: 0, width: fillWidth, height: size.height)
+            context.fill(
+                Path(roundedRect: fill, cornerRadius: min(6, fillWidth / 2)),
+                with: .color(RodiColor.primary400)
+            )
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 6)
+        .accessibilityLabel("다음 레벨 진행률 \(Int((progressFraction * 100).rounded()))퍼센트")
     }
 }

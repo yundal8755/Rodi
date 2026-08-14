@@ -69,12 +69,21 @@ final class MemberRemoteDataSource {
         #if DEBUG
         let dataDescription: String
         if let data = response.data {
+            let levelProgressDescription: String
+            if let levelProgress = data.levelProgress {
+                let nextLevelKm = levelProgress.nextLevelKm.map { String($0) } ?? "nil"
+                levelProgressDescription = "levelProgress={totalDistanceKm=\(levelProgress.totalDistanceKm), currentLevelStartKm=\(levelProgress.currentLevelStartKm), nextLevelKm=\(nextLevelKm), progressPercent=\(levelProgress.progressPercent)}"
+            } else {
+                levelProgressDescription = "levelProgress=nil"
+            }
+
             dataDescription = """
             nickname=\(data.nickname), \
             level=\(data.level), \
             recommendationTags=\(data.recommendationTags), \
             drivingGoal=\(data.drivingGoal ?? "nil"), \
-            savedPlaceCount=\(data.savedPlaceCount)
+            savedPlaceCount=\(data.savedPlaceCount), \
+            \(levelProgressDescription)
             """
         } else {
             dataDescription = "nil"

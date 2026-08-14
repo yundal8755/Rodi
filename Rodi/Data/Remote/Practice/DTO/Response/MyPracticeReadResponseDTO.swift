@@ -14,7 +14,6 @@ struct MyPracticeItemResponseDTO: Decodable {
     let practiceTypes: [String]
     let status: String
     let visitCount: Int
-    let visitedAt: String?
-    let isVerified: Bool
+    let lastActivityAt: String?
     let hasReview: Bool
 }

@@ -17,7 +17,25 @@ final class PracticeRepositoryImpl: PracticeRepository {
             practiceID: practiceID,
             certifiedDistanceMeters: certifiedDistanceMeters
         )
-        return .init(visitCount: response.visitCount, isVerified: response.isVerified)
+        let newLevel: MemberProfile.Level?
+        if let rawLevel = response.newLevel {
+            guard let level = MemberProfile.Level(rawValue: rawLevel) else {
+                throw .decodingFail
+            }
+            newLevel = level
+        } else {
+            newLevel = nil
+        }
+
+        return .init(
+            visitCount: response.visitCount,
+            addedCertifiedDistanceMeters: response.addedCertifiedDistanceMeters,
+            requiredDistanceMeters: response.requiredDistanceMeters,
+            isCertifiedNow: response.isCertifiedNow,
+            totalDistanceKm: response.totalDistanceKm,
+            levelUp: response.levelUp,
+            newLevel: newLevel
+        )
     }
 
     func fetchMyPractices(query: MyPracticeQuery) async throws(NetworkError) -> MyPracticePage {
@@ -69,8 +87,7 @@ private extension PracticeRepositoryImpl {
             practiceTypes: dto.practiceTypes,
             status: status,
             visitCount: dto.visitCount,
-            visitedAt: dto.visitedAt.flatMap(date(from:)),
-            isVerified: dto.isVerified,
+            lastActivityAt: dto.lastActivityAt.flatMap(date(from:)),
             hasReview: dto.hasReview
         )
     }

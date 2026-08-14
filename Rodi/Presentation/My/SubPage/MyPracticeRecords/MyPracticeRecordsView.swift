@@ -151,8 +151,8 @@ private struct MyPracticeRecordListRow: View {
     }
 
     private var dateText: String {
-        guard let visitedAt = record.visitedAt else { return "방문 일자 없음" }
-        return Self.dateFormatter.string(from: visitedAt)
+        guard let lastActivityAt = record.lastActivityAt else { return "방문 일자 없음" }
+        return Self.dateFormatter.string(from: lastActivityAt)
     }
 
     private static let dateFormatter: DateFormatter = {

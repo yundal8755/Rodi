@@ -156,7 +156,9 @@ private extension MyBlockedMembersReducer {
                 RodiLogger.debug("차단목록 조회 성공: GET /api/v1/members/me/blocks items=\(page.items.count)")
                 await send(.firstPageLoaded(.success(page), requestID: requestID))
             } catch {
-                RodiLogger.warning("차단목록 조회 실패: GET /api/v1/members/me/blocks error=\(error.localizedDescription)")
+                RodiLogger.warning(
+                    "차단목록 조회 실패: endpoint=GET /api/v1/members/me/blocks, \(Self.diagnosticDescription(for: error))"
+                )
                 await send(.firstPageLoaded(.failure(Self.message(for: error)), requestID: requestID))
             }
         }
@@ -216,6 +218,23 @@ private extension MyBlockedMembersReducer {
             return "인터넷 연결을 확인한 뒤 다시 시도해 주세요."
         }
         return "차단목록을 불러오지 못했어요."
+    }
+
+    static func diagnosticDescription(for error: Error) -> String {
+        guard let networkError = error as? NetworkError else {
+            return "kind=unexpected, type=\(String(reflecting: type(of: error)))"
+        }
+
+        switch networkError {
+        case .apiError(let code, let message, let httpStatusCode):
+            return "kind=apiError, code=\(code), httpStatus=\(httpStatusCode.map(String.init) ?? "nil"), message=\(message)"
+        case .httpStatusCode(let statusCode):
+            return "kind=httpStatusCode, httpStatus=\(statusCode)"
+        case .decodingFail:
+            return "kind=decodingFail, response=blocked-member cursor page or blockedAt date"
+        default:
+            return "kind=\(networkError.localizedDescription)"
+        }
     }
 
     static func unblockMessage(for error: Error) -> String {

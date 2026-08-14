@@ -6,7 +6,12 @@ struct PracticeRegistration: Equatable {
 
 struct PracticeVisit: Equatable {
     let visitCount: Int
-    let isVerified: Bool
+    let addedCertifiedDistanceMeters: Int
+    let requiredDistanceMeters: Int
+    let isCertifiedNow: Bool
+    let totalDistanceKm: Double
+    let levelUp: Bool
+    let newLevel: MemberProfile.Level?
 }
 
 enum MyPracticeStatus: String, Equatable {
@@ -22,8 +27,7 @@ struct MyPracticeItem: Equatable, Identifiable {
     let practiceTypes: [String]
     let status: MyPracticeStatus
     let visitCount: Int
-    let visitedAt: Date?
-    let isVerified: Bool
+    let lastActivityAt: Date?
     let hasReview: Bool
 }
 
