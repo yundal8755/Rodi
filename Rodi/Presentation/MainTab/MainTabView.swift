@@ -9,7 +9,6 @@ struct MainTabView: View {
     @Environment(\.screenSafeAreaInsets) private var screenSafeAreaInsets
 
     @StateObject private var store: StoreOf<MainTabReducer>
-    @StateObject private var homeCoordinator = Coordinator<HomeRoute>()
     @StateObject private var myCoordinator = Coordinator<MyRoute>()
     @State private var homeListPresentationRequestID = 0
     @State private var consumedHomeTabSelectionRequestID = 0
@@ -59,7 +58,6 @@ struct MainTabView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             HomeView(
-                coordinator: homeCoordinator,
                 isHomeTabSelected: store.state.selectedTab == .home,
                 onAuthenticationRequired: { requestLogin(nil) },
                 onBottomTabBarVisibilityChanged: {
@@ -139,7 +137,7 @@ private extension MainTabView {
     var shouldShowBottomTabBar: Bool {
         switch store.state.selectedTab {
         case .home:
-            store.state.isHomeBottomTabBarVisible && homeCoordinator.path.isEmpty
+            store.state.isHomeBottomTabBarVisible
             
         case .my:
             myCoordinator.path.isEmpty

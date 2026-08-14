@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ReviewFormScaffold<Content: View, BottomBar: View>: View {
+    @Environment(\.screenSafeAreaInsets) private var screenSafeAreaInsets
+
     private let header: ReviewFormHeader
     private let content: Content
     private let bottomBar: BottomBar
@@ -16,21 +18,22 @@ struct ReviewFormScaffold<Content: View, BottomBar: View>: View {
     }
 
     var body: some View {
-        content
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background {
-                RodiColor.white
-                    .ignoresSafeArea()
-            }
-        .safeAreaInset(edge: .top, spacing: 0) {
+        VStack(spacing: 0) {
             header
                 .frame(maxWidth: .infinity)
                 .background(RodiColor.white)
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
             bottomBar
                 .frame(maxWidth: .infinity)
                 .background(RodiColor.white)
         }
+        .padding(.top, screenSafeAreaInsets.top)
+        .padding(.bottom, screenSafeAreaInsets.bottom)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(RodiColor.white)
+        .ignoresSafeArea()
     }
 }

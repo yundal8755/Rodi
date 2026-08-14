@@ -47,30 +47,31 @@ private extension CourseDetailExpandedPage {
             RodiColor.white
                 .ignoresSafeArea()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        courseInformation(detail: detail)
-                        routeSection(detail: detail)
-                            .padding(.top, 28)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 20)
-
-                    fullWidthDivider(height: 2)
-                        .padding(.vertical, 24)
-
-                    reviewSection
-                        .padding(.horizontal, 16)
-                }
-                .padding(.bottom, 24)
-            }
-            .scrollIndicators(.hidden)
-            .simultaneousGesture(dropdownDismissDragGesture)
-            .safeAreaInset(edge: .top, spacing: 0) {
+            VStack(spacing: 0) {
                 fixedHeader(title: nil)
-            }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            courseInformation(detail: detail)
+                            routeSection(detail: detail)
+                                .padding(.top, 28)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 20)
+
+                        fullWidthDivider(height: 2)
+                            .padding(.vertical, 24)
+
+                        reviewSection
+                            .padding(.horizontal, 16)
+                    }
+                    .padding(.bottom, 24)
+                }
+                .scrollIndicators(.hidden)
+                .simultaneousGesture(dropdownDismissDragGesture)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
                 fixedActionBar(detail: detail)
             }
         }
@@ -81,24 +82,25 @@ private extension CourseDetailExpandedPage {
             RodiColor.white
                 .ignoresSafeArea()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    CourseReviewView(
-                        state: state.reviews,
-                        activeDropdown: $activeReviewDropdown,
-                        send: { send(.reviews($0)) }
-                    )
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 20)
-                .padding(.bottom, 24)
-            }
-            .scrollIndicators(.hidden)
-            .simultaneousGesture(dropdownDismissDragGesture)
-            .safeAreaInset(edge: .top, spacing: 0) {
+            VStack(spacing: 0) {
                 fixedHeader(title: "레벨별 후기")
-            }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        CourseReviewView(
+                            state: state.reviews,
+                            activeDropdown: $activeReviewDropdown,
+                            send: { send(.reviews($0)) }
+                        )
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+                    .padding(.bottom, 24)
+                }
+                .scrollIndicators(.hidden)
+                .simultaneousGesture(dropdownDismissDragGesture)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
                 fixedActionBar(detail: detail)
             }
         }
