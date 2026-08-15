@@ -3,6 +3,7 @@
 //  Rodi
 //
 
+import ActivityKit
 import CoreLocation
 import LicenseList
 import SwiftUI
@@ -184,27 +185,33 @@ struct MyPermissionSettingsView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
     @State private var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    @State private var areLiveActivitiesEnabled = false
 
     var body: some View {
         VStack(spacing: 0) {
             MySubpageHeader(title: "권한 설정 변경", backAction: backAction)
-            Button(action: openSystemLocationSettings) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("위치").rodiTypography(.body1Medium).foregroundStyle(RodiColor.black)
-                        Spacer()
-                        Text(locationAuthorizationTitle).rodiTypography(.body1Medium).foregroundStyle(RodiColor.gray600)
-                        Image(systemName: "chevron.right").font(.system(size: 16, weight: .medium)).foregroundStyle(RodiColor.gray700).frame(width: 20, height: 20)
-                    }
-                    Text("내 주변 운전 연습 코스를 추천하기 위해 필요해요.").rodiTypography(.caption2Medium).foregroundStyle(RodiColor.gray600)
-                }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+            VStack(spacing: 32) {
+                permissionSettingButton(
+                    title: "위치",
+                    status: locationAuthorizationTitle,
+                    description: "내 주변 연습 장소 추천과 시작한 연습의 방문 인증에 필요해요.",
+                    action: openSystemAppSettings
+                )
+
+                permissionSettingButton(
+                    title: "실시간 현황",
+                    status: liveActivityAuthorizationTitle,
+                    description: "앱을 나가도 주행 상태와 연습 진행률을 확인하기 위한 설정",
+                    action: openSystemAppSettings
+                )
             }
-            .buttonStyle(.plain).padding(.horizontal, 16).padding(.top, 24)
+            .padding(.horizontal, 16)
+            .padding(.top, 24)
             Spacer()
         }
         .background(RodiColor.white).toolbar(.hidden, for: .navigationBar)
-        .onAppear(perform: refreshAuthorizationStatus)
-        .onChange(of: scenePhase) { phase in if phase == .active { refreshAuthorizationStatus() } }
+        .onAppear(perform: refreshPermissionSettings)
+        .onChange(of: scenePhase) { phase in if phase == .active { refreshPermissionSettings() } }
     }
 
     private var locationAuthorizationTitle: String {
@@ -215,6 +222,43 @@ struct MyPermissionSettingsView: View {
         @unknown default: "설정 필요"
         }
     }
-    private func refreshAuthorizationStatus() { authorizationStatus = CLLocationManager().authorizationStatus }
-    private func openSystemLocationSettings() { if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) } }
+
+    private var liveActivityAuthorizationTitle: String {
+        areLiveActivitiesEnabled ? "허용됨" : "허용 필요"
+    }
+
+    private func permissionSettingButton(
+        title: String,
+        status: String,
+        description: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Text(title).rodiTypography(.body1Medium).foregroundStyle(RodiColor.black)
+                    Spacer()
+                    Text(status).rodiTypography(.body1Medium).foregroundStyle(RodiColor.gray600)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(RodiColor.gray700)
+                        .frame(width: 20, height: 20)
+                }
+                Text(description).rodiTypography(.caption2Medium).foregroundStyle(RodiColor.gray600)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func refreshPermissionSettings() {
+        authorizationStatus = CLLocationManager().authorizationStatus
+        areLiveActivitiesEnabled = ActivityAuthorizationInfo().areActivitiesEnabled
+    }
+
+    private func openSystemAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        openURL(url)
+    }
 }
