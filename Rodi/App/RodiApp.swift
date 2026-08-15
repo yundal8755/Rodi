@@ -31,7 +31,11 @@ struct RodiApp: App {
 
     var body: some Scene {
         WindowGroup {
+#if DEBUG
+            KakaoLocalSearchTestRootView()
+#else
             RootView()
+#endif
         }
         .onChange(of: scenePhase) { newValue in
             switch newValue {
