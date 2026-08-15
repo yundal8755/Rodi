@@ -10,6 +10,7 @@ RODI is a map-based driving-practice course discovery app for beginner drivers a
 - Never expose complete secrets, tokens, or precise user coordinates in responses or committed logs. Release logs must contain none of them.
 - Do not modify `Rodi/Data/Local` unless the task explicitly includes local persistence.
 - Minimum deployment target is iOS 16.1. Gate newer APIs with `#available` and provide an iOS 16.1 fallback.
+- Before changing Live Activity UI, explain the proposed change and obtain the user's explicit approval.
 
 ## Source of Truth
 
@@ -35,6 +36,7 @@ Read `AGENTS.md`, then normally only one task document:
 - Figma, SwiftUI, UIKit, assets, layout: `Docs/UI_FIGMA.md`
 - Swagger, DTO, API, repository: `Docs/API_SWAGGER.md`
 - Dev/Prod, TestFlight, privacy, analytics: `Docs/RELEASE.md`
+- 2차 업데이트의 연습 측정·재진입·후기 팝업: `Docs/SECOND_UPDATE.md`
 
 Load a second document only for a genuinely mixed task. Start with `rg` for the target symbol and adjacent implementation instead of reading a whole layer.
 
