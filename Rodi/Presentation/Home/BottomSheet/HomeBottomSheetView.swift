@@ -16,37 +16,47 @@ struct HomeBottomSheetView: View {
     @State private var settlementTask: Task<Void, Never>?
     @State private var panTranslation: CGFloat = 0
     @State private var courseDetailHeight: CGFloat = 180
+    @State private var activeCourseMeasurementDialog: ActiveCourseMeasurementDialogConfiguration?
 
     let state: HomeBottomSheetReducer.State
     let send: (HomeBottomSheetReducer.Action) -> Void
     let userLocation: RodiCoordinate?
     let hasLocationPermission: Bool
+    let memberRepository: MemberRepository
     let bottomTabBarHeight: CGFloat
     let onCourseDetailHeightChanged: (CGFloat) -> Void
     let onVisibleHeightChanged: (CGFloat, Bool) -> Void
     let onCourseExpansionSettled: () -> Void
     let requestLocationPermission: () -> Void
+    let presentLiveActivityPermissionDialog: (LiveActivityPermissionDialogConfiguration) -> Void
+    let debugReviewTestAction: () -> Void
 
     init(
         state: HomeBottomSheetReducer.State,
         send: @escaping (HomeBottomSheetReducer.Action) -> Void,
         userLocation: RodiCoordinate?,
         hasLocationPermission: Bool,
+        memberRepository: MemberRepository,
         bottomTabBarHeight: CGFloat,
         onCourseDetailHeightChanged: @escaping (CGFloat) -> Void = { _ in },
         onVisibleHeightChanged: @escaping (CGFloat, Bool) -> Void = { _, _ in },
         onCourseExpansionSettled: @escaping () -> Void = {},
-        requestLocationPermission: @escaping () -> Void
+        requestLocationPermission: @escaping () -> Void,
+        presentLiveActivityPermissionDialog: @escaping (LiveActivityPermissionDialogConfiguration) -> Void = { _ in },
+        debugReviewTestAction: @escaping () -> Void = {}
     ) {
         self.state = state
         self.send = send
         self.userLocation = userLocation
         self.hasLocationPermission = hasLocationPermission
+        self.memberRepository = memberRepository
         self.bottomTabBarHeight = bottomTabBarHeight
         self.onCourseDetailHeightChanged = onCourseDetailHeightChanged
         self.onVisibleHeightChanged = onVisibleHeightChanged
         self.onCourseExpansionSettled = onCourseExpansionSettled
         self.requestLocationPermission = requestLocationPermission
+        self.presentLiveActivityPermissionDialog = presentLiveActivityPermissionDialog
+        self.debugReviewTestAction = debugReviewTestAction
     }
 
     var body: some View {
@@ -79,6 +89,20 @@ struct HomeBottomSheetView: View {
                     .allowsHitTesting(!isSettling)
             }
 
+            if let configuration = activeCourseMeasurementDialog {
+                ActiveCourseMeasurementDialog(
+                    courseName: configuration.courseName,
+                    continueAction: {
+                        activeCourseMeasurementDialog = nil
+                        configuration.continueAction()
+                    },
+                    endAction: {
+                        activeCourseMeasurementDialog = nil
+                        configuration.endAction()
+                    }
+                )
+                .zIndex(1)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
@@ -219,7 +243,12 @@ extension HomeBottomSheetView {
                         send: handleParkingDetailAction,
                         userLocation: userLocation,
                         hasLocationPermission: hasLocationPermission,
-                        requestLocationPermission: requestLocationPermission
+                        memberRepository: memberRepository,
+                        requestLocationPermission: requestLocationPermission,
+                        presentActiveMeasurementDialog: { configuration in
+                            activeCourseMeasurementDialog = configuration
+                        },
+                        presentLiveActivityPermissionDialog: presentLiveActivityPermissionDialog
                     )
                 }
             } else if state.resolvingPlaceID != nil || state.isDetailPresentationPending {
@@ -244,7 +273,8 @@ extension HomeBottomSheetView {
 
                         RecommendListBottomSheetView(
                             state: state.recommendList,
-                            send: { send(.recommendList($0)) }
+                            send: { send(.recommendList($0)) },
+                            debugReviewTestAction: debugReviewTestAction
                         )
                         .padding(.bottom, screenSafeAreaInsets.bottom)
                     }
@@ -260,7 +290,8 @@ extension HomeBottomSheetView {
         VStack(spacing: 0) {
             RecommendListBottomSheetView(
                 state: state.recommendList,
-                send: { send(.recommendList($0)) }
+                send: { send(.recommendList($0)) },
+                debugReviewTestAction: debugReviewTestAction
             )
             .padding(.bottom, screenSafeAreaInsets.bottom)
         }
@@ -286,7 +317,12 @@ extension HomeBottomSheetView {
                         send: handleCourseDetailAction,
                         userLocation: userLocation,
                         hasLocationPermission: hasLocationPermission,
-                        requestLocationPermission: requestLocationPermission
+                        memberRepository: memberRepository,
+                        requestLocationPermission: requestLocationPermission,
+                        presentActiveMeasurementDialog: { configuration in
+                            activeCourseMeasurementDialog = configuration
+                        },
+                        presentLiveActivityPermissionDialog: presentLiveActivityPermissionDialog
                     )
                 }
                 .fixedSize(horizontal: false, vertical: true)
@@ -404,6 +440,40 @@ extension HomeBottomSheetView {
 
 }
 
+private struct ActiveCourseMeasurementDialog: View {
+    let courseName: String
+    let continueAction: () -> Void
+    let endAction: () -> Void
+
+    var body: some View {
+        RodiModalBackground {
+            RodiDialog {
+                VStack(spacing: 0) {
+                    Text("‘\(courseName)’")
+                        .rodiTypography(.body1SemiBold)
+                        .foregroundStyle(RodiColor.primary)
+                    Text("아직 코스를 연습 중이신가요?")
+                        .rodiTypography(.body1SemiBold)
+                        .foregroundStyle(RodiColor.black)
+                        .padding(.top, 4)
+                    Text("코스 주행을 이어서 측정할까요?")
+                        .rodiTypography(.caption1Medium)
+                        .foregroundStyle(RodiColor.black)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 24)
+                    HStack(spacing: 8) {
+                        ReviewDialogButton(title: "측정 종료", isPrimary: false, action: endAction)
+                        ReviewDialogButton(title: "계속 측정", isPrimary: true, action: continueAction)
+                    }
+                    .padding(.top, 24)
+                }
+            } closeAction: {
+                continueAction()
+            }
+        }
+    }
+}
+
 private struct BottomSheetContentHeightObserver: UIViewRepresentable {
     let onHeightChanged: (CGFloat) -> Void
 
@@ -454,8 +524,9 @@ extension HomeBottomSheetView {
 
     private func updateRecommendationPan(_ translation: CGFloat) {
         guard !isSettling else { return }
-        panTranslation = translation
-        onVisibleHeightChanged(recommendationHeight(for: translation), true)
+        let adjustedTranslation = isRecommendationEmptyResult ? max(translation, 0) : translation
+        panTranslation = adjustedTranslation
+        onVisibleHeightChanged(recommendationHeight(for: adjustedTranslation), true)
     }
 
     private func updateDetailPan(_ translation: CGFloat) {
@@ -482,7 +553,8 @@ extension HomeBottomSheetView {
     }
 
     private func settleRecommendation(translation: CGFloat) {
-        let currentHeight = recommendationHeight(for: translation)
+        let adjustedTranslation = isRecommendationEmptyResult ? max(translation, 0) : translation
+        let currentHeight = recommendationHeight(for: adjustedTranslation)
         let destination = recommendationDestination(for: currentHeight)
         let targetHeight = recommendationHeight(for: destination)
         let duration: TimeInterval
@@ -662,6 +734,12 @@ extension HomeBottomSheetView {
             return .expanded
         }
         return .medium
+    }
+
+    private var isRecommendationEmptyResult: Bool {
+        state.recommendList.items.isEmpty
+            && !state.recommendList.isInitialLoading
+            && state.recommendList.errorMessage == nil
     }
 
     private func recommendationHeight(

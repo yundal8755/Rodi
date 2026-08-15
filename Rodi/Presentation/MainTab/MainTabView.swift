@@ -72,6 +72,7 @@ struct MainTabView: View {
             HomeView(
                 isHomeTabSelected: store.state.selectedTab == .home,
                 onAuthenticationRequired: { requestLogin(nil) },
+                onReviewTestRequested: onReviewTestRequested,
                 onBottomTabBarVisibilityChanged: {
                     store.send(.homeBottomTabBarVisibilityChanged($0))
                 },
@@ -83,6 +84,9 @@ struct MainTabView: View {
                 reviewFlowFinishedRequestID: homeReviewFlowFinishedRequestID,
                 onReviewRequested: {
                     onReviewRequested(.init(writeRequest: $0, entrySource: .courseDetail))
+                },
+                onReviewEditRequested: {
+                    onReviewRequested(.init(editingReviewID: $0, entrySource: .courseDetail))
                 },
                 courseDetailReviewState: reviewState,
                 courseDetailReviewSnackbarMessage: reviewSnackbarMessage,

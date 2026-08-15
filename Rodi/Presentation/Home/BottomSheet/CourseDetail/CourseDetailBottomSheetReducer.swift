@@ -11,8 +11,6 @@ struct CourseDetailBottomSheetReducer: Reducer {
         var isRouteLoading = false
         var routeStatusMessage: String?
         var isBookmarkUpdating = false
-        var isPracticeRegistrationPending = false
-        var practiceRegistrationRequestRevision = UUID()
         var presentation: Presentation = .sheet
         var isRouteTimelineExpanded = false
         var reviews = CourseReviewReducer.State()
@@ -27,33 +25,30 @@ struct CourseDetailBottomSheetReducer: Reducer {
         case bookmarkFailed(previousDetail: PlaceDetail, message: String)
         case roadRouteLoaded(courseID: Int, path: [RodiCoordinate])
         case roadRouteFailed(courseID: Int, message: String?)
-        case externalRouteGuidanceOpened(placeID: Int)
-        case practiceRegistrationCompleted(PracticeRegistrationResult, placeID: Int, revision: UUID)
-        case practiceVisitCompleted(PracticeVisitRecordingResult, placeID: Int, revision: UUID)
-        case cancelPracticeRegistration
-        case cancelPracticeVisit
+        case externalRouteGuidanceWillOpen(
+            placeID: Int,
+            mode: PracticeMeasurementMode,
+            measurementID: UUID,
+            externalHandoffAt: Date
+        )
+        case externalRouteGuidanceFailed(measurementID: UUID)
+        case activeMeasurementEnded
         case expandRequested
         case collapseRequested
         case routeTimelineToggled
         case reviews(CourseReviewReducer.Action)
         case delegate(Delegate)
     }
-    enum Delegate { case dismissed, routeOverlayChanged(RodiRouteOverlay?), requestAuthentication, showSnackbar(String), reviewWritingRequested(ReviewWriteRequest) }
-    enum PracticeRegistrationResult { case success(practiceID: Int), failure(String) }
-    enum PracticeVisitRecordingResult { case success(PracticeVisit), failure(String) }
-    private enum EffectID: Hashable { case practiceRegistration, practiceVisit }
-
+    enum Delegate { case dismissed, routeOverlayChanged(RodiRouteOverlay?), requestAuthentication, showSnackbar(String), reviewWritingRequested(ReviewWriteRequest), reviewEditingRequested(Int) }
     private let placeRepository: PlaceRepository
-    private let practiceRepository: PracticeRepository
-    private let practiceReturnPromptStore: PracticeReturnPromptStoring
+    private let practiceMeasurementStore: PracticeMeasurementStoring
     private let hasActiveSession: () -> Bool
     private let reviewsReducer: CourseReviewReducer
     private let onDelegate: (Delegate) -> Void
 
-    init(placeRepository: PlaceRepository, memberRepository: MemberRepository, practiceRepository: PracticeRepository, reviewRepository: ReviewRepository, practiceReturnPromptStore: PracticeReturnPromptStoring, hasActiveSession: @escaping () -> Bool, onDelegate: @escaping (Delegate) -> Void = { _ in }) {
+    init(placeRepository: PlaceRepository, memberRepository: MemberRepository, practiceRepository: PracticeRepository, reviewRepository: ReviewRepository, practiceMeasurementStore: PracticeMeasurementStoring, hasActiveSession: @escaping () -> Bool, onDelegate: @escaping (Delegate) -> Void = { _ in }) {
         self.placeRepository = placeRepository
-        self.practiceRepository = practiceRepository
-        self.practiceReturnPromptStore = practiceReturnPromptStore
+        self.practiceMeasurementStore = practiceMeasurementStore
         self.hasActiveSession = hasActiveSession
         self.onDelegate = onDelegate
         reviewsReducer = .init(repository: reviewRepository, memberRepository: memberRepository, hasActiveSession: hasActiveSession)
@@ -74,16 +69,12 @@ extension CourseDetailBottomSheetReducer {
             state = .init()
             return .run { send in
                 await send(.cancelRoadRouteLoading)
-                await send(.cancelPracticeRegistration)
-                await send(.cancelPracticeVisit)
                 await send(.reviews(.report(.reset)))
                 await send(.reviews(.block(.reset)))
                 await send(.reviews(.reset))
                 await send(.delegate(.dismissed))
             }
         case .cancelRoadRouteLoading: return .cancel(id: BottomSheetEffectID.routeLoading)
-        case .cancelPracticeRegistration: return .cancel(id: EffectID.practiceRegistration)
-        case .cancelPracticeVisit: return .cancel(id: EffectID.practiceVisit)
         case .toggleBookmark:
             guard let detail = state.detail, !state.isBookmarkUpdating else { return .none }
             guard hasActiveSession() else { return .send(.delegate(.requestAuthentication)) }
@@ -94,7 +85,8 @@ extension CourseDetailBottomSheetReducer {
             guard state.detail?.id == placeID else { return .none }
             state.detail = state.detail?.updatingBookmark(isBookmarked: bookmarked); state.isBookmarkUpdating = false
             RodiAnalytics.track(.bookmarkUpdated(isBookmarked: bookmarked, source: source, placeType: PlaceType.course.rawValue))
-            return .send(.delegate(.showSnackbar(bookmarked ? "북마크를 저장했어요." : "북마크를 해제했어요.")))
+            guard !bookmarked else { return .none }
+            return .send(.delegate(.showSnackbar("북마크를 해제했어요.")))
         case .bookmarkFailed(let previous, let message):
             guard state.detail?.id == previous.id else { return .none }; state.detail = previous; state.isBookmarkUpdating = false
             return .send(.delegate(.showSnackbar(message)))
@@ -105,32 +97,25 @@ extension CourseDetailBottomSheetReducer {
         case .roadRouteFailed(let courseID, let message):
             guard state.routeOverlay?.courseID == courseID else { return .none }; state.isRouteLoading = false; state.routeStatusMessage = message
             return .send(.delegate(.routeOverlayChanged(state.routeOverlay)))
-        case .externalRouteGuidanceOpened(let placeID):
-            guard state.detail?.id == placeID, !state.isPracticeRegistrationPending else { return .none }
-            guard hasActiveSession(), let name = state.detail?.name else { return .send(.delegate(.requestAuthentication)) }
-            practiceReturnPromptStore.save(.init(placeID: placeID, placeName: name)); state.isPracticeRegistrationPending = true; state.practiceRegistrationRequestRevision = UUID()
-            return registerPractice(placeID: placeID, revision: state.practiceRegistrationRequestRevision)
-        case let .practiceRegistrationCompleted(result, placeID, revision):
-            guard state.detail?.id == placeID, state.practiceRegistrationRequestRevision == revision, state.isPracticeRegistrationPending else { return .none }
-            switch result {
-            case .success(let practiceID):
-                return recordVisit(practiceID: practiceID, placeID: placeID, revision: revision)
+        case let .externalRouteGuidanceWillOpen(placeID, mode, measurementID, externalHandoffAt):
+            guard state.detail?.id == placeID, let name = state.detail?.name else { return .none }
+            let measurement = PracticeMeasurement(
+                id: measurementID,
+                placeID: placeID,
+                placeName: name,
+                mode: mode,
+                externalHandoffAt: externalHandoffAt,
+                status: mode == .gpsTracking ? .tracking : .awaitingReturn
+            )
+            practiceMeasurementStore.save(measurement)
+            PracticeTrackingService.shared.synchronizeCompletedSessionCertificationIfNeeded()
 
-            case .failure(let message):
-                state.isPracticeRegistrationPending = false
-                return .send(.delegate(.showSnackbar(message)))
-            }
+        case let .externalRouteGuidanceFailed(measurementID):
+            guard practiceMeasurementStore.load()?.id == measurementID else { return .none }
+            practiceMeasurementStore.clear()
 
-        case let .practiceVisitCompleted(result, placeID, revision):
-            guard state.detail?.id == placeID, state.practiceRegistrationRequestRevision == revision, state.isPracticeRegistrationPending else { return .none }
-            state.isPracticeRegistrationPending = false
-            switch result {
-            case .success(let visit):
-                logPracticeVisit(visit)
-
-            case .failure(let message):
-                return .send(.delegate(.showSnackbar(message)))
-            }
+        case .activeMeasurementEnded:
+            practiceMeasurementStore.clear()
         case .expandRequested:
             guard let placeID = state.detail?.id, state.presentation == .sheet else { return .none }
             state.presentation = .expandedDetail
@@ -155,6 +140,8 @@ private extension CourseDetailBottomSheetReducer {
         case .writingRequested:
             guard let detail = state.detail else { return .none }
             return .send(.delegate(.reviewWritingRequested(.init(placeID: detail.id, placeName: detail.name))))
+        case .editingRequested(let reviewID):
+            return .send(.delegate(.reviewEditingRequested(reviewID)))
         case .requestAuthentication: return .send(.delegate(.requestAuthentication))
         case .showSnackbar(let message): return .send(.delegate(.showSnackbar(message)))
         }
@@ -177,50 +164,5 @@ private extension CourseDetailBottomSheetReducer {
     func bookmarkEffect(placeID: Int, isBookmarked: Bool, previous: PlaceDetail) -> Effect<Action> {
         let repository = placeRepository
         return .run { send in do { if isBookmarked { try await repository.bookmark(placeID: placeID) } else { try await repository.unbookmark(placeID: placeID) }; await send(.bookmarkUpdated(placeID: placeID, isBookmarked: isBookmarked, source: "home")) } catch is CancellationError {} catch { await send(.bookmarkFailed(previousDetail: previous, message: "북마크를 \(isBookmarked ? "저장" : "해제")하지 못했어요.")) } }.cancelTask(id: BottomSheetEffectID.bookmarkUpdating)
-    }
-    func registerPractice(placeID: Int, revision: UUID) -> Effect<Action> {
-        let repository = practiceRepository
-        return .run { send in do { let practice = try await repository.register(placeID: placeID); await send(.practiceRegistrationCompleted(.success(practiceID: practice.practiceID), placeID: placeID, revision: revision)) } catch is CancellationError {} catch { await send(.practiceRegistrationCompleted(.failure("연습 목록에 담지 못했어요. 다시 시도해주세요."), placeID: placeID, revision: revision)) } }.cancelTask(id: EffectID.practiceRegistration)
-    }
-
-    func recordVisit(practiceID: Int, placeID: Int, revision: UUID) -> Effect<Action> {
-        let repository = practiceRepository
-        let distanceMeters = certifiedDistanceMeters
-        return .run { send in
-            do {
-                #if DEBUG
-                let requestDistance = distanceMeters.map(String.init) ?? "nil"
-                RodiLogger.debug(
-                    "방문 기록 요청: certifiedDistanceMeters=\(requestDistance)"
-                )
-                #endif
-                let visit = try await repository.recordVisit(
-                    practiceID: practiceID,
-                    certifiedDistanceMeters: distanceMeters
-                )
-                await send(.practiceVisitCompleted(.success(visit), placeID: placeID, revision: revision))
-            } catch is CancellationError {
-            } catch {
-                await send(.practiceVisitCompleted(.failure("방문 기록을 남기지 못했어요. 다시 시도해주세요."), placeID: placeID, revision: revision))
-            }
-        }
-        .cancelTask(id: EffectID.practiceVisit)
-    }
-
-    var certifiedDistanceMeters: Int? {
-        #if DEBUG
-        55000
-        #else
-        nil
-        #endif
-    }
-
-    func logPracticeVisit(_ visit: PracticeVisit) {
-        #if DEBUG
-        let newLevel = visit.newLevel?.rawValue ?? "nil"
-        RodiLogger.debug(
-            "방문 기록 응답: visitCount=\(visit.visitCount), addedCertifiedDistanceMeters=\(visit.addedCertifiedDistanceMeters), requiredDistanceMeters=\(visit.requiredDistanceMeters), isCertifiedNow=\(visit.isCertifiedNow), totalDistanceKm=\(visit.totalDistanceKm), levelUp=\(visit.levelUp), newLevel=\(newLevel)"
-        )
-        #endif
     }
 }

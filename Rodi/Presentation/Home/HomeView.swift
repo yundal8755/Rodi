@@ -19,15 +19,18 @@ struct HomeView: View {
     @State private var handledListPresentationRequestID = 0
     @State private var handledPlaceSelectionRequestID = 0
     @State private var handledReviewFlowFinishedRequestID = 0
+    @State private var liveActivityPermissionDialog: LiveActivityPermissionDialogConfiguration?
 
     private let isHomeTabSelected: Bool
     private let onAuthenticationRequired: () -> Void
+    private let onReviewTestRequested: () -> Void
     private let onBottomTabBarVisibilityChanged: (Bool) -> Void
     private let listPresentationRequestID: Int
     private let placeSelectionRequest: HomePlaceSelectionRequest?
     private let onPlaceSelectionHandled: (Int) -> Void
     private let reviewFlowFinishedRequestID: Int
     private let onReviewRequested: (ReviewWriteRequest) -> Void
+    private let onReviewEditRequested: (Int) -> Void
     private let courseDetailReviewState: ReviewReducer.State
     private let courseDetailReviewSnackbarMessage: String?
     private let isCourseDetailReviewPresented: Bool
@@ -38,12 +41,14 @@ struct HomeView: View {
     init(
         isHomeTabSelected: Bool,
         onAuthenticationRequired: @escaping () -> Void = {},
+        onReviewTestRequested: @escaping () -> Void = {},
         onBottomTabBarVisibilityChanged: @escaping (Bool) -> Void = { _ in },
         listPresentationRequestID: Int = 0,
         placeSelectionRequest: HomePlaceSelectionRequest? = nil,
         onPlaceSelectionHandled: @escaping (Int) -> Void = { _ in },
         reviewFlowFinishedRequestID: Int = 0,
         onReviewRequested: @escaping (ReviewWriteRequest) -> Void = { _ in },
+        onReviewEditRequested: @escaping (Int) -> Void = { _ in },
         courseDetailReviewState: ReviewReducer.State = .init(),
         courseDetailReviewSnackbarMessage: String? = nil,
         isCourseDetailReviewPresented: Bool = false,
@@ -53,12 +58,14 @@ struct HomeView: View {
     ) {
         self.isHomeTabSelected = isHomeTabSelected
         self.onAuthenticationRequired = onAuthenticationRequired
+        self.onReviewTestRequested = onReviewTestRequested
         self.onBottomTabBarVisibilityChanged = onBottomTabBarVisibilityChanged
         self.listPresentationRequestID = listPresentationRequestID
         self.placeSelectionRequest = placeSelectionRequest
         self.onPlaceSelectionHandled = onPlaceSelectionHandled
         self.reviewFlowFinishedRequestID = reviewFlowFinishedRequestID
         self.onReviewRequested = onReviewRequested
+        self.onReviewEditRequested = onReviewEditRequested
         self.courseDetailReviewState = courseDetailReviewState
         self.courseDetailReviewSnackbarMessage = courseDetailReviewSnackbarMessage
         self.isCourseDetailReviewPresented = isCourseDetailReviewPresented
@@ -72,13 +79,17 @@ struct HomeView: View {
             reducer: HomeReducer(
                 dependencies: dependencies,
                 authenticationRequired: onAuthenticationRequired,
-                reviewWritingRequested: onReviewRequested
+                reviewWritingRequested: onReviewRequested,
+                reviewEditingRequested: onReviewEditRequested
             )
         ))
     }
 
     var body: some View {
         core
+            .overlay {
+                liveActivityPermissionDialogOverlay
+            }
             .onAppear {
                 store.send(.map(.tabSelectionChanged(isHomeTabSelected)))
                 handleScenePhase(scenePhase)
@@ -120,28 +131,37 @@ struct HomeView: View {
                 isPresented: courseDetailExpandedPresentationBinding,
                 onDismiss: handleCourseDetailExpandedPresentationDismissed
             ) {
-                CourseDetailBottomSheetView(
-                    state: store.state.bottomSheet.courseDetail,
-                    send: { store.send(.bottomSheet(.courseDetail($0))) },
-                    userLocation: store.state.map.userLocation,
-                    hasLocationPermission: store.state.map.locationAuthorizationState == .authorized,
-                    requestLocationPermission: {
-                        store.send(.presentation(.setLocationSettingsAlertPresented(true)))
-                    },
-                    renderingMode: .expanded,
-                    expandedBackAction: {
-                        store.send(.bottomSheet(.courseDetail(.collapseRequested)))
-                    }
-                )
-                .interactiveDismissDisabled()
-                .fullScreenCover(isPresented: courseDetailReviewPresentationBinding) {
-                    ReviewFlowView(
-                        state: courseDetailReviewState,
-                        send: sendCourseDetailReview
+                ZStack {
+                    CourseDetailBottomSheetView(
+                        state: store.state.bottomSheet.courseDetail,
+                        send: { store.send(.bottomSheet(.courseDetail($0))) },
+                        userLocation: store.state.map.userLocation,
+                        hasLocationPermission: store.state.map.locationAuthorizationState == .authorized,
+                        memberRepository: dependencies.memberRepository,
+                        requestLocationPermission: {
+                            store.send(.presentation(.setLocationSettingsAlertPresented(true)))
+                        },
+                        renderingMode: .expanded,
+                        expandedBackAction: {
+                            store.send(.bottomSheet(.courseDetail(.collapseRequested)))
+                        },
+                        presentLiveActivityPermissionDialog: { configuration in
+                            liveActivityPermissionDialog = configuration
+                        }
                     )
-                    .rodiSnackbar(message: courseDetailReviewSnackbarMessage)
                     .interactiveDismissDisabled()
+                    .fullScreenCover(isPresented: courseDetailReviewPresentationBinding) {
+                        ReviewFlowView(
+                            state: courseDetailReviewState,
+                            send: sendCourseDetailReview
+                        )
+                        .rodiSnackbar(message: courseDetailReviewSnackbarMessage)
+                        .interactiveDismissDisabled()
+                    }
+
+                    liveActivityPermissionDialogOverlay
                 }
+                .rodiSnackbar(message: snackbarService.message)
             }
             .onChange(of: isHomeTabSelected) { isSelected in
                 store.send(.map(.tabSelectionChanged(isSelected)))
@@ -190,6 +210,26 @@ private struct HomePlaceLoadingIndicator: View {
 // MARK: - Core
 extension HomeView {
 
+    @ViewBuilder
+    private var liveActivityPermissionDialogOverlay: some View {
+        if let configuration = liveActivityPermissionDialog {
+            LiveActivityPermissionDialog(
+                routeOnlyAction: {
+                    liveActivityPermissionDialog = nil
+                    configuration.openRouteOnly()
+                },
+                openSettingsAction: {
+                    liveActivityPermissionDialog = nil
+                    configuration.openSettings()
+                },
+                closeAction: {
+                    liveActivityPermissionDialog = nil
+                }
+            )
+            .zIndex(10)
+        }
+    }
+
     private var core: some View {
         ZStack(alignment: .bottom) {
             if store.state.map.mapLifecycle != .inactive {
@@ -215,6 +255,7 @@ extension HomeView {
                     send: { store.send(.bottomSheet($0)) },
                     userLocation: store.state.map.userLocation,
                     hasLocationPermission: store.state.map.locationAuthorizationState == .authorized,
+                    memberRepository: dependencies.memberRepository,
                     bottomTabBarHeight: bottomTabBarHeight,
                     onCourseDetailHeightChanged: { height in
                         guard abs(courseBottomSheetHeight - height) > 0.5 else { return }
@@ -226,7 +267,11 @@ extension HomeView {
                     onCourseExpansionSettled: presentExpandedCourseDetail,
                     requestLocationPermission: {
                         store.send(.presentation(.setLocationSettingsAlertPresented(true)))
-                    }
+                    },
+                    presentLiveActivityPermissionDialog: { configuration in
+                        liveActivityPermissionDialog = configuration
+                    },
+                    debugReviewTestAction: onReviewTestRequested
                 )
             } else {
                 initialMapLoadingView
@@ -416,6 +461,7 @@ extension HomeView {
                     ) {
                         store.send(.map(.recommendationResearchButtonTapped))
                     }
+
                 }
             }
             .padding(.top, 16)
@@ -423,7 +469,7 @@ extension HomeView {
 
             if shouldShowCurrentLocationButton {
                 CurrentLocationButton(
-                    isActive: store.state.map.locationState == .requesting,
+                    isActive: store.state.map.isCurrentLocationButtonActive,
                     action: { store.send(.map(.currentLocationRequested)) }
                 )
                 .opacity(currentLocationButtonOpacity)

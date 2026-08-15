@@ -30,6 +30,7 @@ struct HomeReducer: Reducer {
         var animatedCameraRequestID: Int?
         var cameraFocus: RodiMapCameraFocus = .koreaOverview
         var mapZoomLevel = 6
+        var isCurrentLocationButtonActive = false
 
         // MARK: User location
         var locationState: LocationState = .idle
@@ -111,6 +112,7 @@ struct HomeReducer: Reducer {
     /// NOTE - 확인 필요
     private let authenticationRequired: () -> Void
     private let reviewWritingRequested: (ReviewWriteRequest) -> Void
+    private let reviewEditingRequested: (Int) -> Void
     private let markerTierResolver = MapMarkerTierResolver()
     private let markerInteractionResolver = MapMarkerInteractionResolver()
 
@@ -122,7 +124,8 @@ struct HomeReducer: Reducer {
     init(
         dependencies: AppDependencies,
         authenticationRequired: @escaping () -> Void = {},
-        reviewWritingRequested: @escaping (ReviewWriteRequest) -> Void = { _ in }
+        reviewWritingRequested: @escaping (ReviewWriteRequest) -> Void = { _ in },
+        reviewEditingRequested: @escaping (Int) -> Void = { _ in }
     ) {
         mapService = MapService(
             placeRepository: dependencies.placeRepository,
@@ -140,6 +143,7 @@ struct HomeReducer: Reducer {
         }
         self.authenticationRequired = authenticationRequired
         self.reviewWritingRequested = reviewWritingRequested
+        self.reviewEditingRequested = reviewEditingRequested
     }
 }
 
@@ -172,11 +176,17 @@ extension HomeReducer {
         case .tabSelectionChanged(let isSelected):
             let wasMapInteractive = map.isMapInteractive
             map.isHomeTabSelected = isSelected
+            if !isSelected {
+                map.isCurrentLocationButtonActive = false
+            }
             return updateMapVisibility(wasMapInteractive: wasMapInteractive, state: &map)
 
         case .activityChanged(let isActive):
             let wasMapInteractive = map.isMapInteractive
             map.isAppActive = isActive
+            if !isActive {
+                map.isCurrentLocationButtonActive = false
+            }
             return updateMapVisibility(wasMapInteractive: wasMapInteractive, state: &map)
 
         case .locationAuthorizationRefreshRequested:
@@ -219,6 +229,9 @@ extension HomeReducer {
 
         case let .viewportChanged(center, zoomLevel, viewport, isUserInitiated):
             map.mapZoomLevel = zoomLevel
+            if isUserInitiated {
+                map.isCurrentLocationButtonActive = false
+            }
             let tierResolution = markerTierResolver.resolve(
                 zoomLevel: zoomLevel,
                 forcedTier: map.forcedMarkerTier,
@@ -255,6 +268,7 @@ extension HomeReducer {
             ) else {
                 return .none
             }
+            map.isCurrentLocationButtonActive = false
 
             switch interaction {
             case .cluster(let marker, let target):
@@ -293,6 +307,7 @@ extension HomeReducer {
                 : "parking-\(place.id)"
 
             state.presentation.isBottomTabBarVisible = false
+            map.isCurrentLocationButtonActive = false
             map.routeOverlay = nil
             map.selectedSearchResultName = nil
             map.selectedMarkerID = markerID
@@ -328,6 +343,7 @@ extension HomeReducer {
             else {
                 return .none
             }
+            map.isCurrentLocationButtonActive = true
             return .send(.bottomSheet(.prepareForCurrentLocation))
 
         case .recommendationResearchButtonTapped:
@@ -348,6 +364,7 @@ extension HomeReducer {
                 authenticationRequired()
                 return .none
             }
+            map.isCurrentLocationButtonActive = false
             state.search = .init()
             state.presentation.searchOrigin = map.cameraTarget
             state.presentation.isSearchPresented = true
@@ -483,6 +500,9 @@ extension HomeReducer {
 
     case .reviewWritingRequested(let request):
         reviewWritingRequested(request)
+
+    case .reviewEditingRequested(let reviewID):
+        reviewEditingRequested(reviewID)
     }
 
     return .none
