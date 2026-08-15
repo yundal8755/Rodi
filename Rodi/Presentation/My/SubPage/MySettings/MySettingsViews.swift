@@ -4,6 +4,7 @@
 //
 
 import CoreLocation
+import LicenseList
 import SwiftUI
 import UIKit
 
@@ -168,10 +169,12 @@ struct MyLegalDocumentView: View {
 
 struct MyOpenSourceLicenseView: View {
     let backAction: () -> Void
+
     var body: some View {
         VStack(spacing: 0) {
             MySubpageHeader(title: "오픈소스 라이센스", backAction: backAction)
-            LegalWKWebView(url: LegalDocument.openSourceLicenseURL)
+            LicenseListView()
+                .licenseViewStyle(.withRepositoryAnchorLink)
         }.background(RodiColor.white).toolbar(.hidden, for: .navigationBar)
     }
 }
