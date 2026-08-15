@@ -46,7 +46,6 @@ struct ParkingSelectedDetailPanel: View {
     private var feeRows: [ParkingDetailInfoRow] {
         let feeInfo = parking?.feeInfo
         return [
-            ParkingDetailInfoRow(title: "초기무료", value: "해당항목없음"),
             ParkingDetailInfoRow(
                 title: "기본요금",
                 value: formattedFee(minutes: feeInfo?.baseMinutes, fee: feeInfo?.baseFee)
@@ -54,8 +53,7 @@ struct ParkingSelectedDetailPanel: View {
             ParkingDetailInfoRow(
                 title: "추가요금",
                 value: formattedFee(minutes: feeInfo?.addUnitMinutes, fee: feeInfo?.addUnitFee)
-            ),
-            ParkingDetailInfoRow(title: "할증기준시간", value: "해당항목없음")
+            )
         ]
     }
 

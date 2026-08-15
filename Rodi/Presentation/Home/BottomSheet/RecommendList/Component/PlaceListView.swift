@@ -16,6 +16,7 @@ struct PlaceListView: View {
     let selectAction: (PlaceListItem) -> Void
     let reloadAction: () -> Void
     let loadNextPageAction: () -> Void
+    let debugReviewTestAction: () -> Void
 
     var body: some View {
         Group {
@@ -25,7 +26,10 @@ struct PlaceListView: View {
             } else if items.isEmpty, let errorMessage {
                 PlaceListMessageView(message: errorMessage, actionTitle: "다시 시도", action: reloadAction)
             } else if items.isEmpty {
-                PlaceListEmptyResultView(isExpanded: isExpanded)
+                PlaceListEmptyResultView(
+                    isExpanded: isExpanded,
+                    debugReviewTestAction: debugReviewTestAction
+                )
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
@@ -259,8 +263,24 @@ private struct PlaceListMessageView: View {
 
 private struct PlaceListEmptyResultView: View {
     let isExpanded: Bool
+    let debugReviewTestAction: () -> Void
+
+    #if DEBUG
+    @State private var isDebugTestPagePresented = false
+    #endif
 
     var body: some View {
+        #if DEBUG
+        layout
+            .fullScreenCover(isPresented: $isDebugTestPagePresented) {
+                DebugFeatureTestPage(reviewPromptAction: debugReviewTestAction)
+            }
+        #else
+        layout
+        #endif
+    }
+
+    private var layout: some View {
         Group {
             if isExpanded {
                 VStack {
@@ -282,10 +302,7 @@ private struct PlaceListEmptyResultView: View {
 
     private var emptyContent: some View {
         VStack(spacing: 16) {
-            Image("img_empty_radius_result")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 80, height: 80)
+            emptyImage
 
             VStack(spacing: 8) {
                 Text("추천할 수 있는 연습 코스를 찾지 못했어요.")
@@ -301,4 +318,100 @@ private struct PlaceListEmptyResultView: View {
         }
         .frame(maxWidth: .infinity)
     }
+
+    @ViewBuilder
+    private var emptyImage: some View {
+        Image("img_empty_radius_result")
+            .resizable()
+            .scaledToFit()
+            .frame(width: 80, height: 80)
+            #if DEBUG
+            .onTapGesture(count: 3) {
+                isDebugTestPagePresented = true
+            }
+            .accessibilityHint("개발용 기능 테스트 페이지를 열려면 세 번 탭하세요.")
+            #endif
+    }
 }
+
+#if DEBUG
+private struct DebugFeatureTestPage: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var isLiveActivityTestPickerPresented = false
+
+    let reviewPromptAction: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("테스트")
+                    .rodiTypography(.headline1)
+                    .foregroundStyle(RodiColor.black)
+
+                Spacer()
+
+                Button(action: dismiss.callAsFunction) {
+                    Image("ic_close")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .foregroundStyle(RodiColor.gray700)
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("테스트 페이지 닫기")
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+
+            VStack(spacing: 12) {
+                testButton(title: "Live Activity") {
+                    isLiveActivityTestPickerPresented = true
+                }
+                testButton(title: "후기등록 팝업") {
+                    reviewPromptAction()
+                    dismiss()
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 24)
+
+            Spacer()
+        }
+        .background(RodiColor.white.ignoresSafeArea())
+        .confirmationDialog(
+            "Live Activity 테스트",
+            isPresented: $isLiveActivityTestPickerPresented,
+            titleVisibility: .visible
+        ) {
+            Button("연습 코스로 이동중") {
+                PracticeLiveActivityService.shared.showPreview(state: .headingToCourse)
+            }
+            Button("코스 주행중") {
+                PracticeLiveActivityService.shared.showPreview(state: .drivingCourse)
+            }
+            Button("코스 주행중 - 방금 출발") {
+                PracticeLiveActivityService.shared.showPreview(state: .drivingCourseJustStarted)
+            }
+            Button("코스 주행 완료") {
+                PracticeLiveActivityService.shared.showPreview(state: .completed)
+            }
+            Button("취소", role: .cancel) {}
+        }
+    }
+
+    private func testButton(title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .rodiTypography(.body1SemiBold)
+                .foregroundStyle(RodiColor.black)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .frame(height: 56)
+                .background(RodiColor.gray100)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+    }
+}
+#endif

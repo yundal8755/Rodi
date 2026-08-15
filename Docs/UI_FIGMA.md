@@ -29,7 +29,7 @@ Figma URL을 받으면 다음 순서를 지킨다.
 4. 대상 feature의 인접 View·Reducer·Component와 route를 `rg`로 찾는다.
 5. design token, font, asset catalog에서 재사용 가능한 항목을 찾는다.
 6. 화면 구조와 loading·empty·error·success 상태, interaction과 navigation을 먼저 정리한다.
-7. Figma 값을 RODI token·asset·기존 component에 매핑하고 필요한 파일만 결정한다.
+7. Figma 값을 RODI token·asset·기존 component에 매핑하고, 독립 화면은 `SubPage`, 여러 화면의 재사용 UI는 `Component`, 외부 작업은 `Service`로 분리할지 먼저 결정한다.
 8. View는 State를 렌더링하고 Action을 전달하며, Reducer는 상태 전이와 Effect를 관리한다.
 9. Debug build와 시각 검증을 수행하고 Figma와 다른 점 또는 미확정 사항을 보고한다.
 

@@ -90,6 +90,7 @@ extension RecommendListBottomSheetReducer {
             return displayStateEffect(state)
 
         case .expand:
+            guard !state.items.isEmpty else { return .none }
             state.presentation = .expanded
             return displayStateEffect(state)
 
@@ -180,6 +181,11 @@ extension RecommendListBottomSheetReducer {
             state.isNextPageLoading = false
             state.isManualResearchLoading = false
             state.errorMessage = nil
+            if !isAppending,
+               state.items.isEmpty,
+               state.presentation == .expanded {
+                state.presentation = .medium
+            }
             if !isAppending,
                isManualResearch,
                state.presentation == .collapsed {

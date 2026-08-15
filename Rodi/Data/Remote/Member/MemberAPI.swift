@@ -11,6 +11,9 @@ enum MemberAPI: TargetType {
     case updateDrivingGoal(MemberDrivingGoalUpdateRequestDTO)
     case updatePlaceFilterTags(MemberPlaceFilterTagsUpdateRequestDTO)
     case withdraw
+    case block(memberID: Int)
+    case blockedMembers(query: BlockedMemberQuery)
+    case unblock(memberID: Int)
     case submitOnboarding(MemberOnboardingRequestDTO)
 
     var method: HTTPMethod {
@@ -26,6 +29,15 @@ enum MemberAPI: TargetType {
             
         case .withdraw:
             .delete
+
+        case .block:
+            .post
+
+        case .blockedMembers:
+            .get
+
+        case .unblock:
+            .delete
             
         case .submitOnboarding:
             .post
@@ -36,6 +48,15 @@ enum MemberAPI: TargetType {
         switch self {
         case .myProfile, .updateDrivingGoal, .withdraw:
             "/api/v1/members/me"
+
+        case .block(let memberID):
+            "/api/v1/members/\(memberID)/block"
+
+        case .blockedMembers:
+            "/api/v1/members/me/blocks"
+
+        case .unblock(let memberID):
+            "/api/v1/members/\(memberID)/block"
             
         case .updatePlaceFilterTags:
             "/api/v1/members/me/filter-tags"
@@ -47,11 +68,19 @@ enum MemberAPI: TargetType {
 
     var optionalHeaders: HTTPHeaders? { nil }
 
-    var parameters: Parameters? { nil }
+    var parameters: Parameters? {
+        guard case .blockedMembers(let query) = self else { return nil }
+
+        var parameters: Parameters = ["size": query.size]
+        if let cursor = query.cursor, !cursor.isEmpty {
+            parameters["cursor"] = cursor
+        }
+        return parameters
+    }
 
     var body: Data? {
         switch self {
-        case .myProfile, .withdraw:
+        case .myProfile, .withdraw, .block, .blockedMembers, .unblock:
             nil
             
         case .updateDrivingGoal(let request):
@@ -65,7 +94,14 @@ enum MemberAPI: TargetType {
         }
     }
 
-    var encodingType: EncodingType { .json }
+    var encodingType: EncodingType {
+        switch self {
+        case .blockedMembers:
+            .url
+        case .myProfile, .updateDrivingGoal, .updatePlaceFilterTags, .withdraw, .block, .unblock, .submitOnboarding:
+            .json
+        }
+    }
 
     var requiresAuthentication: Bool { true }
 
@@ -73,7 +109,7 @@ enum MemberAPI: TargetType {
         switch self {
         case .myProfile:
             20
-        case .updateDrivingGoal, .updatePlaceFilterTags, .withdraw, .submitOnboarding:
+        case .updateDrivingGoal, .updatePlaceFilterTags, .withdraw, .block, .blockedMembers, .unblock, .submitOnboarding:
             nil
         }
     }
