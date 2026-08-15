@@ -8,13 +8,26 @@ import SwiftUI
 import WidgetKit
 
 private enum PracticeActivityPalette {
-    static let primary = Color(red: 0.337, green: 0.251, blue: 1)
-    static let primary400 = Color(red: 0.439, green: 0.384, blue: 1)
-    static let primary100 = Color(red: 0.859, green: 0.851, blue: 1)
-    static let gray100 = Color(red: 0.961, green: 0.961, blue: 0.961)
-    static let text = Color(red: 0.133, green: 0.133, blue: 0.133)
-    static let secondaryText = Color(red: 0.384, green: 0.384, blue: 0.384)
-    static let gray600 = Color(red: 0.463, green: 0.463, blue: 0.463)
+    static let primary = Color(hex: 0x5640FF)
+    static let primary400 = Color(hex: 0x7062FF)
+    static let primary100 = Color(hex: 0xDBD9FF)
+    static let gray100 = Color(hex: 0xF5F5F5)
+    static let gray500 = Color(hex: 0x9F9F9F)
+    static let text = Color(hex: 0x222222)
+    static let gray800 = Color(hex: 0x434343)
+    static let gray600 = Color(hex: 0x767676)
+}
+
+private extension Color {
+    init(hex: UInt, alpha: Double = 1) {
+        self.init(
+            .sRGB,
+            red: Double((hex >> 16) & 0xFF) / 255,
+            green: Double((hex >> 8) & 0xFF) / 255,
+            blue: Double(hex & 0xFF) / 255,
+            opacity: alpha
+        )
+    }
 }
 
 @main
@@ -31,7 +44,7 @@ struct RodiPracticeLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PracticeLiveActivityAttributes.self) { context in
             PracticeActivityView(context: context)
-                .activityBackgroundTint(.clear)
+                .activityBackgroundTint(PracticeActivityPalette.gray100)
                 .activitySystemActionForegroundColor(PracticeActivityPalette.primary)
         } dynamicIsland: { context in
             DynamicIsland {
@@ -115,18 +128,20 @@ private struct PracticeActivityView: View {
                         .foregroundStyle(PracticeActivityPalette.primary)
                     Text("코스에 도착하면 Rodi가 주행을 기록해 드릴게요.")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(PracticeActivityPalette.secondaryText)
+                        .foregroundStyle(PracticeActivityPalette.gray800)
                         .lineLimit(1)
+                        .truncationMode(.tail)
                 }
-                .padding(.trailing, 60)
+                .padding(.trailing, 68)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Image("img_live_activity_heading")
+            Image(context.attributes.rabbitAssetName)
                 .resizable()
                 .scaledToFit()
                 .frame(width: 60, height: 60)
-                .accessibilityHidden(true)
                 .padding(.top, 11)
+                .accessibilityHidden(true)
         }
     }
 
@@ -141,18 +156,16 @@ private struct PracticeActivityView: View {
                         .lineLimit(1)
                     Text("Rodi가 코스 주행을 확인하고 있어요.")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(PracticeActivityPalette.secondaryText)
+                        .foregroundStyle(PracticeActivityPalette.gray800)
                 }
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                PracticeProgressBar(progress: context.state.progress)
-                HStack {
-                    Text("출발").foregroundStyle(PracticeActivityPalette.primary)
-                    Spacer(minLength: 0)
-                    Text("도착").foregroundStyle(PracticeActivityPalette.gray600)
-                }
-                .font(.system(size: 13, weight: .medium))
+            if context.attributes.placeTypeRawValue != "parking" {
+                PracticeRouteProgress(
+                    progress: context.state.progress,
+                    rabbitAssetName: context.attributes.rabbitAssetName
+                )
+                .frame(maxWidth: .infinity)
             }
         }
     }
@@ -169,7 +182,7 @@ private struct PracticeActivityView: View {
                     Text("Rodi로 돌아가 기록을 남겨주세요.")
                 }
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(PracticeActivityPalette.secondaryText)
+                .foregroundStyle(PracticeActivityPalette.gray800)
             }
             Text("기록하러 가기")
                 .font(.system(size: 14, weight: .medium))
@@ -215,17 +228,116 @@ private struct RodiLogoView: View {
 }
 
 @available(iOS 16.1, *)
-private struct PracticeProgressBar: View {
+private struct PracticeRouteProgress: View {
     let progress: Double
+    let rabbitAssetName: String
+
+    private let middleDotWidth: CGFloat = 18
+    private let endDotWidth: CGFloat = 10
+    private let preferredDotSpacing: CGFloat = 5
+    private let profileSize: CGFloat = 30
+
+    private var normalizedProgress: CGFloat {
+        CGFloat(min(max(progress, 0), 1))
+    }
+
+    private var displayedProgress: CGFloat {
+        0.1 + (normalizedProgress * 0.9)
+    }
 
     var body: some View {
-        ProgressView(value: min(max(progress, 0), 1), total: 1)
-            .tint(PracticeActivityPalette.primary)
-            .progressViewStyle(.linear)
-            .frame(height: 6)
-            .background(PracticeActivityPalette.primary100, in: Capsule())
-            .clipShape(Capsule())
+        GeometryReader { proxy in
+            let routeWidth = max(proxy.size.width, 0)
+            let travelledWidth = routeWidth * displayedProgress
+            let markerOffset = min(
+                max(travelledWidth - (profileSize / 2), 0),
+                max(routeWidth - profileSize, 0)
+            )
+
+            ZStack(alignment: .topLeading) {
+                VStack(spacing: 2) {
+                    routeLine(width: routeWidth, travelledWidth: travelledWidth)
+                        .frame(height: 12)
+
+                    HStack {
+                        Text("출발").foregroundStyle(PracticeActivityPalette.primary)
+                        Spacer(minLength: 0)
+                        Text("도착").foregroundStyle(PracticeActivityPalette.gray600)
+                    }
+                    .font(.system(size: 13, weight: .medium))
+                    .frame(width: routeWidth)
+                }
+
+                PracticeDrivingProfileMarker(rabbitAssetName: rabbitAssetName)
+                    .offset(x: markerOffset, y: -9)
+            }
+        }
+        .frame(height: 31)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("연습 진행 상태 \(Int((progress * 100).rounded()))퍼센트")
+    }
+
+    @ViewBuilder
+    private func routeLine(width: CGFloat, travelledWidth: CGFloat) -> some View {
+        let middleDotCount = self.middleDotCount(for: width)
+        let dotSpacing = self.dotSpacing(for: width, middleDotCount: middleDotCount)
+
+        ZStack(alignment: .leading) {
+            HStack(spacing: dotSpacing) {
+                Capsule()
+                    .fill(PracticeActivityPalette.gray500)
+                    .frame(width: endDotWidth, height: 6)
+
+                ForEach(0..<middleDotCount, id: \.self) { _ in
+                    Capsule()
+                        .fill(PracticeActivityPalette.gray500)
+                        .frame(width: middleDotWidth, height: 6)
+                }
+
+                Capsule()
+                    .fill(PracticeActivityPalette.gray500)
+                    .frame(width: endDotWidth, height: 6)
+            }
+            .frame(width: width)
+
+            Capsule()
+                .fill(PracticeActivityPalette.primary)
+                .frame(width: travelledWidth, height: 6)
+        }
+    }
+
+    private func middleDotCount(for width: CGFloat) -> Int {
+        let availableWidth = width - (endDotWidth * 2)
+        guard availableWidth > 0 else { return 0 }
+        return max(
+            0,
+            Int(((availableWidth + preferredDotSpacing) / (middleDotWidth + preferredDotSpacing)).rounded(.down))
+        )
+    }
+
+    private func dotSpacing(for width: CGFloat, middleDotCount: Int) -> CGFloat {
+        let usedDotWidth = (endDotWidth * 2) + (middleDotWidth * CGFloat(middleDotCount))
+        return max((width - usedDotWidth) / CGFloat(middleDotCount + 1), 0)
+    }
+}
+
+@available(iOS 16.1, *)
+private struct PracticeDrivingProfileMarker: View {
+    let rabbitAssetName: String
+
+    var body: some View {
+        ZStack {
+            PracticeActivityPalette.primary
+            Image(rabbitAssetName)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 36, height: 36)
+                .offset(y: 3)
+                .accessibilityHidden(true)
+        }
+        .frame(width: 30, height: 30)
+        .clipShape(Circle())
+        .overlay { Circle().stroke(.white, lineWidth: 0.75) }
+        .accessibilityHidden(true)
     }
 }

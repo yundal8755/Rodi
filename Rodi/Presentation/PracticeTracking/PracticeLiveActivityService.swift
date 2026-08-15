@@ -36,7 +36,9 @@ final class PracticeLiveActivityService {
         let attributes = PracticeLiveActivityAttributes(
             sessionID: session.id,
             courseID: session.courseID,
-            courseName: session.courseName
+            courseName: session.courseName,
+            placeTypeRawValue: session.placeType?.rawValue ?? PracticeMeasurementPlaceType.course.rawValue,
+            rabbitAssetName: session.rabbitAssetName ?? PracticeLiveActivityRabbitAsset.navigation
         )
 
         do {
@@ -111,8 +113,34 @@ final class PracticeLiveActivityService {
 
     #if DEBUG
     /// 추천 목록의 빈 상태에서 Live Activity 외형을 빠르게 확인하기 위한 개발용 진입점입니다.
-    func showPreview(phase: PracticeTrackingPhase) {
+    enum PreviewState {
+        case headingToCourse
+        case drivingCourse
+        case drivingCourseJustStarted
+        case completed
+
+        var phase: PracticeTrackingPhase {
+            switch self {
+            case .headingToCourse: .headingToCourse
+            case .drivingCourse, .drivingCourseJustStarted: .drivingCourse
+            case .completed: .completed
+            }
+        }
+
+        var courseProgress: Double {
+            switch self {
+            case .headingToCourse: 0
+            case .drivingCourse: 0.45
+            case .drivingCourseJustStarted: 0.02
+            case .completed: 1
+            }
+        }
+    }
+
+    func showPreview(state preview: PreviewState) {
         cancel()
+
+        let phase = preview.phase
 
         let routePath = [
             RodiCoordinate(latitude: 37.582, longitude: 126.984),
@@ -122,26 +150,28 @@ final class PracticeLiveActivityService {
             id: UUID(),
             courseID: 0,
             courseName: "북악스카이웨이 드라이브",
+            placeType: .course,
+            rabbitAssetName: PracticeLiveActivityRabbitAsset.navigation,
             routePath: routePath,
             cumulativeRouteDistanceMeters: [0, 1_000],
             startedAt: .now,
             phase: phase,
             drivingStartedAt: phase == .drivingCourse || phase == .completed ? .now.addingTimeInterval(-240) : nil,
             lastAcceptedLocationAt: .now,
-            courseProgress: phase == .completed ? 1 : 0.45,
+            courseProgress: preview.courseProgress,
             activeDrivingSeconds: phase == .headingToCourse ? 0 : 240,
             matchedSampleCount: phase == .headingToCourse ? 0 : 12,
             initialDistanceToCourseStartMeters: 1_000,
             distanceToCourseStartMeters: phase == .headingToCourse ? 650 : 0,
             lastMatchedLocationAt: .now,
             initialMatchedRouteDistanceMeters: 0,
-            furthestMatchedRouteDistanceMeters: phase == .completed ? 1_000 : 450,
-            drivenRouteDistanceMeters: phase == .completed ? 1_000 : 450,
+            furthestMatchedRouteDistanceMeters: preview.courseProgress * 1_000,
+            drivenRouteDistanceMeters: preview.courseProgress * 1_000,
             completedAt: phase == .completed ? .now : nil
         )
 
         start(for: session)
-        RodiLogger.debug("Practice Live Activity preview requested: phase=\(phase.rawValue)")
+        RodiLogger.debug("Practice Live Activity preview requested: state=\(String(describing: preview))")
     }
     #endif
 

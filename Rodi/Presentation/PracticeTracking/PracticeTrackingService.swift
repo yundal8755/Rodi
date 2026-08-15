@@ -13,17 +13,28 @@ final class PracticeTrackingService: NSObject, ObservableObject {
 
     private enum Policy {
         static let maximumHorizontalAccuracy: CLLocationAccuracy = 60
-        static let routeCorridorMeters = 50.0
-        static let minimumDrivingSeconds: TimeInterval = 180
+        static let routeCorridorMeters = 150.0
         static let maximumSampleGap: TimeInterval = 60
         static let maximumForwardMetersPerSecond = 45.0
         static let forwardDistanceToleranceMeters = 80.0
+
+        /// 코스 진입 전과 주차장 도착 확인에는 배터리 사용을 줄이기 위한 위치 목표값을 사용한다.
+        static let approachDesiredAccuracy = kCLLocationAccuracyHundredMeters
+        static let approachDistanceFilter: CLLocationDistance = 100
+        /// 코스 범위에 진입한 뒤에만 진행률 산정을 위해 정밀한 위치 목표값으로 전환한다.
+        static let drivingDesiredAccuracy = kCLLocationAccuracyNearestTenMeters
+        static let drivingDistanceFilter: CLLocationDistance = 20
     }
 
     @Published private(set) var session: PracticeTrackingSession?
+    @Published private(set) var certificationRevision = 0
 
     private let locationManager = CLLocationManager()
     private let sessionStore: PracticeTrackingSessionStore
+    private var measurementStore: PracticeMeasurementStoring = PracticeMeasurementStore()
+    private var practiceRepository: PracticeRepository?
+    private var lastInCourseLocation: CLLocation?
+    private var isCertificationRequestInFlight = false
     private var backgroundActivitySession: AnyObject?
     private var didStartSessionInCurrentProcess = false
 
@@ -32,14 +43,30 @@ final class PracticeTrackingService: NSObject, ObservableObject {
         super.init()
         locationManager.delegate = self
         locationManager.activityType = .automotiveNavigation
-        locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-        locationManager.distanceFilter = 20
+        locationManager.desiredAccuracy = Policy.approachDesiredAccuracy
+        locationManager.distanceFilter = Policy.approachDistanceFilter
         locationManager.pausesLocationUpdatesAutomatically = false
         locationManager.showsBackgroundLocationIndicator = true
         session = sessionStore.load()
     }
 
-    func start(course: RodiCourseItem, routePath: [RodiCoordinate]) -> PracticeTrackingStartResult {
+    func configure(
+        practiceRepository: PracticeRepository,
+        measurementStore: PracticeMeasurementStoring
+    ) {
+        self.practiceRepository = practiceRepository
+        self.measurementStore = measurementStore
+    }
+
+    var hasActiveMeasurement: Bool {
+        session?.phase.isTerminal == false
+    }
+
+    func start(
+        course: RodiCourseItem,
+        routePath: [RodiCoordinate],
+        rabbitAssetName: String = "img_rabbit_navigation"
+    ) -> PracticeTrackingStartResult {
         guard CLLocationManager.locationServicesEnabled() else {
             return .unavailable("위치 서비스를 켠 뒤 연습 기록을 시작해주세요.")
         }
@@ -65,14 +92,16 @@ final class PracticeTrackingService: NSObject, ObservableObject {
             return .unavailable("코스 경로를 준비하지 못했어요. 잠시 후 다시 시도해주세요.")
         }
 
-        if session?.phase.isTerminal == false {
-            cancel()
+        guard session?.phase.isTerminal != false else {
+            return .unavailable("진행 중인 연습 측정이 있어요.")
         }
 
         let session = PracticeTrackingSession(
             id: UUID(),
             courseID: course.id,
             courseName: course.name,
+            placeType: course.type == .parking ? .parking : .course,
+            rabbitAssetName: rabbitAssetName,
             routePath: routePath,
             cumulativeRouteDistanceMeters: PracticeRouteMatcher.cumulativeDistance(for: routePath),
             startedAt: .now,
@@ -94,7 +123,9 @@ final class PracticeTrackingService: NSObject, ObservableObject {
         self.session = session
         sessionStore.save(session)
         didStartSessionInCurrentProcess = true
+        lastInCourseLocation = nil
         beginBackgroundActivitySession()
+        applyLocationPolicy(for: session)
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.startUpdatingLocation()
         startLiveActivity(for: session)
@@ -109,6 +140,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
             session.phase = .interrupted
             self.session = session
             sessionStore.save(session)
+            measurementStore.clear()
             cancelLiveActivity()
             RodiLogger.info("Practice tracking interrupted after process restart sessionID=\(session.id.uuidString)")
             return
@@ -119,6 +151,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
         else { return }
 
         beginBackgroundActivitySession()
+        applyLocationPolicy(for: session)
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.startUpdatingLocation()
         startLiveActivity(for: session)
@@ -135,6 +168,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
         stopLocationUpdates()
         endBackgroundActivitySession()
         didStartSessionInCurrentProcess = false
+        lastInCourseLocation = nil
         RodiLogger.info("Practice tracking cancelled sessionID=\(session.id.uuidString)")
     }
 
@@ -164,6 +198,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
             cumulativeDistanceMeters: session.cumulativeRouteDistanceMeters
         ), match.distanceToRouteMeters <= Policy.routeCorridorMeters
         else {
+            lastInCourseLocation = nil
             self.session = session
             sessionStore.save(session)
             syncLiveActivity(session)
@@ -176,23 +211,38 @@ final class PracticeTrackingService: NSObject, ObservableObject {
             session.lastMatchedLocationAt = location.timestamp
             session.initialMatchedRouteDistanceMeters = match.distanceAlongRouteMeters
             session.furthestMatchedRouteDistanceMeters = match.distanceAlongRouteMeters
-            session.courseProgress = match.progress
+            session.courseProgress = 0
+            applyLocationPolicy(for: session)
             RodiLogger.info(
                 "Practice tracking entered course sessionID=\(session.id.uuidString), progress=\(match.progress)"
             )
         }
 
-        updateDrivingProgress(&session, match: match, timestamp: location.timestamp)
+        if session.isParking {
+            session.phase = .completed
+            session.courseProgress = 1
+            session.completedAt = location.timestamp
+            stopLocationUpdates()
+            endBackgroundActivitySession()
+            didStartSessionInCurrentProcess = false
+            finishLiveActivity(session)
+            markCertificationPending(for: session)
+            self.session = session
+            sessionStore.save(session)
+            return
+        }
 
-        if session.activeDrivingSeconds >= Policy.minimumDrivingSeconds,
-           session.drivenRouteDistance >= session.requiredDrivingDistanceMeters,
-           session.directionalAdvanceMeters >= session.requiredDirectionalAdvanceMeters {
+        updateDrivingProgress(&session, location: location, timestamp: location.timestamp)
+
+        if session.requiredDrivingDistanceMeters > 0,
+           session.drivenRouteDistance >= session.requiredDrivingDistanceMeters {
             session.phase = .completed
             session.completedAt = location.timestamp
             stopLocationUpdates()
             endBackgroundActivitySession()
             didStartSessionInCurrentProcess = false
             finishLiveActivity(session)
+            markCertificationPending(for: session)
             RodiLogger.info(
                 "Practice tracking completed sessionID=\(session.id.uuidString), progress=\(session.courseProgress), seconds=\(session.activeDrivingSeconds)"
             )
@@ -205,7 +255,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
 
     private func updateDrivingProgress(
         _ session: inout PracticeTrackingSession,
-        match: PracticeRouteMatch,
+        location: CLLocation,
         timestamp: Date
     ) {
         guard session.phase == .drivingCourse else { return }
@@ -216,11 +266,9 @@ final class PracticeTrackingService: NSObject, ObservableObject {
         }
 
         guard let previousTimestamp = session.lastMatchedLocationAt,
-              let furthestDistance = session.furthestMatchedRouteDistanceMeters
+              let previousLocation = lastInCourseLocation
         else {
-            session.initialMatchedRouteDistanceMeters = match.distanceAlongRouteMeters
-            session.furthestMatchedRouteDistanceMeters = match.distanceAlongRouteMeters
-            session.courseProgress = match.progress
+            lastInCourseLocation = location
             return
         }
 
@@ -230,22 +278,84 @@ final class PracticeTrackingService: NSObject, ObservableObject {
         )
         session.activeDrivingSeconds += elapsedSeconds
 
-        let forwardDistance = match.distanceAlongRouteMeters - furthestDistance
-        let maximumPlausibleAdvance =
+        let travelledDistance = location.distance(from: previousLocation)
+        let maximumPlausibleDistance =
             (elapsedSeconds * Policy.maximumForwardMetersPerSecond) + Policy.forwardDistanceToleranceMeters
-        guard forwardDistance > 0, forwardDistance <= maximumPlausibleAdvance else { return }
+        guard travelledDistance > 0, travelledDistance <= maximumPlausibleDistance else {
+            lastInCourseLocation = location
+            return
+        }
 
-        session.furthestMatchedRouteDistanceMeters = match.distanceAlongRouteMeters
-        session.drivenRouteDistanceMeters = (session.drivenRouteDistanceMeters ?? 0) + forwardDistance
-        session.courseProgress = min(
-            max(match.progress, session.courseProgress),
-            1
-        )
+        session.drivenRouteDistanceMeters = (session.drivenRouteDistanceMeters ?? 0) + travelledDistance
+        session.courseProgress = min(session.drivenRouteDistance / session.requiredDrivingDistanceMeters, 1)
+        lastInCourseLocation = location
+    }
+
+    private func markCertificationPending(for session: PracticeTrackingSession) {
+        guard var measurement = measurementStore.load(), measurement.id == session.id else { return }
+        measurement.status = .certificationPendingRegistration
+        measurement.certifiedDistanceMeters = session.isParking
+            ? nil
+            : Int(session.drivenRouteDistance.rounded())
+        measurementStore.save(measurement)
+        retryCertificationIfNeeded()
+    }
+
+    func retryCertificationIfNeeded() {
+        guard let repository = practiceRepository,
+              !isCertificationRequestInFlight,
+              let measurement = measurementStore.load(),
+              measurement.mode == .gpsTracking,
+              (measurement.status == .certificationPendingRegistration
+                  || measurement.status == .certificationPendingVisit)
+        else { return }
+
+        isCertificationRequestInFlight = true
+        Task { [weak self] in
+            guard let self else { return }
+            defer { self.isCertificationRequestInFlight = false }
+            do {
+                var current = measurement
+                if current.status == .certificationPendingRegistration {
+                    let registration = try await repository.register(placeID: current.placeID)
+                    current.practiceID = registration.practiceID
+                    current.status = .certificationPendingVisit
+                    self.measurementStore.save(current)
+                }
+                guard let practiceID = current.practiceID else { return }
+                _ = try await repository.recordVisit(
+                    practiceID: practiceID,
+                    certifiedDistanceMeters: current.certifiedDistanceMeters
+                )
+                current.status = .certified
+                self.measurementStore.save(current)
+                self.certificationRevision += 1
+            } catch {
+                RodiLogger.warning("Practice certification pending: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// 외부 길안내가 열린 뒤에만 측정 후보를 저장하므로, 도착 지점에서 즉시 종료된 세션도 인증 대기 상태로 전환한다.
+    func synchronizeCompletedSessionCertificationIfNeeded() {
+        guard let session, session.phase == .completed else { return }
+        markCertificationPending(for: session)
     }
 
     private func stopLocationUpdates() {
         locationManager.stopUpdatingLocation()
         locationManager.allowsBackgroundLocationUpdates = false
+    }
+
+    private func applyLocationPolicy(for session: PracticeTrackingSession) {
+        if session.phase == .drivingCourse, !session.isParking {
+            locationManager.desiredAccuracy = Policy.drivingDesiredAccuracy
+            locationManager.distanceFilter = Policy.drivingDistanceFilter
+            return
+        }
+
+        locationManager.desiredAccuracy = Policy.approachDesiredAccuracy
+        locationManager.distanceFilter = Policy.approachDistanceFilter
     }
 
     private func beginBackgroundActivitySession() {

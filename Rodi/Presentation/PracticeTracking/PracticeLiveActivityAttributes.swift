@@ -18,4 +18,6 @@ struct PracticeLiveActivityAttributes: ActivityAttributes {
     let sessionID: UUID
     let courseID: Int
     let courseName: String
+    let placeTypeRawValue: String
+    let rabbitAssetName: String
 }

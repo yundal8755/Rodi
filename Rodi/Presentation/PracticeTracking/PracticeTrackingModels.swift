@@ -37,6 +37,8 @@ struct PracticeTrackingSession: Codable, Equatable, Identifiable {
     let id: UUID
     let courseID: Int
     let courseName: String
+    let placeType: PracticeMeasurementPlaceType?
+    let rabbitAssetName: String?
     let routePath: [RodiCoordinate]
     let cumulativeRouteDistanceMeters: [Double]
     let startedAt: Date
@@ -57,6 +59,10 @@ struct PracticeTrackingSession: Codable, Equatable, Identifiable {
 
     var isReviewEligible: Bool {
         phase == .completed
+    }
+
+    var isParking: Bool {
+        placeType == .parking
     }
 
     var totalCourseDistanceMeters: Double {
@@ -80,12 +86,7 @@ struct PracticeTrackingSession: Codable, Equatable, Identifiable {
     }
 
     var requiredDrivingDistanceMeters: Double {
-        let baseThreshold = min(max(totalCourseDistanceMeters * 0.35, 300), 1_000)
-        guard let initialMatchedRouteDistanceMeters else { return baseThreshold }
-
-        let remainingDistance = max(totalCourseDistanceMeters - initialMatchedRouteDistanceMeters, 0)
-        let achievableThreshold = max(remainingDistance * 0.65, min(remainingDistance, 150))
-        return min(baseThreshold, achievableThreshold)
+        min(totalCourseDistanceMeters * 0.4, 5_000)
     }
 
     var directionalAdvanceMeters: Double {
@@ -97,7 +98,21 @@ struct PracticeTrackingSession: Codable, Equatable, Identifiable {
     }
 
     var requiredDirectionalAdvanceMeters: Double {
-        min(requiredDrivingDistanceMeters, min(max(totalCourseDistanceMeters * 0.2, 150), 500))
+        0
+    }
+}
+
+enum PracticeLiveActivityRabbitAsset {
+    static let navigation = "img_rabbit_navigation"
+
+    static func name(for level: MemberProfile.Level) -> String {
+        switch level {
+        case .seed: "img_rabbit_seed"
+        case .rookie: "img_rabbit_rookie"
+        case .owner: "img_rabbit_owner"
+        case .explorer: "img_rabbit_explorer"
+        case .navigator: navigation
+        }
     }
 }
 

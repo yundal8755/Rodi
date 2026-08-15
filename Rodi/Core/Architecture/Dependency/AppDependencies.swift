@@ -16,7 +16,7 @@ final class AppDependencies {
     let recentSearchRepository: RecentSearchRepository
     let reviewRepository: ReviewRepository
     let recentLoginProviderStore: RecentLoginProviderStore
-    let practiceReturnPromptStore: PracticeReturnPromptStoring
+    let practiceMeasurementStore: PracticeMeasurementStoring
     let levelUpPresentationStore: LevelUpPresentationStoring
 
     init() {
@@ -40,7 +40,7 @@ final class AppDependencies {
 
         self.tokenStore = tokenStore
         self.recentLoginProviderStore = recentLoginProviderStore
-        practiceReturnPromptStore = PracticeReturnPromptStore()
+        practiceMeasurementStore = PracticeMeasurementStore()
         levelUpPresentationStore = LevelUpPresentationStore(tokenStore: tokenStore)
 
         authRepository = AuthRepositoryImpl(
