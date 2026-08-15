@@ -14,7 +14,13 @@ struct ReviewReducer: Reducer {
 
     enum Action {
         case debugPromptRequested
-        case promptRequested(placeID: Int, placeName: String)
+        case promptRequested(
+            placeID: Int,
+            placeName: String,
+            allowsSkipReason: Bool = true,
+            allowsReviewWriting: Bool = true,
+            visitedSnackbarMessage: String? = nil
+        )
         case directWritingRequested(ReviewWriteRequest)
         case editingRequested(reviewID: Int)
         case prompt(ReviewPromptReducer.Action)
@@ -25,8 +31,10 @@ struct ReviewReducer: Reducer {
 
     enum Delegate {
         case finished
+        case completionRefreshRequested(ReviewWriteRequest, flowID: UUID)
         case editingFailed(String)
         case showSnackbar(String)
+        case visitedWithoutReview(String)
     }
 
     private let promptReducer: ReviewPromptReducer
@@ -52,14 +60,25 @@ extension ReviewReducer {
         case .debugPromptRequested:
             #if DEBUG
             guard state.route == .hidden else { return .none }
-            return startPrompt(state: &state, placeID: 120, placeName: "")
+            return startPrompt(
+                state: &state,
+                placeID: 120,
+                placeName: "북악스카이웨이 드라이브"
+            )
             #else
             return .none
             #endif
 
-        case .promptRequested(let placeID, let placeName):
+        case let .promptRequested(placeID, placeName, allowsSkipReason, allowsReviewWriting, visitedSnackbarMessage):
             guard state.route == .hidden else { return .none }
-            return startPrompt(state: &state, placeID: placeID, placeName: placeName)
+            return startPrompt(
+                state: &state,
+                placeID: placeID,
+                placeName: placeName,
+                allowsSkipReason: allowsSkipReason,
+                allowsReviewWriting: allowsReviewWriting,
+                visitedSnackbarMessage: visitedSnackbarMessage
+            )
 
         case .directWritingRequested(let request):
             guard state.route == .hidden else { return .none }
@@ -143,6 +162,11 @@ private extension ReviewReducer {
 
         case .showSnackbar(let message):
             return .send(.delegate(.showSnackbar(message)))
+
+        case .visitedWithoutReview(let message):
+            guard state.route == .prompt else { return .none }
+            finish(state: &state)
+            return .send(.delegate(.visitedWithoutReview(message)))
         }
     }
 
@@ -155,6 +179,10 @@ private extension ReviewReducer {
             guard state.route == .writing else { return .none }
             finish(state: &state)
             return .send(.delegate(.finished))
+
+        case .completionRefreshRequested(let target, let flowID):
+            guard state.route == .writing else { return .none }
+            return .send(.delegate(.completionRefreshRequested(target, flowID: flowID)))
 
         case .editingFailed(let message):
             guard state.route == .writing else { return .none }
@@ -188,12 +216,24 @@ private extension ReviewReducer {
     func startPrompt(
         state: inout State,
         placeID: Int,
-        placeName: String
+        placeName: String,
+        allowsSkipReason: Bool = true,
+        allowsReviewWriting: Bool = true,
+        visitedSnackbarMessage: String? = nil
     ) -> Effect<Action> {
         resetChildren(state: &state)
         state.route = .prompt
         return promptReducer
-            .reduce(&state.prompt, with: .start(placeID: placeID, placeName: placeName))
+            .reduce(
+                &state.prompt,
+                with: .start(
+                    placeID: placeID,
+                    placeName: placeName,
+                    allowsSkipReason: allowsSkipReason,
+                    allowsReviewWriting: allowsReviewWriting,
+                    visitedSnackbarMessage: visitedSnackbarMessage
+                )
+            )
             .map(Action.prompt)
     }
 

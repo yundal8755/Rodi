@@ -52,13 +52,14 @@ struct ReviewWritingReducer: Reducer {
         case submitTapped
         case submissionCompleted(ReviewRequestResult<Void>, flowID: UUID, requestID: Int)
         case completionConfirmed
-        case completionDismissed(flowID: UUID, requestID: Int)
+        case completionRefreshFinished(flowID: UUID)
         case reset
         case delegate(Delegate)
     }
 
     enum Delegate {
         case finished
+        case completionRefreshRequested(ReviewWriteRequest, flowID: UUID)
         case editingFailed(String)
         case showSnackbar(String)
     }
@@ -191,19 +192,23 @@ extension ReviewWritingReducer {
             }
 
         case .completionConfirmed:
-            guard state.isCompletionPresented, !state.isCompletionDismissing else { return .none }
-            state.isCompletionPresented = false
-            state.isCompletionDismissing = true
-            state.requestID += 1
-            return completionDismissalEffect(flowID: state.flowID, requestID: state.requestID)
-
-        case .completionDismissed(let flowID, let requestID):
-            guard state.isCompletionDismissing,
-                  state.flowID == flowID,
-                  state.requestID == requestID
+            guard state.isCompletionPresented,
+                  !state.isCompletionDismissing,
+                  let target = state.target
             else {
                 return .none
             }
+            state.isCompletionDismissing = true
+            return .send(.delegate(.completionRefreshRequested(target, flowID: state.flowID)))
+
+        case .completionRefreshFinished(let flowID):
+            guard state.isCompletionDismissing,
+                  state.flowID == flowID
+            else {
+                return .none
+            }
+            state.isCompletionPresented = false
+            state.isCompletionDismissing = false
             return .send(.delegate(.finished))
 
         case .reset:
@@ -264,18 +269,6 @@ private extension ReviewWritingReducer {
             }
         }
         .cancelTask(id: EffectID.submission)
-    }
-
-    func completionDismissalEffect(flowID: UUID, requestID: Int) -> Effect<Action> {
-        .run { send in
-            do {
-                try await Task.sleep(for: .milliseconds(200))
-                await send(.completionDismissed(flowID: flowID, requestID: requestID))
-            } catch {
-                return
-            }
-        }
-        .cancelTask(id: EffectID.completionDismissal)
     }
 
     static func detailMessage(for error: NetworkError) -> String {

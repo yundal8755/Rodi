@@ -168,7 +168,7 @@ struct PlaceReviewItem: Equatable, Identifiable {
     var practiceMethodDisplayName: String {
         switch practiceMethod {
         case .solo: "혼자 왔어요"
-        case .accompanied: "동승자와 왔어요"
+        case .accompanied: "동행했어요"
         }
     }
 }

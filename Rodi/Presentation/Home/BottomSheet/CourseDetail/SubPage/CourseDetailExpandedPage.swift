@@ -39,6 +39,15 @@ private extension CourseDetailExpandedPage {
             if state.reviews.block.isConfirmationPresented {
                 blockConfirmationDialog
             }
+            if state.reviews.deleteTargetReviewID != nil {
+                ReviewDeleteConfirmationDialog(
+                    isDeleting: state.reviews.isDeleting,
+                    errorMessage: state.reviews.deleteErrorMessage,
+                    deleteAction: { send(.reviews(.deleteConfirmed)) },
+                    cancelAction: { send(.reviews(.deleteCancelled)) }
+                )
+                .zIndex(20)
+            }
         }
     }
 
@@ -355,11 +364,22 @@ private extension CourseDetailExpandedPage {
             .map { .init(id: $0.rawValue, title: $0.displayName) }
     }
 
-    var reviewActionOptions: [RodiDropdownOption] {
-        [
-            .init(id: "report", title: "신고하기"),
-            .init(id: "block", title: "차단")
-        ]
+    func reviewActionOptions(for reviewID: Int) -> [RodiDropdownOption] {
+        let isMine = state.reviews.pages.values
+            .lazy
+            .flatMap(\.items)
+            .first(where: { $0.id == reviewID })?
+            .isMine == true
+
+        return isMine
+            ? [
+                .init(id: "edit", title: "수정하기"),
+                .init(id: "delete", title: "삭제하기")
+            ]
+            : [
+                .init(id: "report", title: "신고하기"),
+                .init(id: "block", title: "차단")
+            ]
     }
 
     var selectedReviewLevel: ReviewLevel? {
@@ -409,10 +429,14 @@ private extension CourseDetailExpandedPage {
 
         case .reviewMenu(let reviewID):
             RodiDropdownMenu(
-                options: reviewActionOptions,
+                options: reviewActionOptions(for: reviewID),
                 onSelect: { option in
                     self.activeReviewDropdown = nil
-                    if option.id == "report" {
+                    if option.id == "edit" {
+                        send(.reviews(.editRequested(reviewID: reviewID)))
+                    } else if option.id == "delete" {
+                        send(.reviews(.deleteRequested(reviewID: reviewID)))
+                    } else if option.id == "report" {
                         send(.reviews(.reportRequested(reviewID: reviewID)))
                     } else if option.id == "block" {
                         send(.reviews(.blockRequested(reviewID: reviewID)))

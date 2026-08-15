@@ -110,6 +110,7 @@ struct MyPracticeRecordPreviewCard: View {
 
             MyPracticeReviewStatus(
                 hasReview: record.hasReview,
+                isReviewWritable: !record.isParkingPractice,
                 reviewRequested: { reviewRequested(.init(placeID: record.placeID, placeName: record.placeName)) }
             )
             .padding(.top, 12)
@@ -155,10 +156,20 @@ struct MyPracticeTypeChipRow: View {
 
 struct MyPracticeReviewStatus: View {
     let hasReview: Bool
+    let isReviewWritable: Bool
     let reviewRequested: () -> Void
 
     var body: some View {
-        if hasReview {
+        if !isReviewWritable {
+            Text("작성 불가")
+                .rodiTypography(.body3Medium)
+                .foregroundStyle(RodiColor.gray500)
+                .frame(maxWidth: .infinity)
+                .frame(height: 32)
+                .background(RodiColor.gray300)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .accessibilityLabel("주차 연습 후기는 작성할 수 없음")
+        } else if hasReview {
             Text("작성 완료")
                 .rodiTypography(.body3Medium)
                 .foregroundStyle(RodiColor.gray500)

@@ -14,7 +14,9 @@ struct ReviewSkipReasonView: View {
                 title: "미방문 사유",
                 showsBack: false,
                 closeAction: { send(.closeTapped) }
-            )
+            ),
+            ignoresKeyboardSafeArea: false,
+            bottomSafeAreaInset: isDetailFocused ? 0 : nil
         ) {
             ScrollViewReader { scrollProxy in
                 ScrollView {

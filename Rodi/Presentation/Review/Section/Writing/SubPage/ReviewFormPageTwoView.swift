@@ -13,7 +13,8 @@ struct ReviewFormPageTwoView: View {
                 showsBack: true,
                 backAction: { send(.backTapped) },
                 closeAction: { send(.closeTapped) }
-            )
+            ),
+            ignoresKeyboardSafeArea: true
         ) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -60,7 +61,6 @@ struct ReviewFormPageTwoView: View {
                 action: { send(.submitTapped) }
             )
         }
-        .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 }
 

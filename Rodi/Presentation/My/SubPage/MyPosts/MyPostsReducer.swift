@@ -20,7 +20,10 @@ struct MyPostsReducer: Reducer {
         var isDeleting = false
         var deleteErrorMessage: String?
         var snackbarMessage: String?
+        var practiceRecordsRefreshRequestID = 0
         var pendingEditReviewID: Int?
+        var hasPracticeRecords = false
+        var practiceAvailabilityRequestID = 0
     }
 
     enum Action {
@@ -30,6 +33,7 @@ struct MyPostsReducer: Reducer {
         case lastItemAppeared(MyReviewItem)
         case firstPageLoaded(PageLoadResult, requestID: Int)
         case nextPageLoaded(PageLoadResult, requestID: Int)
+        case practiceAvailabilityLoaded(Bool, requestID: Int)
         case deleteRequested(reviewID: Int)
         case deleteCancelled
         case deleteConfirmed
@@ -57,9 +61,14 @@ struct MyPostsReducer: Reducer {
     }
 
     private let reviewRepository: ReviewRepository
+    private let practiceRepository: PracticeRepository
 
-    init(reviewRepository: ReviewRepository) {
+    init(
+        reviewRepository: ReviewRepository,
+        practiceRepository: PracticeRepository
+    ) {
         self.reviewRepository = reviewRepository
+        self.practiceRepository = practiceRepository
     }
 }
 
@@ -70,7 +79,7 @@ extension MyPostsReducer {
         switch action {
         case .appeared:
             guard !state.isInitialLoading, !state.hasCompletedInitialLoad else { return .none }
-            return loadFirstPage(state: &state)
+            return loadInitialContent(state: &state)
 
         case .retryTapped:
             if state.items.isEmpty {
@@ -117,6 +126,10 @@ extension MyPostsReducer {
                 state.errorMessage = message
             }
 
+        case let .practiceAvailabilityLoaded(hasPracticeRecords, requestID):
+            guard requestID == state.practiceAvailabilityRequestID else { return .none }
+            state.hasPracticeRecords = hasPracticeRecords
+
         case .deleteRequested(let reviewID):
             guard !state.isDeleting, state.items.contains(where: { $0.id == reviewID }) else { return .none }
             state.deleteTargetReviewID = reviewID
@@ -141,6 +154,7 @@ extension MyPostsReducer {
             case .success:
                 state.deleteTargetReviewID = nil
                 state.deleteErrorMessage = nil
+                state.practiceRecordsRefreshRequestID += 1
                 return refreshAfterDelete(state: &state)
             case .failure(let message):
                 state.deleteErrorMessage = message
@@ -165,6 +179,36 @@ extension MyPostsReducer {
 
 // MARK: - Effects
 private extension MyPostsReducer {
+
+    func loadInitialContent(state: inout State) -> Effect<Action> {
+        state.items = []
+        state.isInitialLoading = true
+        state.isNextPageLoading = false
+        state.errorMessage = nil
+        state.nextCursor = nil
+        state.hasNextPage = false
+        state.requestID += 1
+        state.practiceAvailabilityRequestID += 1
+        let reviewRequestID = state.requestID
+        let practiceAvailabilityRequestID = state.practiceAvailabilityRequestID
+        let reviewRepository = reviewRepository
+        let practiceRepository = practiceRepository
+
+        return .run { send in
+            do {
+                let page = try await reviewRepository.fetchMyReviews(query: .init(size: 10))
+                await send(.firstPageLoaded(.success(page), requestID: reviewRequestID))
+            } catch {
+                await send(.firstPageLoaded(.failure(Self.message(for: error)), requestID: reviewRequestID))
+            }
+
+            await send(.practiceAvailabilityLoaded(
+                await Self.hasVisitedPractice(using: practiceRepository),
+                requestID: practiceAvailabilityRequestID
+            ))
+        }
+        .cancelTask(id: EffectID.firstPage)
+    }
 
     func loadFirstPage(state: inout State) -> Effect<Action> {
         state.items = []
@@ -228,7 +272,7 @@ private extension MyPostsReducer {
     }
 
     func refreshAfterDelete(state: inout State) -> Effect<Action> {
-        let message = "삭제되었습니다."
+        let message = "후기를 삭제했습니다."
         state.snackbarMessage = message
 
         return .run { send in
@@ -251,5 +295,23 @@ private extension MyPostsReducer {
             return "인터넷 연결을 확인한 뒤 다시 시도해 주세요."
         }
         return "후기를 삭제하지 못했어요. 다시 시도해주세요."
+    }
+
+    static func hasVisitedPractice(using repository: PracticeRepository) async -> Bool {
+        var cursor: String?
+
+        while true {
+            guard let page = try? await repository.fetchMyPractices(query: .init(size: 20, cursor: cursor))
+            else {
+                return false
+            }
+            if page.items.contains(where: { $0.status == .visited }) {
+                return true
+            }
+            guard page.hasNext, let nextCursor = page.nextCursor, !nextCursor.isEmpty else {
+                return false
+            }
+            cursor = nextCursor
+        }
     }
 }

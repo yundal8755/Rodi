@@ -17,6 +17,11 @@ struct CourseReviewReducer: Reducer {
         case failure(String)
     }
 
+    enum DeleteResult {
+        case success
+        case failure(String)
+    }
+
     struct PageState: Equatable {
         var items: [PlaceReviewItem] = []
         var hasNext = false
@@ -45,6 +50,9 @@ struct CourseReviewReducer: Reducer {
         var blockedMemberIDs: Set<Int> = []
         var report = CourseReviewReportReducer.State()
         var block = CourseReviewBlockReducer.State()
+        var deleteTargetReviewID: Int?
+        var isDeleting = false
+        var deleteErrorMessage: String?
     }
 
     enum Action {
@@ -54,10 +62,16 @@ struct CourseReviewReducer: Reducer {
         case backTapped
         case levelSelected(ReviewLevelFilter)
         case retryTapped
+        case reviewSubmissionRefreshRequested
         case nextPageRequested
         case summaryLoaded(SummaryResult, placeID: Int, level: ReviewLevelFilter, revision: UUID)
         case pageLoaded(PageResult, placeID: Int, level: ReviewLevelFilter, next: Bool, revision: UUID)
         case writingTapped
+        case editRequested(reviewID: Int)
+        case deleteRequested(reviewID: Int)
+        case deleteCancelled
+        case deleteConfirmed
+        case deleteCompleted(DeleteResult, reviewID: Int)
         case reportRequested(reviewID: Int)
         case blockRequested(reviewID: Int)
         case report(CourseReviewReportReducer.Action)
@@ -67,11 +81,12 @@ struct CourseReviewReducer: Reducer {
 
     enum Delegate {
         case writingRequested
+        case editingRequested(reviewID: Int)
         case requestAuthentication
         case showSnackbar(String)
     }
 
-    private enum EffectID: Hashable { case loading }
+    private enum EffectID: Hashable { case loading, deletion }
 
     private let repository: ReviewRepository
     private let reportReducer: CourseReviewReportReducer
@@ -119,6 +134,10 @@ extension CourseReviewReducer {
             state.pages[state.selectedLevel] = nil
             return loadIfNeeded(state: &state, force: true)
 
+        case .reviewSubmissionRefreshRequested:
+            guard state.placeID != nil, state.route != .report else { return .none }
+            return loadIfNeeded(state: &state, force: true)
+
         case .nextPageRequested:
             guard state.route == .allReviews,
                   let placeID = state.placeID,
@@ -162,17 +181,65 @@ extension CourseReviewReducer {
         case .writingTapped:
             return .send(.delegate(.writingRequested))
 
+        case .editRequested(let reviewID):
+            guard state.route == .preview || state.route == .allReviews,
+                  let review = review(id: reviewID, state: state),
+                  review.isMine
+            else { return .none }
+            return .send(.delegate(.editingRequested(reviewID: reviewID)))
+
+        case .deleteRequested(let reviewID):
+            guard !state.isDeleting,
+                  state.route == .preview || state.route == .allReviews,
+                  let review = review(id: reviewID, state: state),
+                  review.isMine
+            else { return .none }
+            state.deleteTargetReviewID = reviewID
+            state.deleteErrorMessage = nil
+
+        case .deleteCancelled:
+            guard !state.isDeleting else { return .none }
+            state.deleteTargetReviewID = nil
+            state.deleteErrorMessage = nil
+
+        case .deleteConfirmed:
+            guard let reviewID = state.deleteTargetReviewID, !state.isDeleting else { return .none }
+            state.isDeleting = true
+            state.deleteErrorMessage = nil
+            return deleteEffect(reviewID: reviewID)
+
+        case .deleteCompleted(let result, let reviewID):
+            guard state.deleteTargetReviewID == reviewID, state.isDeleting else { return .none }
+            state.isDeleting = false
+            switch result {
+            case .success:
+                state.deleteTargetReviewID = nil
+                state.deleteErrorMessage = nil
+                return .run { send in
+                    await send(.retryTapped)
+                    await send(.delegate(.showSnackbar("후기를 삭제했습니다.")))
+                }
+            case .failure(let message):
+                state.deleteErrorMessage = message
+            }
+
         case .reportRequested(let reviewID):
             guard state.route == .preview || state.route == .allReviews,
-                  review(id: reviewID, state: state) != nil
+                  let review = review(id: reviewID, state: state)
             else { return .none }
+            guard !review.isMine else {
+                return .send(.delegate(.showSnackbar("내가 쓴 후기는 신고할 수 없습니다.")))
+            }
             state.reportReturnRoute = state.route
             state.route = .report
             return reportReducer.reduce(&state.report, with: .start(reviewID: reviewID)).map(Action.report)
 
         case .blockRequested(let reviewID):
-            guard let memberID = review(id: reviewID, state: state)?.memberID else { return .none }
-            return blockReducer.reduce(&state.block, with: .request(memberID: memberID)).map(Action.block)
+            guard let review = review(id: reviewID, state: state) else { return .none }
+            guard !review.isMine else {
+                return .send(.delegate(.showSnackbar("내가 쓴 후기는 차단할 수 없습니다.")))
+            }
+            return blockReducer.reduce(&state.block, with: .request(memberID: review.memberID)).map(Action.block)
 
         case .report(let childAction):
             if case .delegate(let delegate) = childAction { return reduceReportDelegate(delegate, state: &state) }
@@ -261,6 +328,28 @@ private extension CourseReviewReducer {
             catch { await send(.pageLoaded(.failure("후기를 더 불러오지 못했어요."), placeID: placeID, level: level, next: true, revision: revision)) }
         }
         .cancelTask(id: EffectID.loading)
+    }
+
+    func deleteEffect(reviewID: Int) -> Effect<Action> {
+        let repository = repository
+        return .run { send in
+            do {
+                try await repository.delete(reviewID: reviewID)
+                await send(.deleteCompleted(.success, reviewID: reviewID))
+            } catch let error as NetworkError {
+                await send(.deleteCompleted(.failure(deleteMessage(for: error)), reviewID: reviewID))
+            } catch {
+                await send(.deleteCompleted(.failure("후기를 삭제하지 못했어요. 다시 시도해주세요."), reviewID: reviewID))
+            }
+        }
+        .cancelTask(id: EffectID.deletion)
+    }
+
+    func deleteMessage(for error: NetworkError) -> String {
+        if case .networkUnavailable = error {
+            return "인터넷 연결을 확인한 뒤 다시 시도해 주세요."
+        }
+        return "후기를 삭제하지 못했어요. 다시 시도해주세요."
     }
 }
 

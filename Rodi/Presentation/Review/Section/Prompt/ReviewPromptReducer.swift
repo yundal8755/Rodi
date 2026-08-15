@@ -10,16 +10,27 @@ struct ReviewPromptReducer: Reducer {
 
         var presentation: Presentation = .hidden
         var target: ReviewTarget?
+        var allowsSkipReason = true
+        var allowsReviewWriting = true
+        var visitedSnackbarMessage: String?
+        var isVisitSubmitting = false
         var flowID = UUID()
         var requestID = 0
     }
 
     enum Action {
-        case start(placeID: Int, placeName: String)
+        case start(
+            placeID: Int,
+            placeName: String,
+            allowsSkipReason: Bool,
+            allowsReviewWriting: Bool,
+            visitedSnackbarMessage: String?
+        )
         case targetPrepared(ReviewRequestResult<ReviewTarget>, flowID: UUID, requestID: Int)
         case visitedTapped
         case notVisitedTapped
         case closeTapped
+        case visitSubmissionChanged(Bool)
         case reset
         case delegate(Delegate)
     }
@@ -30,6 +41,7 @@ struct ReviewPromptReducer: Reducer {
         case dismissed
         case preparationFailed(String)
         case showSnackbar(String)
+        case visitedWithoutReview(String)
     }
 
     private enum EffectID {
@@ -48,10 +60,13 @@ extension ReviewPromptReducer {
 
     func reduce(_ state: inout State, with action: Action) -> Effect<Action> {
         switch action {
-        case .start(let placeID, let placeName):
+        case let .start(placeID, placeName, allowsSkipReason, allowsReviewWriting, visitedSnackbarMessage):
             state = .init(
                 presentation: .prompt,
-                target: .init(placeID: placeID, practiceID: nil, placeName: placeName)
+                target: .init(placeID: placeID, practiceID: nil, placeName: placeName),
+                allowsSkipReason: allowsSkipReason,
+                allowsReviewWriting: allowsReviewWriting,
+                visitedSnackbarMessage: visitedSnackbarMessage
             )
 
         case .targetPrepared(let result, let flowID, let requestID):
@@ -78,6 +93,11 @@ extension ReviewPromptReducer {
             else {
                 return .none
             }
+            guard state.allowsReviewWriting else {
+                return state.visitedSnackbarMessage
+                    .map { .send(.delegate(.visitedWithoutReview($0))) }
+                    ?? .send(.delegate(.dismissed))
+            }
             return .send(.delegate(.writingRequested(.init(
                 placeID: target.placeID,
                 placeName: target.placeName
@@ -88,6 +108,9 @@ extension ReviewPromptReducer {
                   let target = state.target
             else {
                 return .none
+            }
+            guard state.allowsSkipReason else {
+                return .send(.delegate(.dismissed))
             }
             state.presentation = .preparing
             state.requestID += 1
@@ -100,6 +123,10 @@ extension ReviewPromptReducer {
         case .closeTapped:
             guard state.presentation == .prompt else { return .none }
             return .send(.delegate(.dismissed))
+
+        case .visitSubmissionChanged(let isSubmitting):
+            guard state.presentation == .prompt else { return .none }
+            state.isVisitSubmitting = isSubmitting
 
         case .reset:
             state = .init()

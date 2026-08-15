@@ -156,14 +156,17 @@ private extension MyView {
             MyPracticeRecordsView(
                 practiceRepository: practiceRepository,
                 reviewRequested: onReviewRequested,
+                reviewFlowFinishedRequestID: myPracticeRecordsReviewFlowFinishedRequestID,
                 backAction: { router.pop() }
             )
 
         case .myPosts:
             MyPostsView(
                 reviewRepository: reviewRepository,
+                practiceRepository: practiceRepository,
                 backAction: { router.pop() },
                 openPracticeRecords: { router.push(.practiceRecords) },
+                practiceRecordsRefreshRequested: { store.send(.practiceRecordsAppeared) },
                 reviewFlowFinishedRequestID: myPostsReviewFlowFinishedRequestID,
                 editRequested: onReviewEditRequested
             )

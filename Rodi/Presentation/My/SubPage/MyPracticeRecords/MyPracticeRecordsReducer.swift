@@ -14,6 +14,7 @@ struct MyPracticeRecordsReducer: Reducer {
 
     enum Action {
         case appeared
+        case reloadRequested
         case retryTapped
         case lastItemAppeared(MyPracticeItem)
         case firstPageLoaded(PageLoadResult, requestID: Int)
@@ -44,6 +45,10 @@ extension MyPracticeRecordsReducer {
         switch action {
         case .appeared:
             guard !state.isInitialLoading, state.items.isEmpty else { return .none }
+            return loadFirstPage(state: &state)
+
+        case .reloadRequested:
+            guard !state.isInitialLoading else { return .none }
             return loadFirstPage(state: &state)
 
         case .retryTapped:

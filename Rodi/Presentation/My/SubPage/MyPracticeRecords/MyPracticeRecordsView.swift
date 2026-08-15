@@ -3,10 +3,12 @@ import SwiftUI
 struct MyPracticeRecordsView: View {
     @StateObject private var store: StoreOf<MyPracticeRecordsReducer>
     let backAction: () -> Void
+    let reviewFlowFinishedRequestID: Int
 
     init(
         practiceRepository: PracticeRepository,
         reviewRequested: @escaping (ReviewWriteRequest) -> Void,
+        reviewFlowFinishedRequestID: Int,
         backAction: @escaping () -> Void
     ) {
         _store = StateObject(
@@ -16,6 +18,7 @@ struct MyPracticeRecordsView: View {
             )
         )
         self.reviewRequested = reviewRequested
+        self.reviewFlowFinishedRequestID = reviewFlowFinishedRequestID
         self.backAction = backAction
     }
 
@@ -30,6 +33,10 @@ struct MyPracticeRecordsView: View {
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             store.send(.appeared)
+        }
+        .onChange(of: reviewFlowFinishedRequestID) { requestID in
+            guard requestID > 0 else { return }
+            store.send(.reloadRequested)
         }
     }
 }
@@ -127,7 +134,7 @@ private struct MyPracticeRecordListRow: View {
             MyPracticeTypeChipRow(types: record.practiceTypes)
                 .padding(.top, 4)
 
-            if !record.hasReview {
+            if !record.isParkingPractice, !record.hasReview {
                 Button {
                     reviewRequested(.init(placeID: record.placeID, placeName: record.placeName))
                 } label: {

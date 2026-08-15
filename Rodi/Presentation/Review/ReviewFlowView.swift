@@ -71,7 +71,13 @@ private extension ReviewFlowView {
             }
 
             if state.writing.isCompletionPresented {
-                ReviewCompletionView(send: { send(.writing($0)) })
+                ReviewCompletionView(
+                    isEditing: {
+                        if case .edit = state.writing.mode { return true }
+                        return false
+                    }(),
+                    send: { send(.writing($0)) }
+                )
             }
         }
     }

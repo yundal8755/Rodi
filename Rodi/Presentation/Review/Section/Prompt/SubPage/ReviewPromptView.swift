@@ -27,16 +27,19 @@ struct ReviewPromptView: View {
                         ReviewDialogButton(title: "안 했어요", isPrimary: false) {
                             send(.notVisitedTapped)
                         }
+                        .disabled(state.isVisitSubmitting)
                         
                         ReviewDialogButton(title: "다녀왔어요", isPrimary: true) {
                             send(.visitedTapped)
                         }
+                        .disabled(state.isVisitSubmitting)
                     }
                     .padding(.top, 24)
-                }
-            } closeAction: {
-                send(.closeTapped)
             }
+        } closeAction: {
+            guard !state.isVisitSubmitting else { return }
+            send(.closeTapped)
+        }
         }
     }
 }

@@ -11,24 +11,31 @@ struct MyPostsView: View {
 
     let backAction: () -> Void
     let openPracticeRecords: () -> Void
+    let practiceRecordsRefreshRequested: () -> Void
     let reviewFlowFinishedRequestID: Int
     let editRequested: (Int) -> Void
 
     init(
         reviewRepository: ReviewRepository,
+        practiceRepository: PracticeRepository,
         backAction: @escaping () -> Void,
         openPracticeRecords: @escaping () -> Void,
+        practiceRecordsRefreshRequested: @escaping () -> Void,
         reviewFlowFinishedRequestID: Int,
         editRequested: @escaping (Int) -> Void
     ) {
         _store = StateObject(
             wrappedValue: Store(
                 state: MyPostsReducer.State(),
-                reducer: MyPostsReducer(reviewRepository: reviewRepository)
+                reducer: MyPostsReducer(
+                    reviewRepository: reviewRepository,
+                    practiceRepository: practiceRepository
+                )
             )
         )
         self.backAction = backAction
         self.openPracticeRecords = openPracticeRecords
+        self.practiceRecordsRefreshRequested = practiceRecordsRefreshRequested
         self.reviewFlowFinishedRequestID = reviewFlowFinishedRequestID
         self.editRequested = editRequested
     }
@@ -58,6 +65,10 @@ struct MyPostsView: View {
             guard requestID > 0 else { return }
             store.send(.reloadRequested)
         }
+        .onChange(of: store.state.practiceRecordsRefreshRequestID) { requestID in
+            guard requestID > 0 else { return }
+            practiceRecordsRefreshRequested()
+        }
         .onChange(of: store.state.pendingEditReviewID) { reviewID in
             guard let reviewID else { return }
             editRequested(reviewID)
@@ -79,7 +90,8 @@ private extension MyPostsView {
             MyPostsEmptyState(
                 errorMessage: store.state.errorMessage,
                 retry: { store.send(.retryTapped) },
-                openPracticeRecords: openPracticeRecords
+                openPracticeRecords: openPracticeRecords,
+                hasPracticeRecords: store.state.hasPracticeRecords
             )
         } else {
             ScrollView {
@@ -194,73 +206,12 @@ private extension MyPostsView {
     }
 
     func deleteConfirmationDialog(reviewID: Int) -> some View {
-        RodiModalBackground {
-            RodiDialog(contentInsets: .init(top: 32, leading: 20, bottom: 32, trailing: 20)) {
-                VStack(spacing: 0) {
-                    VStack(spacing: 16) {
-                        Text("정말 삭제하시겠습니까?")
-                            .font(.pretendard(size: 16, weight: .bold))
-                            .tracking(-0.32)
-                            .foregroundStyle(RodiColor.black)
-
-                        Text("이 후기는 다른 초보 운전자에게도 도움이 되고있어요. 삭제하면 더 이상 공개되지 않아요.")
-                            .rodiTypography(.caption1Medium)
-                            .foregroundStyle(RodiColor.black)
-                            .multilineTextAlignment(.center)
-                            .frame(height: 60)
-
-                        if let errorMessage = store.state.deleteErrorMessage {
-                            Text(errorMessage)
-                                .rodiTypography(.caption2Medium)
-                                .foregroundStyle(RodiColor.secondary400)
-                                .multilineTextAlignment(.center)
-                        }
-                    }
-                    .frame(minWidth: 240)
-
-                    HStack(spacing: 8) {
-                        Button {
-                            store.send(.deleteConfirmed)
-                        } label: {
-                            Group {
-                                if store.state.isDeleting {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                        .tint(RodiColor.gray800)
-                                } else {
-                                    Text("삭제하기")
-                                        .rodiTypography(.buttonMedium)
-                                        .foregroundStyle(RodiColor.gray800)
-                                }
-                            }
-                            .frame(width: 116, height: 42)
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(RodiColor.gray300, lineWidth: 1)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(store.state.isDeleting)
-                        .accessibilityLabel("후기 삭제")
-
-                        Button {
-                            store.send(.deleteCancelled)
-                        } label: {
-                            Text("취소")
-                                .rodiTypography(.buttonMedium)
-                                .foregroundStyle(RodiColor.white)
-                                .frame(width: 116, height: 42)
-                                .background(RodiColor.primary)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(store.state.isDeleting)
-                        .accessibilityLabel("후기 삭제 취소")
-                    }
-                    .padding(.top, 24)
-                }
-            }
-        }
+        ReviewDeleteConfirmationDialog(
+            isDeleting: store.state.isDeleting,
+            errorMessage: store.state.deleteErrorMessage,
+            deleteAction: { store.send(.deleteConfirmed) },
+            cancelAction: { store.send(.deleteCancelled) }
+        )
     }
 }
 
@@ -328,6 +279,7 @@ private struct MyPostsEmptyState: View {
     let errorMessage: String?
     let retry: () -> Void
     let openPracticeRecords: () -> Void
+    let hasPracticeRecords: Bool
 
     var body: some View {
         VStack(spacing: 8) {
@@ -359,20 +311,22 @@ private struct MyPostsEmptyState: View {
                         .rodiTypography(.body3Medium)
                         .foregroundStyle(RodiColor.gray600)
 
-                    Button(action: openPracticeRecords) {
-                        Text("연습기록 보러가기")
-                            .rodiTypography(.body3Medium)
-                            .foregroundStyle(RodiColor.primary)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 7)
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(RodiColor.primary, lineWidth: 1)
-                            }
+                    if hasPracticeRecords {
+                        Button(action: openPracticeRecords) {
+                            Text("연습기록 보러가기")
+                                .rodiTypography(.body3Medium)
+                                .foregroundStyle(RodiColor.primary)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 7)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(RodiColor.primary, lineWidth: 1)
+                                }
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 16)
+                        .accessibilityLabel("연습기록 보러가기")
                     }
-                    .buttonStyle(.plain)
-                    .padding(.top, 16)
-                    .accessibilityLabel("연습기록 보러가기")
                 }
             }
         }

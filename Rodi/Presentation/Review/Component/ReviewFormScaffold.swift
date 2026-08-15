@@ -6,15 +6,21 @@ struct ReviewFormScaffold<Content: View, BottomBar: View>: View {
     private let header: ReviewFormHeader
     private let content: Content
     private let bottomBar: BottomBar
+    private let ignoresKeyboardSafeArea: Bool
+    private let bottomSafeAreaInset: CGFloat?
 
     init(
         header: ReviewFormHeader,
+        ignoresKeyboardSafeArea: Bool = true,
+        bottomSafeAreaInset: CGFloat? = nil,
         @ViewBuilder content: () -> Content,
         @ViewBuilder bottomBar: () -> BottomBar
     ) {
         self.header = header
         self.content = content()
         self.bottomBar = bottomBar()
+        self.ignoresKeyboardSafeArea = ignoresKeyboardSafeArea
+        self.bottomSafeAreaInset = bottomSafeAreaInset
     }
 
     var body: some View {
@@ -31,9 +37,13 @@ struct ReviewFormScaffold<Content: View, BottomBar: View>: View {
                 .background(RodiColor.white)
         }
         .padding(.top, screenSafeAreaInsets.top)
-        .padding(.bottom, screenSafeAreaInsets.bottom)
+        .padding(.bottom, bottomSafeAreaInset ?? screenSafeAreaInsets.bottom)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(RodiColor.white)
-        .ignoresSafeArea()
+        .ignoresSafeArea(.container)
+        .ignoresSafeArea(
+            ignoresKeyboardSafeArea ? .keyboard : [],
+            edges: .bottom
+        )
     }
 }

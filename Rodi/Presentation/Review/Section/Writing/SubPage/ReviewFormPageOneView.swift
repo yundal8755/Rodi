@@ -16,7 +16,9 @@ struct ReviewFormPageOneView: View {
                 title: "후기 남기기",
                 showsBack: false,
                 closeAction: { send(.closeTapped) }
-            )
+            ),
+            ignoresKeyboardSafeArea: false,
+            bottomSafeAreaInset: isCautionFocused ? 0 : nil
         ) {
             ScrollViewReader { proxy in
                 ScrollView {

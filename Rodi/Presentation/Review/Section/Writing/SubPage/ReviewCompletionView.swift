@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ReviewCompletionView: View {
+    let isEditing: Bool
     let send: (ReviewWritingReducer.Action) -> Void
 
     var body: some View {
@@ -8,7 +9,7 @@ struct ReviewCompletionView: View {
             RodiDialog(contentInsets: .init(top: 32, leading: 20, bottom: 32, trailing: 20)) {
                 VStack(spacing: 0) {
                 VStack(spacing: 16) {
-                    Text("후기 등록을 완료했어요!")
+                    Text(isEditing ? "후기 수정을 완료했어요!" : "후기 등록을 완료했어요!")
                         .rodiTypography(.body1SemiBold)
                         .foregroundStyle(RodiColor.black)
 

@@ -90,11 +90,16 @@ private extension CourseReviewSection {
 
     var selectedLevelEmptyContent: some View {
         VStack(spacing: 0) {
-            HStack {
-                Spacer(minLength: 0)
-                reviewLevelDropdown
+            if let summary {
+                CourseReviewSummaryView(
+                    summary: summary,
+                    selectedLevel: selectedLevel,
+                    isLevelDropdownExpanded: dropdownBinding(for: .summary)
+                )
+                Divider()
+                    .overlay(RodiColor.primaryMinus100)
+                    .padding(.vertical, 12)
             }
-            .padding(.top, 12)
 
             emptyReviewCallToAction
         }
@@ -113,10 +118,10 @@ private extension CourseReviewSection {
 
                 Button(action: onWriteReview) {
                     Text("후기 쓰기")
-                        .rodiTypography(.buttonMedium)
+                        .rodiTypography(.body3Medium)
                         .foregroundStyle(RodiColor.primary)
                         .padding(.horizontal, 64)
-                        .padding(.vertical, 7)
+                        .padding(.vertical, 8)
                         .overlay {
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(RodiColor.primary, lineWidth: 1)
@@ -142,17 +147,18 @@ private extension CourseReviewSection {
 
                 Button(action: onWriteReview) {
                     Text("후기 쓰기")
-                        .rodiTypography(.buttonMedium)
+                        .rodiTypography(.body3Medium)
                         .foregroundStyle(RodiColor.primary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 46)
+                        .padding(.horizontal, 64)
+                        .padding(.vertical, 8)
                         .overlay {
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(RodiColor.primary, lineWidth: 1)
                         }
-                    }
+                }
                 .buttonStyle(.plain)
             }
+            .frame(maxWidth: .infinity, alignment: .center)
             .padding(.top, 24)
 
             fullWidthDivider(height: 2)
@@ -459,9 +465,10 @@ struct CourseReviewSummaryView: View {
     private var recommendSummary: some View {
         VStack(spacing: 4) {
             Text("추천해요")
-                .rodiTypography(.body3Medium)
+                .font(.pretendard(size: 15, weight: .semibold))
+                .tracking(-0.3)
                 .foregroundStyle(RodiColor.gray800)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .lineLimit(1)
 
             HStack(spacing: 4) {
                 Image("ic_thumbs_up")
@@ -472,16 +479,17 @@ struct CourseReviewSummaryView: View {
                     .rodiTypography(.body1SemiBold)
                     .foregroundStyle(RodiColor.black)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(width: 51, alignment: .leading)
+        .fixedSize(horizontal: true, vertical: false)
+        .layoutPriority(1)
     }
 
     private var difficultySummary: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("난이도")
-                    .rodiTypography(.body3Medium)
+                    .font(.pretendard(size: 15, weight: .semibold))
+                    .tracking(-0.3)
                     .foregroundStyle(RodiColor.gray800)
 
                 Spacer(minLength: 0)
@@ -498,10 +506,6 @@ struct CourseReviewSummaryView: View {
                         .padding(.vertical, 2)
                         .background(RodiColor.gray200)
                         .clipShape(RoundedRectangle(cornerRadius: 2))
-                } else {
-                    Text("-")
-                        .rodiTypography(.caption1Medium)
-                        .foregroundStyle(RodiColor.gray600)
                 }
 
                 Text("\(summary.topDifficultyCount)명")
