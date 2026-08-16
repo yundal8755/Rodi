@@ -40,6 +40,7 @@ struct LoginReducer: Reducer {
             SocialLoginProvider,
             isNewMember: Bool,
             isOnboarded: Bool,
+            isCourseTutorialCompleted: Bool,
             nickname: String?
         )
         case authenticationCancelled
@@ -91,7 +92,7 @@ struct LoginReducer: Reducer {
             state.isRestoringWithdrawal = true
             return restore(recovery, state: &state)
 
-        case .authenticationSucceeded(let provider, let isNewMember, let isOnboarded, let nickname):
+        case .authenticationSucceeded(let provider, let isNewMember, let isOnboarded, let isCourseTutorialCompleted, let nickname):
             state.isAuthenticating = false
             state.session.mode = .member(provider)
             state.session.nickname = nickname?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -106,7 +107,12 @@ struct LoginReducer: Reducer {
             }
             // 가입 여부가 아니라 서버가 보낸 완료 상태가 홈 진입 기준이다.
             // 온보딩 중 앱을 삭제·재설치한 회원도 다시 온보딩으로 보낸다.
-            state.transition = .init(updatedSession: state.session, navigation: isOnboarded ? .complete : .push(.terms))
+            state.transition = .init(
+                updatedSession: state.session,
+                navigation: isOnboarded
+                    ? .complete(isCourseTutorialCompleted: isCourseTutorialCompleted)
+                    : .push(.terms)
+            )
 
         case .authenticationCancelled:
             state.isAuthenticating = false
@@ -160,6 +166,7 @@ private extension LoginReducer {
                                 provider,
                                 isNewMember: token.isNewMember,
                                 isOnboarded: token.isOnboarded,
+                                isCourseTutorialCompleted: token.isCourseTutorialCompleted,
                                 nickname: token.nickname
                             )
                         )
@@ -194,6 +201,7 @@ private extension LoginReducer {
                             recovery.provider,
                             isNewMember: token.isNewMember,
                             isOnboarded: token.isOnboarded,
+                            isCourseTutorialCompleted: token.isCourseTutorialCompleted,
                             nickname: token.nickname
                         )
                     )

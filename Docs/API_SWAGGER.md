@@ -2,6 +2,8 @@
 
 RODI backend API 작업의 계약과 Data 흐름을 정의한다. 현재 코드는 사실의 원본이고 API 계약은 작업 대상 환경의 Swagger를 원본으로 삼는다.
 
+현재 연결 현황과 DTO 점검 결과는 [API_CONNECTION_STATUS.md](API_CONNECTION_STATUS.md)에서 관리한다. API를 추가·변경·제거하는 작업은 해당 문서도 같은 변경에서 갱신한다.
+
 ## Source Of Truth
 
 1. Swagger에서 environment, path, version, method와 실제 요청·응답 예시를 확인한다.

@@ -10,6 +10,7 @@ enum MainTabIntent: Equatable {
     case openHomePlace(PlaceListItem)
     case openMyProfile
     case openMySavedPlaces
+    case openCourseRegistration
 }
 
 struct HomePlaceSelectionRequest: Equatable {
@@ -34,6 +35,8 @@ struct MainTabReducer: Reducer {
         case homeTabSelected
         
         case myTabTapped
+        case registerTabTapped
+        case courseRegistrationExited
         
         case navigationRequested(MainTabIntent)
         
@@ -77,6 +80,16 @@ extension MainTabReducer {
 
             state.authenticationIntent = .openMyProfile
 
+        case .registerTabTapped:
+            guard hasActiveSession else {
+                state.authenticationIntent = .openCourseRegistration
+                return .none
+            }
+            state.selectedTab = .register
+
+        case .courseRegistrationExited:
+            state.selectedTab = .home
+
         case .navigationRequested(let intent):
             let selectedTab = tab(for: intent)
             state.selectedTab = selectedTab
@@ -119,6 +132,8 @@ extension MainTabReducer {
             .home
         case .openMyProfile, .openMySavedPlaces:
             .my
+        case .openCourseRegistration:
+            .register
         }
     }
 

@@ -15,6 +15,7 @@ final class AppDependencies {
     let practiceRepository: PracticeRepository
     let recentSearchRepository: RecentSearchRepository
     let reviewRepository: ReviewRepository
+    let courseRepository: CourseRepository
     let recentLoginProviderStore: RecentLoginProviderStore
     let practiceMeasurementStore: PracticeMeasurementStoring
     let levelUpPresentationStore: LevelUpPresentationStoring
@@ -79,6 +80,12 @@ final class AppDependencies {
 
         recentSearchRepository = RecentSearchRepositoryImpl(
             remoteDataSource: RecentSearchRemoteDataSource(
+                networkManager: authenticatedNetworkManager
+            )
+        )
+
+        courseRepository = CourseRepositoryImpl(
+            remoteDataSource: CourseRemoteDataSource(
                 networkManager: authenticatedNetworkManager
             )
         )

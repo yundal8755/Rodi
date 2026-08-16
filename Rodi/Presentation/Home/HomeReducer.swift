@@ -29,6 +29,8 @@ struct HomeReducer: Reducer {
         var cameraRequestID = 0
         var animatedCameraRequestID: Int?
         var cameraFocus: RodiMapCameraFocus = .koreaOverview
+        var pendingRegionViewportReloadOrigin: RodiCoordinate?
+        var pendingRegionCameraRequestID: Int?
         var mapZoomLevel = 6
         var isCurrentLocationButtonActive = false
 
@@ -335,7 +337,14 @@ extension HomeReducer {
         case .cameraMoveFinished(let requestID):
             guard map.animatedCameraRequestID == requestID else { return .none }
             map.animatedCameraRequestID = nil
-            return .none
+            guard map.pendingRegionCameraRequestID == requestID,
+                  let origin = map.pendingRegionViewportReloadOrigin
+            else {
+                return .none
+            }
+            map.pendingRegionCameraRequestID = nil
+            map.pendingRegionViewportReloadOrigin = nil
+            return .send(.bottomSheet(.recommendList(.reloadCurrentViewport(origin: origin))))
 
         case .currentLocationRequested:
             guard map.mapLifecycle == .ready,
@@ -531,6 +540,27 @@ extension HomeReducer {
                     ?? RodiHomeMarkerClusterIndex.Tier(zoomLevel: state.map.mapZoomLevel)
             )
             return .send(.bottomSheet(.resolvePlace(id: id)))
+
+        case let .regionSelected(_, center):
+            state.presentation.isSearchPresented = false
+            state.presentation.searchOrigin = nil
+            state.presentation.isBottomTabBarVisible = true
+            state.search = .init()
+            state.map.selectedSearchResultName = nil
+            state.map.routeOverlay = nil
+            state.map.selectedMarkerID = nil
+            state.map.isResearchButtonVisible = false
+            state.map.markers = RodiHomeMarkerClusterIndex.markers(
+                for: state.map.mapItems,
+                tier: state.map.displayedMarkerTier
+                    ?? RodiHomeMarkerClusterIndex.Tier(zoomLevel: state.map.mapZoomLevel)
+            )
+            state.map.cameraTarget = center
+            state.map.cameraFocus = .region
+            state.map.cameraRequestID += 1
+            state.map.animatedCameraRequestID = state.map.cameraRequestID
+            state.map.pendingRegionViewportReloadOrigin = center
+            state.map.pendingRegionCameraRequestID = state.map.cameraRequestID
 
         case .dismissed:
             state.presentation.isSearchPresented = false

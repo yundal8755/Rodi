@@ -3,6 +3,8 @@
 이 문서는 RODI의 레이어, MVI, feature 배치와 책임 경계를 설명하며, 구체적인 화면 수치나 일시적인 구현 상태는 현재 코드에서 확인한다.
 문서와 코드가 다르면 현재 코드를 기준으로 판단하고 같은 작업에서 문서를 바로잡는다.
 
+현재 Presentation 구조의 파일 수·개선 우선순위·리팩토링 판단 근거는 [PRESENTATION_ARCHITECTURE_AUDIT.md](PRESENTATION_ARCHITECTURE_AUDIT.md)에서 관리한다.
+
 ## Layer Structure
 
 현재 top-level은 `App`, `Core`, `Presentation`, `Data`, `Domain`, `Resources`이며 세부 경로는 live filesystem에서 확인한다.

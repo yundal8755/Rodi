@@ -58,7 +58,7 @@ struct MyProfileView: View {
                             .padding(.top, 24)
 
                         Button(action: openMyPosts) {
-                            MyNavigationRow(title: "내 게시글")
+                            MyNavigationRow(title: "내 활동")
                         }
                         .buttonStyle(.plain)
                         .padding(.horizontal, 16)

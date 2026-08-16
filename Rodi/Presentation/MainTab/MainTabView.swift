@@ -26,6 +26,8 @@ struct MainTabView: View {
     let reviewSnackbarMessage: String?
     let isCourseDetailReviewPresented: Bool
     let sendReview: (ReviewReducer.Action) -> Void
+    let isCourseTutorialCompleted: Bool
+    let onCourseTutorialCompleted: () -> Void
     private let dependencies: AppDependencies
 
     init(
@@ -42,6 +44,8 @@ struct MainTabView: View {
         reviewSnackbarMessage: String?,
         isCourseDetailReviewPresented: Bool,
         sendReview: @escaping (ReviewReducer.Action) -> Void,
+        isCourseTutorialCompleted: Bool,
+        onCourseTutorialCompleted: @escaping () -> Void,
         dependencies: AppDependencies
     ) {
         self.consumePendingAuthenticationIntent = consumePendingAuthenticationIntent
@@ -57,6 +61,8 @@ struct MainTabView: View {
         self.reviewSnackbarMessage = reviewSnackbarMessage
         self.isCourseDetailReviewPresented = isCourseDetailReviewPresented
         self.sendReview = sendReview
+        self.isCourseTutorialCompleted = isCourseTutorialCompleted
+        self.onCourseTutorialCompleted = onCourseTutorialCompleted
         self.dependencies = dependencies
         
         _store = StateObject(
@@ -115,16 +121,34 @@ struct MainTabView: View {
                 },
                 myPracticeRecordsReviewFlowFinishedRequestID: myPracticeRecordsReviewFlowFinishedRequestID,
                 myPostsReviewFlowFinishedRequestID: myPostsReviewFlowFinishedRequestID,
+                isCourseTutorialCompleted: isCourseTutorialCompleted,
+                onCourseTutorialCompleted: onCourseTutorialCompleted,
                 dependencies: dependencies
             )
             .opacity(store.state.selectedTab == .my ? 1 : 0)
             .allowsHitTesting(store.state.selectedTab == .my)
             .accessibilityHidden(store.state.selectedTab != .my)
 
+            if store.state.selectedTab == .register {
+                CourseRegistrationView(
+                    isCourseTutorialCompleted: isCourseTutorialCompleted,
+                    memberRepository: dependencies.memberRepository,
+                    courseRepository: dependencies.courseRepository,
+                    closeAction: { store.send(.courseRegistrationExited) },
+                    tutorialCompletedAction: onCourseTutorialCompleted,
+                    courseRegistrationCompletedAction: {
+                        store.send(.courseRegistrationExited)
+                    }
+                )
+                .transition(.opacity)
+                .zIndex(2)
+            }
+
             if shouldShowBottomTabBar {
                 RodiBottomTabBar(
                     selectedTab: store.state.selectedTab,
                     homeAction: { store.send(.homeTabTapped) },
+                    registerAction: { store.send(.registerTabTapped) },
                     myAction: { store.send(.myTabTapped) }
                 )
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
@@ -161,6 +185,9 @@ private extension MainTabView {
             
         case .my:
             myCoordinator.path.isEmpty
+
+        case .register:
+            false
         }
     }
 
@@ -188,6 +215,9 @@ private extension MainTabView {
             
         case .openMySavedPlaces:
             myCoordinator.router.replace(with: [.savedPlaces])
+
+        case .openCourseRegistration:
+            break
         }
 
         store.send(.navigationHandled)

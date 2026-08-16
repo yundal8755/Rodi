@@ -32,9 +32,11 @@ If documentation and live code differ, use the live implementation and repair th
 
 Read `AGENTS.md`, then normally only one task document:
 
+문서·skill·작업 절차의 전체 안내는 `Docs/WORKING_GUIDE.md`를 참고한다. 단, 실제 구현 작업에서는 아래의 주제별 문서를 먼저 선택하고, 안내 문서는 필요할 때만 추가로 읽는다.
+
 - Foldering, MVI, ownership, refactoring: `Docs/ARCHITECTURE.md`
 - Figma, SwiftUI, UIKit, assets, layout: `Docs/UI_FIGMA.md`
-- Swagger, DTO, API, repository: `Docs/API_SWAGGER.md`
+- Swagger, DTO, API, repository: `Docs/API_SWAGGER.md` 및 `Docs/API_CONNECTION_STATUS.md`
 - Dev/Prod, TestFlight, privacy, analytics: `Docs/RELEASE.md`
 - 2차 업데이트의 연습 측정·재진입·후기 팝업: `Docs/SECOND_UPDATE.md`
 
@@ -75,6 +77,10 @@ For a non-trivial Presentation feature, keep the feature root as the entry point
 - Project docs and adjacent code override skill defaults.
 - Do not treat `.opencode/legacy-skills` as active guidance.
 - Figma work uses the connected design-to-code tooling plus `Docs/UI_FIGMA.md`; do not infer implementation from generated React/Tailwind literally.
+
+## Touch Targets
+
+- For a selectable row, tile, card, or container, make the entire visible rectangle tappable with `Button` and `contentShape(Rectangle())`; empty space must trigger the same primary action unless it contains a separate control.
 
 ## Verification
 

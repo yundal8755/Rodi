@@ -33,6 +33,10 @@ final class MemberRepositoryImpl: MemberRepository {
         try await remoteDataSource.withdraw()
     }
 
+    func hardWithdraw() async throws(NetworkError) {
+        try await remoteDataSource.hardWithdraw()
+    }
+
     func block(memberID: Int) async throws(NetworkError) {
         try await remoteDataSource.block(memberID: memberID)
     }
@@ -55,6 +59,11 @@ final class MemberRepositoryImpl: MemberRepository {
 
     func submitOnboarding(_ submission: MemberOnboardingSubmission) async throws(NetworkError) {
         try await remoteDataSource.submitOnboarding(.init(submission))
+    }
+
+    func completeCourseTutorial() async throws(NetworkError) -> CourseTutorialCompletion {
+        let response = try await remoteDataSource.completeCourseTutorial()
+        return .init(completedAt: response.courseTutorialCompletedAt)
     }
 }
 
