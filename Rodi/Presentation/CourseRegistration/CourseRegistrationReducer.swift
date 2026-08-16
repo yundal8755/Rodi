@@ -24,6 +24,7 @@ struct CourseRegistrationReducer: Reducer {
         var isRouteLoading = false
         var routeRequestRevision = 0
         var map = CourseRegistrationMapState()
+        var hasTrackedRegistrationOpened = false
         var pinEdit: CourseRegistrationPinEditState?
         var detailsLoadState: CourseRegistrationDetailsLoadState = .idle
         var detailsDraft = CourseRegistrationDetailsDraft()
@@ -188,6 +189,9 @@ struct CourseRegistrationReducer: Reducer {
             let waypoint = CourseRegistrationWaypoint()
             state.waypoints.append(waypoint)
             state.routePath = []
+            RodiAnalytics.track(
+                .courseRegistrationWaypointChanged(action: "added", waypointCount: state.waypoints.count)
+            )
             beginSelection(.waypoint(waypoint.id), state: &state)
 
         case .waypointRemoveTapped(let id):
@@ -201,6 +205,10 @@ struct CourseRegistrationReducer: Reducer {
             // 이때 초기 현재 위치 응답이 검색 결과의 카메라 이동을 덮어쓰지 않도록,
             // 세션의 최초 진입에서만 자동 위치를 요청한다.
             guard state.route == .registration, !state.map.hasRequestedInitialLocation else { return .none }
+            if !state.hasTrackedRegistrationOpened {
+                state.hasTrackedRegistrationOpened = true
+                RodiAnalytics.track(.courseRegistrationOpened)
+            }
             state.map.hasRequestedInitialLocation = true
             state.map.locationRequestRevision += 1
             return requestCurrentLocation(.init(
@@ -315,6 +323,12 @@ struct CourseRegistrationReducer: Reducer {
             case .success(let address):
                 state.selectedPlaces[request.target] = .init(name: address, coordinate: request.coordinate)
                 state.map.hasSelectedCurrentTarget = true
+                RodiAnalytics.track(
+                    .courseRegistrationPointSelected(
+                        inputType: request.target.analyticsInputType,
+                        source: "map"
+                    )
+                )
             case .failure(let error):
                 state.errorMessage = error.userMessage
             }
@@ -357,6 +371,7 @@ struct CourseRegistrationReducer: Reducer {
             }
             state.route = .details
             state.detailsDraft = .init()
+            RodiAnalytics.track(.courseRegistrationDetailsOpened)
             return loadRegistrationForm(state: &state)
 
         case .registrationFormLoaded(let revision, let result):
@@ -438,6 +453,13 @@ struct CourseRegistrationReducer: Reducer {
                   let submission = courseSubmission(state: state)
             else { return .none }
             state.isSubmittingCourse = true
+            RodiAnalytics.track(
+                .courseRegistrationSubmitted(
+                    waypointCount: state.waypoints.count,
+                    practiceTypeCount: state.detailsDraft.selectedPracticeTypeCodes.count,
+                    hasCaution: !state.detailsDraft.caution.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                )
+            )
             return .run { send in
                 do {
                     await send(.courseRegistrationFinished(.success(try await courseRepository.register(submission))))
@@ -454,7 +476,9 @@ struct CourseRegistrationReducer: Reducer {
             switch result {
             case .success:
                 state.isCourseRegistrationCompletionPresented = true
+                RodiAnalytics.track(.courseRegistrationCompleted(waypointCount: state.waypoints.count))
             case .failure:
+                RodiAnalytics.track(.courseRegistrationFailed(stage: "submission"))
                 showAlert("코스를 등록하지 못했어요. 잠시 후 다시 시도해주세요.", state: &state)
             }
 
@@ -478,7 +502,9 @@ struct CourseRegistrationReducer: Reducer {
             switch result {
             case .success(let path):
                 state.routePath = path
+                RodiAnalytics.track(.courseRegistrationRoutePrepared(waypointCount: state.waypoints.count))
             case .failure:
+                RodiAnalytics.track(.courseRegistrationFailed(stage: "route"))
                 state.errorMessage = "도로 경로를 불러오지 못했어요. 잠시 후 다시 시도해주세요."
             }
 
@@ -510,6 +536,12 @@ struct CourseRegistrationReducer: Reducer {
             state.map.hasSelectedCurrentTarget = true
             state.map.isCurrentLocationActive = false
             state.routePath = []
+            RodiAnalytics.track(
+                .courseRegistrationPointSelected(
+                    inputType: target.analyticsInputType,
+                    source: "search"
+                )
+            )
 
         case .routePointTapped(let pointID):
             let targets = orderedTargets(state: state)
@@ -994,6 +1026,16 @@ enum CourseRegistrationInputTarget: Hashable {
         case .start: .start
         case .destination: .end
         case .waypoint: .waypoint
+        }
+    }
+}
+
+private extension CourseRegistrationInputTarget {
+    var analyticsInputType: String {
+        switch self {
+        case .start: "start"
+        case .destination: "destination"
+        case .waypoint: "waypoint"
         }
     }
 }
