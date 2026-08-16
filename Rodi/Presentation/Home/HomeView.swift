@@ -446,7 +446,7 @@ extension HomeView {
         ZStack {
             VStack(spacing: 16) {
                 if store.state.map.mapLifecycle == .ready,
-                   store.state.map.isMapInteractive {
+                   store.state.map.isHomeTabSelected {
                     HomeSearchEntryButton(
                         selectedSearchResultName: store.state.map.selectedSearchResultName,
                         action: { store.send(.map(.searchEntryTapped)) },
@@ -461,7 +461,7 @@ extension HomeView {
                 }
 
                 if store.state.map.isResearchButtonVisible,
-                   store.state.map.isMapInteractive {
+                   store.state.map.isHomeTabSelected {
                     HomeResearchButton(
                         isLoading: store.state.bottomSheet.recommendList.isManualResearchLoading
                     ) {
@@ -528,7 +528,7 @@ extension HomeView {
 
     private var shouldShowCurrentLocationButton: Bool {
         guard store.state.map.mapLifecycle == .ready,
-              store.state.map.isMapInteractive
+              store.state.map.isHomeTabSelected
         else {
             return false
         }
