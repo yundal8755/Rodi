@@ -2,6 +2,9 @@ import Foundation
 
 struct PracticeRegistration: Equatable {
     let practiceID: Int
+    let status: String?
+    let visitCount: Int?
+    let requiredDistanceMeters: Int?
 }
 
 struct PracticeVisit: Equatable {
@@ -29,6 +32,7 @@ struct MyPracticeItem: Equatable, Identifiable {
     let visitCount: Int
     let lastActivityAt: Date?
     let hasReview: Bool
+    let isDeleted: Bool
 
     /// 주차 연습은 후기를 지원하지 않는다. 서버가 내려주는 연습 유형을 기준으로 표시한다.
     var isParkingPractice: Bool {
@@ -54,6 +58,11 @@ struct MyPracticeQuery: Equatable {
 }
 
 struct PracticeSkipReasonForm: Equatable {
+    let questionID: String?
+    let type: String?
+    let title: String?
+    let description: String?
+    let isRequired: Bool?
     let options: [PracticeSkipReasonOption]
 }
 

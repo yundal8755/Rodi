@@ -9,7 +9,12 @@ final class PracticeRepositoryImpl: PracticeRepository {
 
     func register(placeID: Int) async throws(NetworkError) -> PracticeRegistration {
         let response = try await remoteDataSource.register(placeID: placeID)
-        return .init(practiceID: response.practiceID)
+        return .init(
+            practiceID: response.practiceID,
+            status: response.status,
+            visitCount: response.visitCount,
+            requiredDistanceMeters: response.requiredDistanceMeters
+        )
     }
 
     func recordVisit(practiceID: Int, certifiedDistanceMeters: Int?) async throws(NetworkError) -> PracticeVisit {
@@ -45,6 +50,11 @@ final class PracticeRepositoryImpl: PracticeRepository {
     func fetchSkipReasonForm() async throws(NetworkError) -> PracticeSkipReasonForm {
         let response = try await remoteDataSource.fetchSkipReasonForm()
         return .init(
+            questionID: response.questionID,
+            type: response.type,
+            title: response.title,
+            description: response.description,
+            isRequired: response.required,
             options: response.options
                 .sorted { $0.order < $1.order }
                 .map(PracticeSkipReasonOption.init)
@@ -68,7 +78,9 @@ private extension PracticeRepositoryImpl {
 
     func myPracticePage(from dto: MyPracticeCursorPageResponseDTO) throws(NetworkError) -> MyPracticePage {
         .init(
-            items: try dto.items.map(myPracticeItem(from:)),
+            items: try dto.items
+                .map(myPracticeItem(from:))
+                .filter { !$0.isDeleted },
             hasNext: dto.hasNext,
             nextCursor: dto.nextCursor,
             totalCount: try dto.totalCount.map(int(from:))
@@ -88,7 +100,8 @@ private extension PracticeRepositoryImpl {
             status: status,
             visitCount: dto.visitCount,
             lastActivityAt: dto.lastActivityAt.flatMap(date(from:)),
-            hasReview: dto.hasReview
+            hasReview: dto.hasReview,
+            isDeleted: dto.isDeleted ?? false
         )
     }
 
