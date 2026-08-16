@@ -30,6 +30,7 @@ struct HomeBottomSheetView: View {
     let requestLocationPermission: () -> Void
     let presentLiveActivityPermissionDialog: (LiveActivityPermissionDialogConfiguration) -> Void
     let debugReviewTestAction: () -> Void
+    let debugHardWithdrawAction: @MainActor () async throws -> Void
 
     init(
         state: HomeBottomSheetReducer.State,
@@ -43,7 +44,8 @@ struct HomeBottomSheetView: View {
         onCourseExpansionSettled: @escaping () -> Void = {},
         requestLocationPermission: @escaping () -> Void,
         presentLiveActivityPermissionDialog: @escaping (LiveActivityPermissionDialogConfiguration) -> Void = { _ in },
-        debugReviewTestAction: @escaping () -> Void = {}
+        debugReviewTestAction: @escaping () -> Void = {},
+        debugHardWithdrawAction: @escaping @MainActor () async throws -> Void = {}
     ) {
         self.state = state
         self.send = send
@@ -57,6 +59,7 @@ struct HomeBottomSheetView: View {
         self.requestLocationPermission = requestLocationPermission
         self.presentLiveActivityPermissionDialog = presentLiveActivityPermissionDialog
         self.debugReviewTestAction = debugReviewTestAction
+        self.debugHardWithdrawAction = debugHardWithdrawAction
     }
 
     var body: some View {
@@ -274,7 +277,8 @@ extension HomeBottomSheetView {
                         RecommendListBottomSheetView(
                             state: state.recommendList,
                             send: { send(.recommendList($0)) },
-                            debugReviewTestAction: debugReviewTestAction
+                            debugReviewTestAction: debugReviewTestAction,
+                            debugHardWithdrawAction: debugHardWithdrawAction
                         )
                         .padding(.bottom, screenSafeAreaInsets.bottom)
                     }
@@ -291,7 +295,8 @@ extension HomeBottomSheetView {
             RecommendListBottomSheetView(
                 state: state.recommendList,
                 send: { send(.recommendList($0)) },
-                debugReviewTestAction: debugReviewTestAction
+                debugReviewTestAction: debugReviewTestAction,
+                debugHardWithdrawAction: debugHardWithdrawAction
             )
             .padding(.bottom, screenSafeAreaInsets.bottom)
         }

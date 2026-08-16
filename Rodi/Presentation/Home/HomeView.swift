@@ -271,7 +271,10 @@ extension HomeView {
                     presentLiveActivityPermissionDialog: { configuration in
                         liveActivityPermissionDialog = configuration
                     },
-                    debugReviewTestAction: onReviewTestRequested
+                    debugReviewTestAction: onReviewTestRequested,
+                    debugHardWithdrawAction: {
+                        try await dependencies.memberRepository.hardWithdraw()
+                    }
                 )
             } else {
                 initialMapLoadingView
@@ -417,6 +420,9 @@ extension HomeView {
                 case .markerTap(let markerID):
                     store.send(.map(.markerTapped(markerID)))
 
+                case .routePointTap:
+                    break
+
                 case let .viewportChanged(center, zoomLevel, viewport, isUserInitiated):
                     store.send(.map(.viewportChanged(
                         center: center,
@@ -497,7 +503,7 @@ extension HomeView {
             // 화면 상단 45% / 하단 55% 위치에 포커스 대상을 둔다.
             return screenHeight * 0.1
 
-        case .normal, .koreaOverview, .cluster:
+        case .normal, .koreaOverview, .region, .cluster:
             break
         }
 
