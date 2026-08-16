@@ -20,6 +20,7 @@ struct HomeView: View {
     @State private var handledPlaceSelectionRequestID = 0
     @State private var handledReviewFlowFinishedRequestID = 0
     @State private var liveActivityPermissionDialog: LiveActivityPermissionDialogConfiguration?
+    @State private var routeGuidanceDialog: RouteGuidanceAppDialogConfiguration?
 
     private let isHomeTabSelected: Bool
     private let onAuthenticationRequired: () -> Void
@@ -88,7 +89,10 @@ struct HomeView: View {
     var body: some View {
         core
             .overlay {
-                liveActivityPermissionDialogOverlay
+                ZStack {
+                    liveActivityPermissionDialogOverlay
+                    routeGuidanceDialogOverlay
+                }
             }
             .onAppear {
                 store.send(.map(.tabSelectionChanged(isHomeTabSelected)))
@@ -147,6 +151,9 @@ struct HomeView: View {
                         },
                         presentLiveActivityPermissionDialog: { configuration in
                             liveActivityPermissionDialog = configuration
+                        },
+                        presentRouteGuidanceDialog: { configuration in
+                            routeGuidanceDialog = configuration
                         }
                     )
                     .interactiveDismissDisabled()
@@ -160,6 +167,7 @@ struct HomeView: View {
                     }
 
                     liveActivityPermissionDialogOverlay
+                    routeGuidanceDialogOverlay
                 }
                 .rodiSnackbar(message: snackbarService.message)
             }
@@ -230,6 +238,31 @@ extension HomeView {
         }
     }
 
+    @ViewBuilder
+    private var routeGuidanceDialogOverlay: some View {
+        if let configuration = routeGuidanceDialog {
+            RouteGuidanceAppDialog(
+                mode: configuration.mode,
+                closeAction: {
+                    routeGuidanceDialog = nil
+                },
+                onceAction: { app in
+                    routeGuidanceDialog = nil
+                    configuration.onceAction(app)
+                },
+                alwaysAction: { app in
+                    routeGuidanceDialog = nil
+                    configuration.alwaysAction(app)
+                },
+                installAction: { app in
+                    routeGuidanceDialog = nil
+                    configuration.installAction(app)
+                }
+            )
+            .zIndex(11)
+        }
+    }
+
     private var core: some View {
         ZStack(alignment: .bottom) {
             if store.state.map.mapLifecycle != .inactive {
@@ -270,6 +303,9 @@ extension HomeView {
                     },
                     presentLiveActivityPermissionDialog: { configuration in
                         liveActivityPermissionDialog = configuration
+                    },
+                    presentRouteGuidanceDialog: { configuration in
+                        routeGuidanceDialog = configuration
                     },
                     debugReviewTestAction: onReviewTestRequested,
                     debugHardWithdrawAction: {

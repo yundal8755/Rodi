@@ -85,8 +85,7 @@ extension CourseDetailBottomSheetReducer {
             guard state.detail?.id == placeID else { return .none }
             state.detail = state.detail?.updatingBookmark(isBookmarked: bookmarked); state.isBookmarkUpdating = false
             RodiAnalytics.track(.bookmarkUpdated(isBookmarked: bookmarked, source: source, placeType: PlaceType.course.rawValue))
-            guard !bookmarked else { return .none }
-            return .send(.delegate(.showSnackbar("북마크를 해제했어요.")))
+            return .none
         case .bookmarkFailed(let previous, let message):
             guard state.detail?.id == previous.id else { return .none }; state.detail = previous; state.isBookmarkUpdating = false
             return .send(.delegate(.showSnackbar(message)))

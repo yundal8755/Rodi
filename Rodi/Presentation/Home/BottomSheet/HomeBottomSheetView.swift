@@ -16,6 +16,7 @@ struct HomeBottomSheetView: View {
     @State private var settlementTask: Task<Void, Never>?
     @State private var panTranslation: CGFloat = 0
     @State private var courseDetailHeight: CGFloat = 180
+    @State private var parkingDetailHeight: CGFloat = 180
     @State private var activeCourseMeasurementDialog: ActiveCourseMeasurementDialogConfiguration?
 
     let state: HomeBottomSheetReducer.State
@@ -29,6 +30,7 @@ struct HomeBottomSheetView: View {
     let onCourseExpansionSettled: () -> Void
     let requestLocationPermission: () -> Void
     let presentLiveActivityPermissionDialog: (LiveActivityPermissionDialogConfiguration) -> Void
+    let presentRouteGuidanceDialog: (RouteGuidanceAppDialogConfiguration) -> Void
     let debugReviewTestAction: () -> Void
     let debugHardWithdrawAction: @MainActor () async throws -> Void
 
@@ -44,6 +46,7 @@ struct HomeBottomSheetView: View {
         onCourseExpansionSettled: @escaping () -> Void = {},
         requestLocationPermission: @escaping () -> Void,
         presentLiveActivityPermissionDialog: @escaping (LiveActivityPermissionDialogConfiguration) -> Void = { _ in },
+        presentRouteGuidanceDialog: @escaping (RouteGuidanceAppDialogConfiguration) -> Void = { _ in },
         debugReviewTestAction: @escaping () -> Void = {},
         debugHardWithdrawAction: @escaping @MainActor () async throws -> Void = {}
     ) {
@@ -58,6 +61,7 @@ struct HomeBottomSheetView: View {
         self.onCourseExpansionSettled = onCourseExpansionSettled
         self.requestLocationPermission = requestLocationPermission
         self.presentLiveActivityPermissionDialog = presentLiveActivityPermissionDialog
+        self.presentRouteGuidanceDialog = presentRouteGuidanceDialog
         self.debugReviewTestAction = debugReviewTestAction
         self.debugHardWithdrawAction = debugHardWithdrawAction
     }
@@ -195,8 +199,10 @@ extension HomeBottomSheetView {
 
     private var fixedSheetHeight: CGFloat {
         switch state.route {
-        case .filter, .parkingDetail:
+        case .filter:
             return mediumHeight
+        case .parkingDetail:
+            return parkingDetailHeight
         case .courseDetail:
             return courseSheetHeight
         case .recommendList:
@@ -240,7 +246,7 @@ extension HomeBottomSheetView {
 
         case .parkingDetail:
             if state.parkingDetail.detail != nil {
-                fixedSheet(height: mediumHeight, dismissThreshold: 48) {
+                fixedSheet(height: parkingDetailHeight, dismissThreshold: 48) {
                     ParkingDetailBottomSheetView(
                         state: state.parkingDetail,
                         send: handleParkingDetailAction,
@@ -251,8 +257,13 @@ extension HomeBottomSheetView {
                         presentActiveMeasurementDialog: { configuration in
                             activeCourseMeasurementDialog = configuration
                         },
-                        presentLiveActivityPermissionDialog: presentLiveActivityPermissionDialog
+                        presentLiveActivityPermissionDialog: presentLiveActivityPermissionDialog,
+                        presentRouteGuidanceDialog: presentRouteGuidanceDialog
                     )
+                    .fixedSize(horizontal: false, vertical: true)
+                    .background {
+                        BottomSheetContentHeightObserver(onHeightChanged: updateParkingDetailHeight)
+                    }
                 }
             } else if state.resolvingPlaceID != nil || state.isDetailPresentationPending {
                 recommendationSheet
@@ -327,7 +338,8 @@ extension HomeBottomSheetView {
                         presentActiveMeasurementDialog: { configuration in
                             activeCourseMeasurementDialog = configuration
                         },
-                        presentLiveActivityPermissionDialog: presentLiveActivityPermissionDialog
+                        presentLiveActivityPermissionDialog: presentLiveActivityPermissionDialog,
+                        presentRouteGuidanceDialog: presentRouteGuidanceDialog
                     )
                 }
                 .fixedSize(horizontal: false, vertical: true)
@@ -415,6 +427,16 @@ extension HomeBottomSheetView {
 
         courseDetailHeight = height
         onCourseDetailHeightChanged(height)
+    }
+
+    private func updateParkingDetailHeight(_ height: CGFloat) {
+        guard height > 0,
+              abs(parkingDetailHeight - height) > 0.5
+        else {
+            return
+        }
+
+        parkingDetailHeight = height
     }
 
     private func dragHandle(

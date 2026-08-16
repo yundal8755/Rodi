@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// Figma 604:21922, 604:22044 기준의 주차장 상세 패널.
-/// 시트 높이는 상위 레이아웃 정책이 고정하고, 정보 영역만 스크롤한다.
+/// 표시할 정보량에 따라 상위 시트가 높이를 결정한다.
 struct ParkingSelectedDetailPanel: View {
     private enum ExpandedSection {
         case address
@@ -72,22 +72,20 @@ struct ParkingSelectedDetailPanel: View {
         VStack(alignment: .leading, spacing: 0) {
             header
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    topInformation
-                    Divider()
-                        .overlay(RodiColor.primaryMinus100)
-                        .padding(.vertical, 16)
-                    feeInformation
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+            VStack(alignment: .leading, spacing: 0) {
+                topInformation
+                Divider()
+                    .overlay(RodiColor.primaryMinus100)
+                    .padding(.vertical, 16)
+                feeInformation
             }
-            .scrollIndicators(.hidden)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
 
             actionBar
         }
         .background(RodiColor.white)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var header: some View {

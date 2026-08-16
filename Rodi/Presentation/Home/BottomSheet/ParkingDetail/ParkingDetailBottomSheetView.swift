@@ -24,12 +24,12 @@ struct ParkingDetailBottomSheetView: View {
     let requestLocationPermission: () -> Void
     let presentActiveMeasurementDialog: (ActiveCourseMeasurementDialogConfiguration) -> Void
     let presentLiveActivityPermissionDialog: (LiveActivityPermissionDialogConfiguration) -> Void
+    let presentRouteGuidanceDialog: (RouteGuidanceAppDialogConfiguration) -> Void
 
-    @State private var routeGuidanceDialog: RouteGuidanceAppDialog.Mode?
     @State private var settingsRequest: RouteGuidanceRequest?
 
     var body: some View {
-        ZStack {
+        Group {
             if let detail = state.detail {
                 ParkingSelectedDetailPanel(
                     detail: detail,
@@ -41,26 +41,6 @@ struct ParkingDetailBottomSheetView: View {
                     routeGuidanceAction: requestRouteGuidance
                 )
                 .frame(maxWidth: .infinity, alignment: .top)
-            }
-
-            if let routeGuidanceDialog {
-                RouteGuidanceAppDialog(
-                    mode: routeGuidanceDialog,
-                    closeAction: { self.routeGuidanceDialog = nil },
-                    onceAction: { app in
-                        self.routeGuidanceDialog = nil
-                        guard let detail = state.detail else { return }
-                        startRouteGuidance(app, detail: detail)
-                    },
-                    alwaysAction: { app in
-                        RouteGuidanceService.shared.savePreferredApp(app)
-                        self.routeGuidanceDialog = nil
-                        guard let detail = state.detail else { return }
-                        startRouteGuidance(app, detail: detail)
-                    },
-                    installAction: openInstallPage
-                )
-                .zIndex(1)
             }
         }
         .onChange(of: scenePhase) { phase in
@@ -88,9 +68,9 @@ struct ParkingDetailBottomSheetView: View {
             guard let detail = state.detail else { return }
             startRouteGuidance(app, detail: detail)
         case .choose:
-            routeGuidanceDialog = .choose
+            presentRouteGuidanceDialog(routeGuidanceDialogConfiguration(mode: .choose))
         case .install:
-            routeGuidanceDialog = .install
+            presentRouteGuidanceDialog(routeGuidanceDialogConfiguration(mode: .install))
         }
     }
 
@@ -218,12 +198,29 @@ struct ParkingDetailBottomSheetView: View {
     }
 
     private func openInstallPage(_ app: RouteGuidanceApp) {
-        routeGuidanceDialog = nil
         Task {
             let result = await RouteGuidanceService.shared.openInstallPage(for: app)
             if let message = result.userMessage {
                 send(.delegate(.showSnackbar(message)))
             }
         }
+    }
+
+    private func routeGuidanceDialogConfiguration(
+        mode: RouteGuidanceAppDialog.Mode
+    ) -> RouteGuidanceAppDialogConfiguration {
+        .init(
+            mode: mode,
+            onceAction: { app in
+                guard let detail = state.detail else { return }
+                startRouteGuidance(app, detail: detail)
+            },
+            alwaysAction: { app in
+                RouteGuidanceService.shared.savePreferredApp(app)
+                guard let detail = state.detail else { return }
+                startRouteGuidance(app, detail: detail)
+            },
+            installAction: openInstallPage
+        )
     }
 }

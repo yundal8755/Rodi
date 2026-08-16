@@ -23,62 +23,68 @@ struct RouteGuidanceAppDialog: View {
 
     var body: some View {
         RodiModalBackground {
-            VStack(spacing: 0) {
-                HStack {
-                    Spacer()
-                    Button(action: closeAction) {
-                        Image("ic_close")
-                            .renderingMode(.template)
-                            .resizable()
-                            .scaledToFit()
-                            .foregroundStyle(RodiColor.black)
-                            .frame(width: 24, height: 24)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("닫기")
-                }
-
-                Text(mode.title)
-                    .rodiTypography(.headline1)
-                    .foregroundStyle(RodiColor.black)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, mode == .choose ? 0 : 8)
-
-                HStack(spacing: 52) {
-                    appSelectionButton(.kakaoMap)
-                    appSelectionButton(.kakaoNavi)
-                }
-                .padding(.top, mode == .choose ? 20 : 28)
-
-                switch mode {
-                case .choose:
-                    HStack(spacing: 8) {
-                        actionButton(title: "이번만", isPrimary: false) {
-                            guard let selectedApp else { return }
-                            onceAction(selectedApp)
-                        }
-                        actionButton(title: "항상", isPrimary: true) {
-                            guard let selectedApp else { return }
-                            alwaysAction(selectedApp)
-                        }
-                    }
-                    .padding(.top, 20)
-                case .install:
-                    actionButton(title: "설치하기", isPrimary: true) {
-                        guard let selectedApp else { return }
-                        installAction(selectedApp)
-                    }
-                    .padding(.top, 20)
-                }
-            }
-            .padding(.top, 16)
-            .padding(.horizontal, 40)
-            .padding(.bottom, 16)
-            .frame(maxWidth: 343)
-            .background(RodiColor.white)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            dialogContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .padding(.bottom, 60)
         }
+    }
+
+    private var dialogContent: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                Button(action: closeAction) {
+                    Image("ic_close")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .foregroundStyle(RodiColor.black)
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("닫기")
+            }
+
+            Text(mode.title)
+                .rodiTypography(.headline1)
+                .foregroundStyle(RodiColor.black)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, mode == .choose ? 0 : 8)
+
+            HStack(spacing: 52) {
+                appSelectionButton(.kakaoMap)
+                appSelectionButton(.kakaoNavi)
+            }
+            .padding(.top, mode == .choose ? 20 : 28)
+
+            switch mode {
+            case .choose:
+                HStack(spacing: 8) {
+                    actionButton(title: "이번만", isPrimary: false) {
+                        guard let selectedApp else { return }
+                        onceAction(selectedApp)
+                    }
+                    actionButton(title: "항상", isPrimary: true) {
+                        guard let selectedApp else { return }
+                        alwaysAction(selectedApp)
+                    }
+                }
+                .padding(.top, 20)
+            case .install:
+                actionButton(title: "설치하기", isPrimary: true) {
+                    guard let selectedApp else { return }
+                    installAction(selectedApp)
+                }
+                .padding(.top, 20)
+            }
+        }
+        .padding(.top, 16)
+        .padding(.horizontal, 40)
+        .padding(.bottom, 16)
+        .frame(maxWidth: 343)
+        .background(RodiColor.white)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private func appSelectionButton(_ app: RouteGuidanceApp) -> some View {
@@ -90,6 +96,7 @@ struct RouteGuidanceAppDialog: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 52, height: 52)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 Text(app.displayName)
                     .rodiTypography(.body3Medium)
                     .foregroundStyle(RodiColor.black)
