@@ -146,7 +146,7 @@ private extension MyPostsView {
                 courseFilterButton
             }
             .padding(.horizontal, 24)
-            .padding(.top, 16)
+            .padding(.top, 8)
             .padding(.bottom, 12)
 
             if store.state.isCourseInitialLoading, store.state.courseItems.isEmpty {

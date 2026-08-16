@@ -99,12 +99,8 @@ struct MyView: View {
                 confirmLevelUp: { store.send(.levelUpDialogConfirmed) }
             )
             .navigationDestination(for: MyRoute.self) { route in
-                    destinationView(for: route)
+                destinationView(for: route)
                     .background(RodiInteractivePopGestureEnabler())
-                    .rodiEdgeSwipeBack(
-                        isTopRoute: coordinator.path.last == route,
-                        router: router
-                    )
             }
         }
         .rodiSnackbar(message: store.state.snackbarMessage)
