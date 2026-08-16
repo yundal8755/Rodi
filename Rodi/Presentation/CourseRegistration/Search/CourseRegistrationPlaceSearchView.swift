@@ -86,11 +86,12 @@ private extension CourseRegistrationPlaceSearchView {
                 ))
                 store.send(.regionTapped(region))
             } label: {
-                resultRow(
-                    title: region.displayName,
-                    imageName: "ic_search",
-                    accessibilityLabel: "\(region.displayName) 검색"
-                )
+                    resultRow(
+                        title: region.displayName,
+                        imageName: "ic_search",
+                        usesTemplateRendering: true,
+                        accessibilityLabel: "\(region.displayName) 검색"
+                    )
             }
             .buttonStyle(.plain)
 
@@ -139,6 +140,7 @@ private extension CourseRegistrationPlaceSearchView {
                     resultRow(
                         title: place.title,
                         imageName: "ic_map_pin",
+                        usesTemplateRendering: false,
                         accessibilityLabel: "\(place.title) 장소 검색 결과"
                     )
                 }
@@ -244,12 +246,24 @@ private extension CourseRegistrationPlaceSearchView {
         }
     }
 
-    func resultRow(title: String, imageName: String, accessibilityLabel: String) -> some View {
+    func resultRow(
+        title: String,
+        imageName: String,
+        usesTemplateRendering: Bool,
+        accessibilityLabel: String
+    ) -> some View {
         HStack(spacing: 12) {
-            Image(imageName)
-                .resizable()
-                .renderingMode(.template)
-                .foregroundStyle(RodiColor.gray600)
+            Group {
+                if usesTemplateRendering {
+                    Image(imageName)
+                        .resizable()
+                        .renderingMode(.template)
+                        .foregroundStyle(RodiColor.gray600)
+                } else {
+                    Image(imageName)
+                        .resizable()
+                }
+            }
                 .frame(width: 20, height: 20)
                 .accessibilityHidden(true)
             Text(title)

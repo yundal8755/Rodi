@@ -514,13 +514,16 @@ struct CourseRegistrationReducer: Reducer {
         case .routePointTapped(let pointID):
             let targets = orderedTargets(state: state)
             guard state.route == .registration,
-                  state.map.selectionTarget == nil,
                   targets.indices.contains(pointID)
             else {
                 return .none
             }
             let target = targets[pointID]
-            guard let original = state.selectedPlaces[target] else { return .none }
+            guard target != state.map.selectionTarget,
+                  let original = state.selectedPlaces[target]
+            else {
+                return .none
+            }
             state.pinEdit = .init(target: target, originalPlace: original)
             state.route = .pinEditing
 
