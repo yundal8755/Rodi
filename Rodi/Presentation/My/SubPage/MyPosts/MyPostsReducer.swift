@@ -151,11 +151,13 @@ extension MyPostsReducer {
     func reduce(_ state: inout State, with action: Action) -> Effect<Action> {
         switch action {
         case .appeared:
+            RodiAnalytics.track(.myActivityOpened(tab: state.selectedTab.analyticsName))
             return loadSelectedTabIfNeeded(state: &state)
 
         case .tabSelected(let tab):
             guard state.selectedTab != tab else { return .none }
             state.selectedTab = tab
+            RodiAnalytics.track(.myActivityOpened(tab: tab.analyticsName))
             return loadSelectedTabIfNeeded(state: &state)
 
         case .retryTapped:
@@ -206,6 +208,7 @@ extension MyPostsReducer {
         case .courseFilterSelected(let filter):
             guard state.selectedCourseFilter != filter else { return .none }
             state.selectedCourseFilter = filter
+            RodiAnalytics.track(.myCourseFilterChanged(status: filter.analyticsName))
             return loadCourseFirstPage(state: &state)
 
         case .courseLastItemAppeared(let item):
@@ -295,6 +298,7 @@ extension MyPostsReducer {
             case .success:
                 state.deleteTargetCourseID = nil
                 state.courseDeleteErrorMessage = nil
+                RodiAnalytics.track(.myCourseDeleted)
                 return refreshAfterCourseDelete(state: &state)
             case .failure(let message):
                 state.courseDeleteErrorMessage = message
@@ -314,6 +318,26 @@ extension MyPostsReducer {
         }
 
         return .none
+    }
+}
+
+private extension MyPostsReducer.Tab {
+    var analyticsName: String {
+        switch self {
+        case .courses: "courses"
+        case .reviews: "reviews"
+        }
+    }
+}
+
+private extension MyPostsReducer.CourseFilter {
+    var analyticsName: String {
+        switch self {
+        case .all: "all"
+        case .approved: "approved"
+        case .pending: "pending"
+        case .rejected: "rejected"
+        }
     }
 }
 
