@@ -28,6 +28,11 @@ struct ReviewSkipReasonReducer: Reducer {
             guard selectedReason.requiresTextInput else { return true }
             return !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
+
+        var hasDraft: Bool {
+            selectedReason != nil
+                || !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
     }
 
     enum Action {
@@ -146,7 +151,11 @@ extension ReviewSkipReasonReducer {
 
         case .closeTapped:
             guard !state.isSubmitting, !state.isCompletionPresented else { return .none }
-            state.isDiscardConfirmationPresented = true
+            if state.hasDraft {
+                state.isDiscardConfirmationPresented = true
+                return .none
+            }
+            return .send(.delegate(.finished))
 
         case .discardConfirmed:
             guard state.isDiscardConfirmationPresented else { return .none }

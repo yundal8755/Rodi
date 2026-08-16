@@ -111,7 +111,7 @@ private extension MyPostsView {
         return Button {
             closeDropdowns()
             store.send(.tabSelected(tab))
-        } label: {
+        } label:{
             Text(title)
                 .font(.pretendard(size: 16, weight: isSelected ? .semibold : .medium))
                 .tracking(-0.32)
@@ -369,7 +369,7 @@ private extension MyPostsView {
                         dimensions[.trailing] - triggerFrame.maxX
                     }
                     .alignmentGuide(.top) { dimensions in
-                        dimensions[.top] - triggerFrame.maxY - 2.5
+                        dimensions[.top] - triggerFrame.maxY - 4
                     }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
