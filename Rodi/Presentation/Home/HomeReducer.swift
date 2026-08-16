@@ -541,12 +541,12 @@ extension HomeReducer {
             )
             return .send(.bottomSheet(.resolvePlace(id: id)))
 
-        case let .regionSelected(_, center):
+        case let .regionSelected(name, center):
             state.presentation.isSearchPresented = false
             state.presentation.searchOrigin = nil
             state.presentation.isBottomTabBarVisible = true
             state.search = .init()
-            state.map.selectedSearchResultName = nil
+            state.map.selectedSearchResultName = name
             state.map.routeOverlay = nil
             state.map.selectedMarkerID = nil
             state.map.isResearchButtonVisible = false
@@ -561,6 +561,7 @@ extension HomeReducer {
             state.map.animatedCameraRequestID = state.map.cameraRequestID
             state.map.pendingRegionViewportReloadOrigin = center
             state.map.pendingRegionCameraRequestID = state.map.cameraRequestID
+            return .send(.bottomSheet(.recommendList(.present)))
 
         case .dismissed:
             state.presentation.isSearchPresented = false

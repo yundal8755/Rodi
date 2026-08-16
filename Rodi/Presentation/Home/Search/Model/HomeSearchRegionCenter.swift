@@ -7,7 +7,23 @@ import Foundation
 
 enum HomeSearchRegionCenter {
     static func coordinate(for region: String) -> RodiCoordinate? {
-        centers[region.trimmingCharacters(in: .whitespacesAndNewlines)]
+        let trimmedRegion = region.trimmingCharacters(in: .whitespacesAndNewlines)
+        return centers[trimmedRegion] ?? centers[normalizedMetropolitanRegionName(trimmedRegion)]
+    }
+
+    private static func normalizedMetropolitanRegionName(_ region: String) -> String {
+        [
+            "서울특별시": "서울",
+            "부산광역시": "부산",
+            "대구광역시": "대구",
+            "인천광역시": "인천",
+            "광주광역시": "광주",
+            "대전광역시": "대전",
+            "울산광역시": "울산"
+        ]
+        .reduce(region) { result, replacement in
+            result.replacingOccurrences(of: replacement.key, with: replacement.value)
+        }
     }
 
     // 서버의 지역 자동완성 표기와 일치하는 행정구역 중심 좌표다.
