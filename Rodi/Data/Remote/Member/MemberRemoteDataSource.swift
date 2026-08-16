@@ -22,6 +22,8 @@ final class MemberRemoteDataSource {
     
     func withdraw() async throws(NetworkError) { try await empty(.withdraw) }
 
+    func hardWithdraw() async throws(NetworkError) { try await empty(.hardWithdraw) }
+
     func block(memberID: Int) async throws(NetworkError) {
         try await empty(.block(memberID: memberID))
     }
@@ -46,6 +48,10 @@ final class MemberRemoteDataSource {
     
     func submitOnboarding(_ request: MemberOnboardingRequestDTO) async throws(NetworkError) {
         try await empty(.submitOnboarding(request))
+    }
+
+    func completeCourseTutorial() async throws(NetworkError) -> CourseTutorialCompletionResponseDTO {
+        try await response(.completeCourseTutorial, as: CourseTutorialCompletionResponseDTO.self)
     }
 
     private func response<T: Decodable>(_ api: MemberAPI, as type: T.Type) async throws(NetworkError) -> T {

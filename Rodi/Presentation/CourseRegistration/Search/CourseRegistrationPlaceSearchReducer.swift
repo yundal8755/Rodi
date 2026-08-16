@@ -1,33 +1,40 @@
 //
-//  KakaoLocalSearchTestReducer.swift
+//  CourseRegistrationPlaceSearchReducer.swift
 //  Rodi
 //
 
 import Foundation
 
 @MainActor
-struct KakaoLocalSearchTestReducer: Reducer {
+struct CourseRegistrationPlaceSearchReducer: Reducer {
     struct State {
-        var query = "서울"
-        var regions: [KakaoLocalRegionSuggestion] = []
-        var places: [KakaoLocalSearchItem] = []
+        var query: String
+        var regions: [CourseRegistrationRegionSuggestion] = []
+        var places: [CourseRegistrationPlaceSearchItem] = []
         var isPlaceLoading = false
+        var isLoadingNextPage = false
+        var isPlaceSearchEnd = false
         var hasSearchedPlaces = false
         var placeErrorMessage: String?
         var requestID = 0
+
+        init(initialQuery: String = "서울") {
+            query = initialQuery
+        }
     }
 
     enum Action {
         case appeared
         case queryChanged(String)
-        case regionTapped(KakaoLocalRegionSuggestion)
+        case regionTapped(CourseRegistrationRegionSuggestion)
         case sampleSearchTapped(String)
         case searchTapped
-        case placeSearchCompleted(SearchResult, requestID: Int)
+        case loadNextPage
+        case placeSearchCompleted(SearchResult, requestID: Int, isNextPage: Bool)
     }
 
     enum SearchResult {
-        case success(KakaoLocalSearchPage)
+        case success(CourseRegistrationPlaceSearchPage)
         case failure(String)
     }
 
@@ -35,25 +42,25 @@ struct KakaoLocalSearchTestReducer: Reducer {
         case placeSearch
     }
 
-    private let regionService: KakaoAdministrativeRegionService
-    private let searchService: KakaoLocalSearchService
+    private let regionService: CourseRegistrationAdministrativeRegionService
+    private let searchService: KakaoLocalPlaceSearchService
 
     init(
-        regionService: KakaoAdministrativeRegionService,
-        searchService: KakaoLocalSearchService
+        regionService: CourseRegistrationAdministrativeRegionService,
+        searchService: KakaoLocalPlaceSearchService
     ) {
         self.regionService = regionService
         self.searchService = searchService
     }
 
     init() {
-        regionService = KakaoAdministrativeRegionService()
-        searchService = KakaoLocalSearchService()
+        regionService = CourseRegistrationAdministrativeRegionService()
+        searchService = KakaoLocalPlaceSearchService()
     }
 }
 
 // MARK: - Reduce
-extension KakaoLocalSearchTestReducer {
+extension CourseRegistrationPlaceSearchReducer {
     func reduce(_ state: inout State, with action: Action) -> Effect<Action> {
         switch action {
         case .appeared:
@@ -80,18 +87,40 @@ extension KakaoLocalSearchTestReducer {
             updateRegions(state: &state)
             return searchPlaces(state: &state, debounce: false)
 
-        case let .placeSearchCompleted(result, requestID):
+        case .loadNextPage:
+            guard state.hasSearchedPlaces,
+                  !state.isPlaceLoading,
+                  !state.isLoadingNextPage,
+                  !state.isPlaceSearchEnd,
+                  !state.places.isEmpty
+            else {
+                return .none
+            }
+            return searchPlaces(
+                state: &state,
+                offset: state.places.count,
+                isNextPage: true,
+                debounce: false
+            )
+
+        case let .placeSearchCompleted(result, requestID, isNextPage):
             guard requestID == state.requestID else { return .none }
             state.isPlaceLoading = false
+            state.isLoadingNextPage = false
             state.hasSearchedPlaces = true
 
             switch result {
             case .success(let page):
-                state.places = page.items
+                state.places = isNextPage ? state.places + page.items : page.items
+                state.isPlaceSearchEnd = page.isEnd
                 state.placeErrorMessage = nil
             case .failure(let message):
-                state.places = []
-                state.placeErrorMessage = message
+                if isNextPage {
+                    state.placeErrorMessage = nil
+                } else {
+                    state.places = []
+                    state.placeErrorMessage = message
+                }
             }
         }
 
@@ -100,16 +129,18 @@ extension KakaoLocalSearchTestReducer {
 }
 
 // MARK: - State Mutation
-private extension KakaoLocalSearchTestReducer {
+private extension CourseRegistrationPlaceSearchReducer {
     func updateRegions(state: inout State) {
         state.regions = regionService.suggestions(for: state.query, limit: 4)
     }
 }
 
 // MARK: - Effect
-private extension KakaoLocalSearchTestReducer {
+private extension CourseRegistrationPlaceSearchReducer {
     func searchPlaces(
         state: inout State,
+        offset: Int = 0,
+        isNextPage: Bool = false,
         debounce: Bool
     ) -> Effect<Action> {
         let query = state.query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -119,13 +150,21 @@ private extension KakaoLocalSearchTestReducer {
             state.places = []
             state.isPlaceLoading = false
             state.hasSearchedPlaces = false
+            state.isLoadingNextPage = false
+            state.isPlaceSearchEnd = false
             state.placeErrorMessage = nil
             return .cancel(id: EffectID.placeSearch)
         }
 
-        state.places = []
-        state.isPlaceLoading = true
-        state.hasSearchedPlaces = false
+        if isNextPage {
+            state.isLoadingNextPage = true
+        } else {
+            state.places = []
+            state.isPlaceLoading = true
+            state.isLoadingNextPage = false
+            state.isPlaceSearchEnd = false
+            state.hasSearchedPlaces = false
+        }
         state.placeErrorMessage = nil
 
         let requestID = state.requestID
@@ -141,17 +180,22 @@ private extension KakaoLocalSearchTestReducer {
             }
 
             do {
-                let page = try await searchService.searchPlaces(query: query)
-                await send(.placeSearchCompleted(.success(page), requestID: requestID))
+                let page = try await searchService.searchPlaces(query: query, offset: offset)
+                await send(.placeSearchCompleted(.success(page), requestID: requestID, isNextPage: isNextPage))
             } catch is CancellationError {
                 return
-            } catch let error as KakaoLocalSearchError {
-                await send(.placeSearchCompleted(.failure(error.userMessage), requestID: requestID))
+            } catch let error as KakaoLocalPlaceSearchError {
+                await send(.placeSearchCompleted(
+                    .failure(error.userMessage),
+                    requestID: requestID,
+                    isNextPage: isNextPage
+                ))
             } catch {
                 await send(
                     .placeSearchCompleted(
                         .failure("검색 중 알 수 없는 오류가 발생했어요."),
-                        requestID: requestID
+                        requestID: requestID,
+                        isNextPage: isNextPage
                     )
                 )
             }

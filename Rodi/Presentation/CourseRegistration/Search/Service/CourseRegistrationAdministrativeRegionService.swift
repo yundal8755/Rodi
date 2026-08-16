@@ -1,11 +1,11 @@
 //
-//  KakaoAdministrativeRegionService.swift
+//  CourseRegistrationAdministrativeRegionService.swift
 //  Rodi
 //
 
 import Foundation
 
-struct KakaoAdministrativeRegionService {
+struct CourseRegistrationAdministrativeRegionService {
     private let areas: [Area]
 
     init(bundle: Bundle = .main) {
@@ -26,7 +26,7 @@ struct KakaoAdministrativeRegionService {
     func suggestions(
         for query: String,
         limit: Int = 4
-    ) -> [KakaoLocalRegionSuggestion] {
+    ) -> [CourseRegistrationRegionSuggestion] {
         let normalizedQuery = Self.normalize(query)
         guard !normalizedQuery.isEmpty else { return [] }
 
@@ -61,7 +61,7 @@ struct KakaoAdministrativeRegionService {
             }
             .prefix(limit)
             .map { match in
-                KakaoLocalRegionSuggestion(
+                CourseRegistrationRegionSuggestion(
                     id: match.area.id,
                     displayName: match.area.regionDisplayName,
                     searchQuery: match.area.keywordSearchQuery
@@ -70,7 +70,7 @@ struct KakaoAdministrativeRegionService {
     }
 }
 
-private extension KakaoAdministrativeRegionService {
+private extension CourseRegistrationAdministrativeRegionService {
     struct Catalog: Decodable {
         let areas: [Area]
     }
@@ -89,13 +89,13 @@ private extension KakaoAdministrativeRegionService {
                 meaningfulAliases = aliases
             case .sigungu, .municipalCity:
                 meaningfulAliases = aliases.filter { alias in
-                    KakaoAdministrativeRegionService.normalize(alias)
-                        .contains(KakaoAdministrativeRegionService.normalize(localDisplayName))
+                    CourseRegistrationAdministrativeRegionService.normalize(alias)
+                        .contains(CourseRegistrationAdministrativeRegionService.normalize(localDisplayName))
                 }
             }
 
             return Set(meaningfulAliases + [displayName, keywordSearchQuery])
-                .map(KakaoAdministrativeRegionService.normalize)
+                .map(CourseRegistrationAdministrativeRegionService.normalize)
         }
 
         var regionDisplayName: String {

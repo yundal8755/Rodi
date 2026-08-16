@@ -104,8 +104,11 @@ struct RootView: View {
             switch verification {
             case .pending:
                 break
-            case .authenticated(let isOnboarded):
-                appRouter.resolveInitialSession(isOnboarded: isOnboarded)
+            case .authenticated(let isOnboarded, let isCourseTutorialCompleted):
+                appRouter.resolveInitialSession(
+                    isOnboarded: isOnboarded,
+                    isCourseTutorialCompleted: isCourseTutorialCompleted
+                )
             case .unauthenticated:
                 appRouter.resolveInitialUnauthenticatedSession()
             }
@@ -205,6 +208,8 @@ extension RootView {
                 isCourseDetailReviewPresented: store.state.reviewEntrySource == .courseDetail
                     && store.state.review.route != .hidden,
                 sendReview: { store.send(.review($0)) },
+                isCourseTutorialCompleted: appRouter.isCourseTutorialCompleted,
+                onCourseTutorialCompleted: appRouter.markCourseTutorialCompleted,
                 dependencies: dependencies
             )
         }
