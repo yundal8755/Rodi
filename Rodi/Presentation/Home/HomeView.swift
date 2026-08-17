@@ -15,6 +15,7 @@ struct HomeView: View {
     @StateObject private var store: StoreOf<HomeReducer>
     @ObservedObject private var snackbarService: SnackbarService
     @State private var courseBottomSheetHeight: CGFloat = 180
+    @State private var parkingBottomSheetHeight: CGFloat = 180
     @State private var transientBottomSheetHeight: CGFloat?
     @State private var handledListPresentationRequestID = 0
     @State private var handledPlaceSelectionRequestID = 0
@@ -293,6 +294,10 @@ extension HomeView {
                     onCourseDetailHeightChanged: { height in
                         guard abs(courseBottomSheetHeight - height) > 0.5 else { return }
                         courseBottomSheetHeight = height
+                    },
+                    onParkingDetailHeightChanged: { height in
+                        guard abs(parkingBottomSheetHeight - height) > 0.5 else { return }
+                        parkingBottomSheetHeight = height
                     },
                     onVisibleHeightChanged: { height, isTransient in
                         transientBottomSheetHeight = isTransient ? height : nil
@@ -661,8 +666,12 @@ extension HomeView {
             case .expanded:
                 return screenHeight
             }
-        case .filter, .parkingDetail:
+        case .filter:
             return screenHeight * 0.5
+
+        case .parkingDetail:
+            return parkingBottomSheetHeight
+
         case .courseDetail:
             return store.state.bottomSheet.courseDetail.presentation == .sheet
                 ? courseBottomSheetHeight

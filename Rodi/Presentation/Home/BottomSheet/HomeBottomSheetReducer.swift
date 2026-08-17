@@ -51,6 +51,7 @@ struct HomeBottomSheetReducer: Reducer {
             isBottomTabBarVisible: Bool,
             isResearchButtonVisible: Bool
         )
+        case recommendationCollapsed
         case requestAuthentication
         case showSnackbar(String)
         case reviewWritingRequested(ReviewWriteRequest)
@@ -271,6 +272,16 @@ extension HomeBottomSheetReducer {
 
         case .showSnackbar(let message):
             return .send(.delegate(.showSnackbar(message)))
+
+        case .collapsedByUser:
+            return actions([
+                .delegate(.recommendationCollapsed),
+                .delegate(.recommendationPresentationChanged(
+                    isBottomTabBarVisible: state.resolvingPlaceID == nil
+                        && state.route == .recommendList,
+                    isResearchButtonVisible: state.recommendList.needsResearch
+                ))
+            ])
 
         case let .displayStateChanged(presentation, showsResearchButton):
             return .send(.delegate(.recommendationPresentationChanged(

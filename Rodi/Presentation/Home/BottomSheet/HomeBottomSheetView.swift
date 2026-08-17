@@ -26,6 +26,7 @@ struct HomeBottomSheetView: View {
     let memberRepository: MemberRepository
     let bottomTabBarHeight: CGFloat
     let onCourseDetailHeightChanged: (CGFloat) -> Void
+    let onParkingDetailHeightChanged: (CGFloat) -> Void
     let onVisibleHeightChanged: (CGFloat, Bool) -> Void
     let onCourseExpansionSettled: () -> Void
     let requestLocationPermission: () -> Void
@@ -42,6 +43,7 @@ struct HomeBottomSheetView: View {
         memberRepository: MemberRepository,
         bottomTabBarHeight: CGFloat,
         onCourseDetailHeightChanged: @escaping (CGFloat) -> Void = { _ in },
+        onParkingDetailHeightChanged: @escaping (CGFloat) -> Void = { _ in },
         onVisibleHeightChanged: @escaping (CGFloat, Bool) -> Void = { _, _ in },
         onCourseExpansionSettled: @escaping () -> Void = {},
         requestLocationPermission: @escaping () -> Void,
@@ -57,6 +59,7 @@ struct HomeBottomSheetView: View {
         self.memberRepository = memberRepository
         self.bottomTabBarHeight = bottomTabBarHeight
         self.onCourseDetailHeightChanged = onCourseDetailHeightChanged
+        self.onParkingDetailHeightChanged = onParkingDetailHeightChanged
         self.onVisibleHeightChanged = onVisibleHeightChanged
         self.onCourseExpansionSettled = onCourseExpansionSettled
         self.requestLocationPermission = requestLocationPermission
@@ -202,7 +205,7 @@ extension HomeBottomSheetView {
         case .filter:
             return mediumHeight
         case .parkingDetail:
-            return parkingDetailHeight
+            return parkingSheetHeight
         case .courseDetail:
             return courseSheetHeight
         case .recommendList:
@@ -246,7 +249,7 @@ extension HomeBottomSheetView {
 
         case .parkingDetail:
             if state.parkingDetail.detail != nil {
-                fixedSheet(height: parkingDetailHeight, dismissThreshold: 48) {
+                fixedSheet(height: parkingSheetHeight, dismissThreshold: 48) {
                     ParkingDetailBottomSheetView(
                         state: state.parkingDetail,
                         send: handleParkingDetailAction,
@@ -261,6 +264,7 @@ extension HomeBottomSheetView {
                         presentRouteGuidanceDialog: presentRouteGuidanceDialog
                     )
                     .fixedSize(horizontal: false, vertical: true)
+                    .padding(.bottom, screenSafeAreaInsets.bottom)
                     .background {
                         BottomSheetContentHeightObserver(onHeightChanged: updateParkingDetailHeight)
                     }
@@ -437,7 +441,16 @@ extension HomeBottomSheetView {
         }
 
         parkingDetailHeight = height
+        onParkingDetailHeightChanged(parkingSheetHeight)
     }
+
+    /// 주차장 콘텐츠 높이에는 fixedSheet가 추가하는 indicator 영역이 포함되지 않는다.
+    /// 실제 화면·지도 제어에 사용하는 높이는 둘을 합친 값이어야 한다.
+    private var parkingSheetHeight: CGFloat {
+        parkingDetailHeight + dragHandleHeight
+    }
+
+    private var dragHandleHeight: CGFloat { 24 }
 
     private func dragHandle(
         onChanged: @escaping (CGFloat) -> Void,
@@ -445,7 +458,7 @@ extension HomeBottomSheetView {
     ) -> some View {
         dragIndicator
             .frame(maxWidth: .infinity)
-            .frame(height: 24, alignment: .top)
+            .frame(height: dragHandleHeight, alignment: .top)
             .contentShape(Rectangle())
             .overlay {
                 BottomSheetPanGestureView(

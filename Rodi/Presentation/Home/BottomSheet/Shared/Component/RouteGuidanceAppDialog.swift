@@ -24,8 +24,9 @@ struct RouteGuidanceAppDialog: View {
     var body: some View {
         RodiModalBackground {
             dialogContent
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 16)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .padding(.bottom, 60)
         }
     }
 
@@ -80,9 +81,8 @@ struct RouteGuidanceAppDialog: View {
             }
         }
         .padding(.top, 16)
-        .padding(.horizontal, 40)
+        .padding(.horizontal, 16)
         .padding(.bottom, 16)
-        .frame(maxWidth: 343)
         .background(RodiColor.white)
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }

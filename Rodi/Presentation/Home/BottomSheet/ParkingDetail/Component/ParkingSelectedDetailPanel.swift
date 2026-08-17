@@ -219,7 +219,7 @@ struct ParkingSelectedDetailPanel: View {
             .disabled(!isRouteGuidanceEnabled || isRouteLoading)
         }
         .padding(.horizontal, 16)
-        .padding(.bottom, 36)
+        .padding(.bottom, 16)
         .background(RodiColor.white)
     }
 

@@ -9,6 +9,7 @@ import SwiftUI
 struct PlaceListView: View {
     let items: [PlaceListItem]
     let isInitialLoading: Bool
+    let isAwaitingRegionViewport: Bool
     let isNextPageLoading: Bool
     let errorMessage: String?
     let hasNextPage: Bool
@@ -21,7 +22,7 @@ struct PlaceListView: View {
 
     var body: some View {
         Group {
-            if items.isEmpty, isInitialLoading {
+            if items.isEmpty, isInitialLoading || isAwaitingRegionViewport {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 180)
             } else if items.isEmpty, let errorMessage {
@@ -346,6 +347,7 @@ private struct DebugFeatureTestPage: View {
     @State private var isLiveActivityTestPickerPresented = false
     @State private var isMyCoursesPreviewPresented = false
     @State private var isHardWithdrawalConfirmationPresented = false
+    @State private var isMandatoryUpdateTestPresented = false
     @State private var isHardWithdrawalSubmitting = false
     @State private var hardWithdrawalErrorMessage: String?
 
@@ -389,6 +391,9 @@ private struct DebugFeatureTestPage: View {
                 testButton(title: "즉시 탈퇴 API") {
                     isHardWithdrawalConfirmationPresented = true
                 }
+                testButton(title: "강제 업데이트 알림") {
+                    isMandatoryUpdateTestPresented = true
+                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 24)
@@ -419,15 +424,23 @@ private struct DebugFeatureTestPage: View {
             DebugMyCoursesPreviewPage()
         }
         .overlay {
-            if isHardWithdrawalConfirmationPresented {
-                DebugHardWithdrawalConfirmationDialog(
-                    isSubmitting: isHardWithdrawalSubmitting,
-                    confirmAction: requestHardWithdrawal,
-                    cancelAction: {
-                        guard !isHardWithdrawalSubmitting else { return }
-                        isHardWithdrawalConfirmationPresented = false
+            ZStack {
+                if isHardWithdrawalConfirmationPresented {
+                    DebugHardWithdrawalConfirmationDialog(
+                        isSubmitting: isHardWithdrawalSubmitting,
+                        confirmAction: requestHardWithdrawal,
+                        cancelAction: {
+                            guard !isHardWithdrawalSubmitting else { return }
+                            isHardWithdrawalConfirmationPresented = false
+                        }
+                    )
+                }
+
+                if isMandatoryUpdateTestPresented {
+                    RodiMandatoryUpdateDialog {
+                        isMandatoryUpdateTestPresented = false
                     }
-                )
+                }
             }
         }
         .rodiSnackbar(message: hardWithdrawalErrorMessage)
