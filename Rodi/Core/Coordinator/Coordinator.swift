@@ -10,6 +10,7 @@ final class Coordinator<Destination: Route>: ObservableObject {
     private var isTransitioning = false
     private var transitionIdentifier = 0
     private let acceptsSystemPath: ([Destination], [Destination]) -> Bool
+    private let animatedTransitionFallbackNanoseconds: UInt64 = 750_000_000
 
     /// 지정한 초기 route 경로로 Coordinator를 생성합니다.
     /// `acceptsSystemPath`는 시스템 뒤로가기 등 NavigationStack이 제안한 path를 수용할지 결정합니다.
@@ -20,10 +21,6 @@ final class Coordinator<Destination: Route>: ObservableObject {
         self.path = path
         self.acceptsSystemPath = acceptsSystemPath
     }
-
-    // Xcode 26.5의 Release 최적화기가 generic 소멸자를 인라이닝할 때 충돌하지 않도록 합니다.
-    @inline(never)
-    deinit {}
 
     /// NavigationStack의 시스템 뒤로가기 결과를 Coordinator에 반영하는 Binding입니다.
     var pathBinding: Binding<[Destination]> {
@@ -38,11 +35,11 @@ final class Coordinator<Destination: Route>: ObservableObject {
     /// View와 feature에 전달할 typed navigation 인터페이스입니다.
     var router: Router<Destination> {
         Router(
-            submitAction: { [weak self] step, animated in
-                self?.submit(step, animated: animated)
+            submitAction: { [weak self] step in
+                self?.submit(step)
             },
-            performAction: { [weak self] plan, animated in
-                self?.perform(plan, animated: animated)
+            performAction: { [weak self] plan in
+                self?.perform(plan)
             }
         )
     }
@@ -50,41 +47,27 @@ final class Coordinator<Destination: Route>: ObservableObject {
     /// 일반 전환 단계를 현재 경로에 적용합니다.
     ///
     /// 전환 애니메이션 중 추가 요청은 무시해 연속 탭으로 route가 중복되는 일을 막습니다.
-    func submit(_ step: NavigationStep<Destination>, animated: Bool = true) {
+    func submit(_ step: NavigationStep<Destination>) {
         guard !isTransitioning else { return }
 
         let plan = NavigationPlan(steps: [step])
-        transition(to: plan.applying(to: path), animated: animated)
+        transition(to: plan.applying(to: path))
     }
 
     /// 여러 전환 단계를 적용한 최종 경로로 한 번에 이동합니다.
     ///
     /// `A → B → C` 계획은 중간 화면을 순차 표시하지 않고 C가 포함된 최종 경로만 반영합니다.
-    func perform(_ plan: NavigationPlan<Destination>, animated: Bool = true) {
+    func perform(_ plan: NavigationPlan<Destination>) {
         guard !isTransitioning else { return }
-        transition(to: plan.applying(to: path), animated: animated)
+        transition(to: plan.applying(to: path))
     }
 
-    private func transition(to nextPath: [Destination], animated: Bool) {
+    private func transition(to nextPath: [Destination]) {
         guard path != nextPath else { return }
 
         isTransitioning = true
         transitionIdentifier &+= 1
         let identifier = transitionIdentifier
-
-        guard animated else {
-            var transaction = Transaction(animation: nil)
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                path = nextPath
-            }
-
-            Task { @MainActor [weak self] in
-                await Task.yield()
-                self?.finishTransition(identifier: identifier)
-            }
-            return
-        }
 
         if #available(iOS 17.0, *) {
             var transaction = Transaction(animation: .default)
@@ -97,6 +80,8 @@ final class Coordinator<Destination: Route>: ObservableObject {
             withTransaction(transaction) {
                 path = nextPath
             }
+
+            scheduleAnimatedTransitionFallback(identifier: identifier)
         } else {
             withAnimation(.default) {
                 path = nextPath
@@ -106,6 +91,15 @@ final class Coordinator<Destination: Route>: ObservableObject {
                 await Task.yield()
                 self?.finishTransition(identifier: identifier)
             }
+        }
+    }
+
+    private func scheduleAnimatedTransitionFallback(identifier: Int) {
+        let fallbackDelay = animatedTransitionFallbackNanoseconds
+
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: fallbackDelay)
+            self?.finishTransition(identifier: identifier)
         }
     }
 
