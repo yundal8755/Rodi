@@ -83,6 +83,13 @@ struct RootView: View {
                 .zIndex(3)
             }
 
+            if let update = store.state.pendingUpdate {
+                RodiMandatoryUpdateDialog {
+                    openURL(update.appStoreURL)
+                }
+                .zIndex(4)
+            }
+
         }
         .rodiSnackbar(message: store.state.reviewSnackbarMessage)
         .background {
@@ -126,18 +133,6 @@ struct RootView: View {
         }
         .onOpenURL { url in
             _ = SocialLoginService.handleOpenURL(url)
-        }
-        .alert("새 버전이 있어요", isPresented: updateAlertBinding) {
-            Button("나중에", role: .cancel) {
-                store.send(.appVersionUpdateDismissed)
-            }
-            Button("업데이트") {
-                guard let appStoreURL = store.state.pendingUpdate?.appStoreURL else { return }
-                store.send(.appVersionUpdateDismissed)
-                openURL(appStoreURL)
-            }
-        } message: {
-            Text("더 안정적인 사용을 위해 최신 버전으로 업데이트할 수 있어요.")
         }
     }
 
@@ -218,17 +213,6 @@ extension RootView {
     private func automaticLoginProvider(for context: OnboardingLaunchContext) -> SocialLoginProvider? {
         guard case .automaticLogin(let provider) = context else { return nil }
         return provider
-    }
-
-    private var updateAlertBinding: Binding<Bool> {
-        Binding(
-            get: { store.state.pendingUpdate != nil },
-            set: { isPresented in
-                if !isPresented {
-                    store.send(.appVersionUpdateDismissed)
-                }
-            }
-        )
     }
 
 }

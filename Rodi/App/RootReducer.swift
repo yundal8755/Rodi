@@ -41,7 +41,6 @@ struct RootReducer: Reducer {
         case activeMeasurementContinued
         case activeMeasurementEnded
         case appVersionCheckCompleted(AppVersionUpdate?)
-        case appVersionUpdateDismissed
         case sessionRestoreCompleted(SessionRestoreResult)
         case debugReviewTestRequested
         case reviewRequested(ReviewFlowRequest)
@@ -153,9 +152,6 @@ extension RootReducer {
 
         case .appVersionCheckCompleted(let update):
             state.pendingUpdate = update
-
-        case .appVersionUpdateDismissed:
-            state.pendingUpdate = nil
 
         case .sessionRestoreCompleted(let result):
             state.isRestoringSession = false
@@ -291,7 +287,7 @@ extension RootReducer {
         state.hasCheckedAppVersion = true
 
         return .run { send in
-            let update = await AppVersionUpdateChecker.checkForOptionalUpdate()
+            let update = await AppVersionUpdateChecker.checkForRequiredUpdate()
             await send(.appVersionCheckCompleted(update))
         }
         .cancelTask(id: EffectID.appVersionCheck)
