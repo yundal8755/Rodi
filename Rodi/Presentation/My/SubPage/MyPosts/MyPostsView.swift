@@ -435,14 +435,14 @@ private struct MyCourseRow: View {
                             .scaledToFit()
                             .frame(width: 18, height: 18)
                             .frame(maxWidth: .infinity, alignment: .trailing)
+                            .anchorPreference(key: RodiDropdownAnchorPreferenceKey.self, value: .bounds) {
+                                [AnyHashable("course-\(course.id)"): $0]
+                            }
                     }
                     .buttonStyle(.plain)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
                     .accessibilityLabel(isMenuExpanded ? "코스 메뉴 닫기" : "코스 메뉴 열기")
-                    .anchorPreference(key: RodiDropdownAnchorPreferenceKey.self, value: .bounds) {
-                        [AnyHashable("course-\(course.id)"): $0]
-                    }
                 }
 
             HStack(spacing: 4) {
@@ -515,14 +515,14 @@ private struct MyPostReviewRow: View {
                                 .scaledToFit()
                                 .frame(width: 18, height: 18)
                                 .frame(maxWidth: .infinity, alignment: .trailing)
+                                .anchorPreference(key: RodiDropdownAnchorPreferenceKey.self, value: .bounds) {
+                                    [AnyHashable("review-\(review.id)"): $0]
+                                }
                         }
                         .buttonStyle(.plain)
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                         .accessibilityLabel(isMenuExpanded ? "후기 메뉴 닫기" : "후기 메뉴 열기")
-                        .anchorPreference(key: RodiDropdownAnchorPreferenceKey.self, value: .bounds) {
-                            [AnyHashable("review-\(review.id)"): $0]
-                        }
                     }
 
                 Text(Self.dateFormatter.string(from: review.createdAt))
