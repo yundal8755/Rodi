@@ -484,7 +484,6 @@ private struct CourseRegistrationPinEditView: View {
 
     private var canSelectCandidate: Bool {
         pinEdit.candidateCoordinate != nil
-            && pinEdit.candidateAddress != nil
             && !pinEdit.isAddressResolving
     }
 
@@ -662,7 +661,7 @@ private struct CourseRegistrationLocationInputs: View {
                             text: selectedPlaces[.waypoint(waypoint.id)]?.name ?? "경유지 입력",
                             isPlaceholder: selectedPlaces[.waypoint(waypoint.id)] == nil,
                             trailingControl: .minus { removeWaypointAction(waypoint.id) },
-                            isInteractive: isEditable,
+                            isInteractive: true,
                             tapAction: { inputTargetTappedAction(.waypoint(waypoint.id)) }
                         )
                     }

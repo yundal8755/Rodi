@@ -2,18 +2,26 @@ import Foundation
 
 @MainActor
 final class CourseRegistrationMapService {
+    enum CurrentLocationResult {
+        case resolved(RodiCoordinate)
+        case unavailable
+        case permissionDenied(LocationAuthorizationState)
+    }
+
     private let locationService: MapLocationService
 
     init(locationService: MapLocationService? = nil) {
         self.locationService = locationService ?? MapLocationService()
     }
 
-    func requestCurrentLocation() async -> RodiCoordinate? {
+    func requestCurrentLocation() async -> CurrentLocationResult {
         switch await locationService.requestLocation() {
         case .resolved(let coordinate):
-            coordinate
-        case .unavailable, .permissionDenied:
-            nil
+            .resolved(coordinate)
+        case .unavailable:
+            .unavailable
+        case .permissionDenied(let authorizationState):
+            .permissionDenied(authorizationState)
         }
     }
 

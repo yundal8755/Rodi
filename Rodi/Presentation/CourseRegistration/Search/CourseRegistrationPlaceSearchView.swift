@@ -274,6 +274,7 @@ private extension CourseRegistrationPlaceSearchView {
         }
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
     }

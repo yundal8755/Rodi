@@ -60,7 +60,10 @@ struct CourseRegistrationReducer: Reducer {
         case waypointRemoveTapped(UUID)
         case mapAppeared
         case currentLocationTapped
-        case currentLocationResolved(CourseRegistrationLocationRequest, RodiCoordinate?)
+        case currentLocationResolved(
+            CourseRegistrationLocationRequest,
+            CourseRegistrationMapService.CurrentLocationResult
+        )
         case mapViewportChanged(RodiCoordinate, isUserInitiated: Bool)
         case placeSelectionTapped
         case reverseGeocodingFinished(
@@ -195,10 +198,25 @@ struct CourseRegistrationReducer: Reducer {
             beginSelection(.waypoint(waypoint.id), state: &state)
 
         case .waypointRemoveTapped(let id):
-            guard state.route == .registration, state.map.selectionTarget == nil else { return .none }
+            guard state.route == .registration,
+                  state.waypoints.contains(where: { $0.id == id })
+            else {
+                return .none
+            }
             state.waypoints.removeAll { $0.id == id }
             state.selectedPlaces[.waypoint(id)] = nil
             state.routePath = []
+            RodiAnalytics.track(
+                .courseRegistrationWaypointChanged(action: "removed", waypointCount: state.waypoints.count)
+            )
+
+            if state.map.selectionTarget == .waypoint(id) {
+                state.map.selectionTarget = nil
+                state.map.candidateCoordinate = nil
+                state.map.hasSelectedCurrentTarget = false
+                state.map.isAddressResolving = false
+                state.map.addressRequestRevision += 1
+            }
 
         case .mapAppeared:
             // 검색·핀 수정 화면에서 등록 화면으로 복귀할 때도 onAppear가 다시 호출된다.
@@ -241,7 +259,7 @@ struct CourseRegistrationReducer: Reducer {
                 return .none
             }
 
-        case .currentLocationResolved(let request, let coordinate):
+        case .currentLocationResolved(let request, let result):
             switch request.scope {
             case .registration:
                 guard state.route == .registration,
@@ -249,11 +267,17 @@ struct CourseRegistrationReducer: Reducer {
                 else {
                     return .none
                 }
-                if let coordinate {
+                if case .resolved(let coordinate) = result {
                     state.map.cameraTarget = coordinate
                     state.map.cameraRequestID += 1
                 }
-                if request.source == .initial {
+                if request.source == .userAction {
+                    state.map.isCurrentLocationActive = false
+                    if let message = currentLocationFailureMessage(for: result) {
+                        RodiAnalytics.track(.courseRegistrationFailed(stage: "current_location"))
+                        state.errorMessage = message
+                    }
+                } else if request.source == .initial {
                     state.map.isCurrentLocationActive = false
                 }
             case .pinEditing:
@@ -264,16 +288,22 @@ struct CourseRegistrationReducer: Reducer {
                 else {
                     return .none
                 }
-                if let coordinate {
+                if case .resolved(let coordinate) = result {
                     pinEdit.cameraTarget = coordinate
                     pinEdit.cameraRequestID += 1
                     pinEdit.candidateCoordinate = coordinate
                     pinEdit.candidateAddress = nil
+                    pinEdit.isCurrentLocationActive = false
                     state.pinEdit = pinEdit
-                    return requestPinEditCandidateAddress(coordinate, state: &state, source: .mapMovement)
+                    return .none
                 }
                 pinEdit.isCurrentLocationActive = false
                 state.pinEdit = pinEdit
+                if request.source == .userAction,
+                   let message = currentLocationFailureMessage(for: result) {
+                    RodiAnalytics.track(.courseRegistrationFailed(stage: "current_location"))
+                    state.errorMessage = message
+                }
             }
 
         case .mapViewportChanged(let center, let isUserInitiated):
@@ -289,7 +319,7 @@ struct CourseRegistrationReducer: Reducer {
                 pinEdit.candidateCoordinate = center
                 pinEdit.candidateAddress = nil
                 state.pinEdit = pinEdit
-                return requestPinEditCandidateAddress(center, state: &state, source: .mapMovement)
+                return .none
             default:
                 break
             }
@@ -582,7 +612,7 @@ struct CourseRegistrationReducer: Reducer {
             pinEdit.isCurrentLocationActive = false
             state.pinEdit = pinEdit
             state.route = .pinEditing
-            return requestPinEditCandidateAddress(coordinate, state: &state, source: .searchResult)
+            return requestPinEditCandidateAddress(coordinate, state: &state)
 
         case .pinEditCandidateAddressFinished(let request, let result):
             guard state.route == .pinEditing,
@@ -597,6 +627,7 @@ struct CourseRegistrationReducer: Reducer {
             case .success(let address):
                 pinEdit.candidateCoordinate = request.coordinate
                 pinEdit.candidateAddress = address
+                pinEdit.temporaryPlace = .init(name: address, coordinate: request.coordinate)
                 state.pinEdit = pinEdit
             case .failure(let error):
                 state.pinEdit = pinEdit
@@ -607,14 +638,13 @@ struct CourseRegistrationReducer: Reducer {
             guard state.route == .pinEditing,
                   var pinEdit = state.pinEdit,
                   let coordinate = pinEdit.candidateCoordinate,
-                  let address = pinEdit.candidateAddress,
                   !pinEdit.isAddressResolving,
                   pinEdit.temporaryPlace == nil
             else {
                 return .none
             }
-            pinEdit.temporaryPlace = .init(name: address, coordinate: coordinate)
             state.pinEdit = pinEdit
+            return requestPinEditCandidateAddress(coordinate, state: &state)
 
         case .pinEditRetryTapped:
             guard state.route == .pinEditing,
@@ -738,8 +768,21 @@ struct CourseRegistrationReducer: Reducer {
 
     private func requestCurrentLocation(_ request: CourseRegistrationLocationRequest) -> Effect<Action> {
         .run { send in
-            let coordinate = await mapService.requestCurrentLocation()
-            await send(.currentLocationResolved(request, coordinate))
+            let result = await mapService.requestCurrentLocation()
+            await send(.currentLocationResolved(request, result))
+        }
+    }
+
+    private func currentLocationFailureMessage(
+        for result: CourseRegistrationMapService.CurrentLocationResult
+    ) -> String? {
+        switch result {
+        case .resolved:
+            nil
+        case .permissionDenied:
+            "현재 위치를 확인할 수 없어요. 위치 권한을 허용한 뒤 다시 시도해주세요."
+        case .unavailable:
+            "현재 위치를 확인할 수 없어요. 위치 서비스와 네트워크 상태를 확인한 뒤 다시 시도해주세요."
         }
     }
 
@@ -772,8 +815,7 @@ struct CourseRegistrationReducer: Reducer {
 
     private func requestPinEditCandidateAddress(
         _ coordinate: RodiCoordinate,
-        state: inout State,
-        source: CourseRegistrationPinEditAddressRequest.Source
+        state: inout State
     ) -> Effect<Action> {
         guard var pinEdit = state.pinEdit else { return .none }
         pinEdit.addressRequestRevision += 1
@@ -781,13 +823,9 @@ struct CourseRegistrationReducer: Reducer {
         state.pinEdit = pinEdit
         let request = CourseRegistrationPinEditAddressRequest(
             revision: pinEdit.addressRequestRevision,
-            coordinate: coordinate,
-            source: source
+            coordinate: coordinate
         )
         return .run { send in
-            if source == .mapMovement {
-                try? await Task.sleep(nanoseconds: 350_000_000)
-            }
             do {
                 await send(.pinEditCandidateAddressFinished(request, .success(try await mapService.reverseGeocode(coordinate))))
             } catch let error as CourseRegistrationAddressLookupError {
@@ -1098,9 +1136,6 @@ struct CourseRegistrationAddressRequest: Equatable {
 }
 
 struct CourseRegistrationPinEditAddressRequest: Equatable {
-    enum Source: Equatable { case mapMovement, searchResult }
-
     let revision: Int
     let coordinate: RodiCoordinate
-    let source: Source
 }
