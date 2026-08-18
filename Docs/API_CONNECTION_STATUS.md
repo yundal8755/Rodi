@@ -1,10 +1,11 @@
 # API 연결 현황
 
-> 기준일: 2026-08-16
+> 기준일: 2026-08-18
 > Swagger: `https://api.stillstar.store/v3/api-docs`
 > 기준 환경: 현재 Swagger가 가리키는 API 환경 / 앱 구현: `Rodi/Data/Remote`
+> 이번 점검: Swagger endpoint 45개와 iOS API Target·DataSource·Repository·DTO 파일 인벤토리를 대조했다. endpoint별 field schema는 해당 API 변경 작업에서 다시 확인한다.
 
-이 문서는 Swagger 계약과 iOS 앱의 API·DTO·Repository 연결 여부를 함께 관리한다. `연결됨`은 API Target → RemoteDataSource → Repository → Domain/Presentation 호출 경로가 존재하고, 요청·응답 DTO가 현재 Swagger에 맞춰 모델링되었음을 뜻한다.
+이 문서는 Swagger 계약과 iOS 앱의 API·DTO·Repository 연결 여부를 함께 관리한다. `연결됨`은 API Target → RemoteDataSource → Repository → Domain/Presentation 호출 경로가 존재하고, endpoint method·path가 현재 Swagger와 대조되었음을 뜻한다. field schema는 서버 변경이 발생한 endpoint부터 같은 작업에서 다시 검증한다.
 
 ## 관리 규칙
 
@@ -32,7 +33,7 @@
 | RepositoryImpl | 7 | 도메인 Repository와 리소스별 1:1 |
 | Domain Repository protocol | 7 | Presentation은 이 계약만 사용 |
 | DTO Swift 파일 | 40 | Request 13개 + Response 27개 |
-| 전체 Swift 파일 | 346 | `Rodi/` 하위 기준 |
+| 전체 Swift 파일 | 348 | `Rodi/` 하위 기준 |
 
 ### 리소스별 DTO 수
 

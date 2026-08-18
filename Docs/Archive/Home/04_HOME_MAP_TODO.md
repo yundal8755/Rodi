@@ -1,5 +1,7 @@
 # Home Map TODO
 
+> **Historical record — MUST NOT be used as current implementation or policy.** Read only when investigating the Home map migration; use live code, `AGENTS.md`, and active Docs for current work.
+
 Home에서 지도 기능을 단계적으로 구현한다. 추천 목록 BottomSheet는 지도 viewport/research command 계약으로만 연결되며, BottomSheet 자체의 UI·목록 state는 별도 feature가 소유한다.
 
 ## 지도 기본 흐름

@@ -39,10 +39,13 @@ Rodi는 운전 연습이 막막한 초보 운전자에게 주변 연습 코스�
 - 현재 위치 또는 지도 화면 범위 기반 코스·주차장 탐색과 재검색
 - 줌 단계별 마커 클러스터링, 코스·주차장 상세 정보 및 경로 미리보기
 - 출발지, 경유지, 도착지를 포함한 코스 경로와 카카오맵·카카오내비 길안내 연동
-- 회원 북마크, 저장 목록, 운전 목표를 관리하는 마이페이지
+- 직접 찾은 장소를 기반으로 한 사용자 코스 등록
+- 연습기록, 후기 작성·수정, 북마크·저장 목록·운전 목표를 관리하는 마이페이지
 
 > Rodi는 운전 연습에 참고할 수 있는 코스 정보를 제공하는 서비스이며, 실제 도로 상황과 안전을 보장하지 않습니다. 사용자는 항상 교통 법규와 현장 상황을 우선해야 합니다.
 > 
+
+> 이 README는 공개 서비스 소개와 개발 진입점 안내를 위한 문서입니다. 구현 구조·API 계약·배포 정책의 원본은 각각 `Docs/ARCHITECTURE.md`, `Docs/API_SWAGGER.md`, `Docs/RELEASE.md`와 현재 코드에서 확인합니다.
 
 <br/>
 
@@ -59,23 +62,26 @@ Rodi는 운전 연습이 막막한 초보 운전자에게 주변 연습 코스�
     |   |-- Coordinator             # typed NavigationStack 경로 관리
     |   |-- Extension               # Swift / SwiftUI 공통 Extension
     |   |-- Network                 # 네트워크 매니저, 인터셉터, Keychain 토큰 저장
-    |   |-- Service                 # Logger, Snackbar 등 공통 서비스
+    |   |-- Service                 # Logger, 위치·네트워크·버전 확인 등 공통 서비스
     |
     |-- Data                        # 외부/로컬 데이터 구현 레이어
     |   |-- Local                   # UserDefaults 기반 온보딩 초안, 최근 로그인 제공자 저장
-    |   |-- Remote                  # Auth, Member, Place 서버 API 연동 구현
+    |   |-- Remote                  # Auth, Course, Member, Place, Practice, RecentSearch, Review 서버 API 연동 구현
     |
     |-- Domain                      # 앱 핵심 도메인 계약 및 모델
-    |   |-- Auth                    # 인증 도메인
-    |   |-- Member                  # 회원 프로필 및 온보딩 도메인
-    |   |-- Place                   # 코스, 주차장, 북마크 도메인
+    |   |-- Auth, Member            # 인증, 회원 프로필 및 온보딩 도메인
+    |   |-- Place, Practice, Review # 장소·연습기록·후기 도메인
+    |   |-- Course                  # 사용자 코스 등록·관리 도메인
     |
     |-- Presentation                # 화면 및 사용자 인터랙션 레이어
-    |   |-- Home                    # 지도, BottomSheet, Search
+    |   |-- Home                    # 지도, BottomSheet, Search, 장소 상세
+    |   |-- CourseRegistration      # 사용자 코스 등록, 장소 선택, 핀 수정
+    |   |-- PracticeTracking        # 위치 기반 연습 측정과 Live Activity
+    |   |-- Review                  # 후기 작성·수정, 미방문 사유
     |   |-- Login                   # 소셜 로그인, 둘러보기, 탈퇴 계정 복구
+    |   |-- Onboarding              # 약관, 프로필, 권한 단계
     |   |-- MainTab                 # 탭 상태와 Feature 간 이동 intent
-    |   |-- My                      # MyReducer, Coordinator, 운전 목표, 저장 목록
-    |   |-- Onboarding              # Coordinator 기반 Terms, Profile, Permission
+    |   |-- My                      # 프로필, 연습기록, 내 게시글, 저장·차단 목록
     |
     |-- Resources                   # 앱 리소스
         |-- Assets.xcassets         # 이미지, 아이콘 에셋

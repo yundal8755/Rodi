@@ -1,6 +1,6 @@
 # Presentation 아키텍처·폴더링 점검
 
-> 기준일: 2026-08-16
+> 기준일: 2026-08-18
 > 범위: `Rodi/Presentation`의 실제 Swift 코드와 `Docs/ARCHITECTURE.md`
 > 목적: 기능 동작을 바꾸지 않고, 이후 기능 추가 시 안전하게 분리할 우선순위와 기준을 관리한다.
 
@@ -8,7 +8,7 @@
 
 | 항목 | 개수 |
 | --- | ---: |
-| Presentation Swift 파일 | 192 |
+| Presentation Swift 파일 | 193 |
 | 최상위 feature | 8 (`Home`, `My`, `CourseRegistration`, `Review`, `Onboarding`, `Login`, `MainTab`, `PracticeTracking`) |
 | Reducer | 27 |
 | View | 50 |
@@ -60,9 +60,9 @@
 
 ### P1 — 코스 등록 flow 분리
 
-대상: [CourseRegistrationReducer.swift](/Users/yundal/Documents/SwiftUI/Rodi/Rodi/Presentation/CourseRegistration/CourseRegistrationReducer.swift), [CourseRegistrationView.swift](/Users/yundal/Documents/SwiftUI/Rodi/Rodi/Presentation/CourseRegistration/CourseRegistrationView.swift)
+대상: [CourseRegistrationReducer.swift](../Rodi/Presentation/CourseRegistration/CourseRegistrationReducer.swift), [CourseRegistrationView.swift](../Rodi/Presentation/CourseRegistration/CourseRegistrationView.swift)
 
-- Reducer가 1,061줄이며 튜토리얼, 지도 최초 선택, 장소 검색 전환, 핀 수정, 경로 계산, 상세 폼 조회·제출, 이탈 확인, 토스트를 함께 소유한다.
+- Reducer가 1,141줄이며 튜토리얼, 지도 최초 선택, 장소 검색 전환, 핀 수정, 경로 계산, 상세 폼 조회·제출, 이탈 확인, 토스트를 함께 소유한다.
 - View도 877줄이며 튜토리얼, 지도 선택 화면, 핀 수정 화면, 하단바, 입력 행을 한 파일에서 조립한다.
 - 이는 `CourseRegistration`이 실제로 독립 단계 4개 이상을 갖는 flow라는 뜻이다. 현재 root가 모든 Action을 직접 해석해 이후 핀 수정·등록 폼 변경이 서로 영향을 줄 가능성이 크다.
 
@@ -84,7 +84,7 @@ CourseRegistration/
 
 ### P1 — Debug 테스트 화면을 제품 목록 Component에서 분리
 
-대상: [PlaceListView.swift](/Users/yundal/Documents/SwiftUI/Rodi/Rodi/Presentation/Home/BottomSheet/RecommendList/Component/PlaceListView.swift:266)
+대상: [PlaceListView.swift](../Rodi/Presentation/Home/BottomSheet/RecommendList/Component/PlaceListView.swift#L266)
 
 - 빈 추천 목록 Component 안에 triple tap 진입, Live Activity picker, 후기 팝업, 등록 코스 preview, 즉시 탈퇴 API·다이얼로그가 약 330줄 포함되어 있다.
 - `#if DEBUG`라 Release 바이너리에는 들어가지 않지만, 제품 empty state가 Debug 테스트의 소유자가 되는 구조다.
@@ -102,7 +102,7 @@ Presentation/Debug/
 
 ### P1 — feature reducer의 전체 AppDependencies 의존성 축소
 
-대상: [HomeReducer.swift](/Users/yundal/Documents/SwiftUI/Rodi/Rodi/Presentation/Home/HomeReducer.swift:127), [HomeBottomSheetReducer.swift](/Users/yundal/Documents/SwiftUI/Rodi/Rodi/Presentation/Home/BottomSheet/HomeBottomSheetReducer.swift:66)
+대상: [HomeReducer.swift](../Rodi/Presentation/Home/HomeReducer.swift#L127), [HomeBottomSheetReducer.swift](../Rodi/Presentation/Home/BottomSheet/HomeBottomSheetReducer.swift#L66)
 
 - 두 reducer가 `AppDependencies` 전체를 받아 내부에서 일부 repository/store를 골라 쓴다.
 - `AppDependencies`는 App composition root로는 적절하지만, feature reducer가 전체 graph를 알면 신규 의존성이 숨겨지고 테스트용 대체 구현을 주입하기 어렵다.
@@ -111,7 +111,7 @@ Presentation/Debug/
 
 ### P2 — Home flow의 입출력 계약 축소
 
-대상: [MainTabView.swift](/Users/yundal/Documents/SwiftUI/Rodi/Rodi/Presentation/MainTab/MainTabView.swift:16), [HomeView.swift](/Users/yundal/Documents/SwiftUI/Rodi/Rodi/Presentation/Home/HomeView.swift:18)
+대상: [MainTabView.swift](../Rodi/Presentation/MainTab/MainTabView.swift#L16), [HomeView.swift](../Rodi/Presentation/Home/HomeView.swift#L18)
 
 - `MainTabView`와 `HomeView`가 리뷰 작성·수정, 로그인, 바텀 탭 노출, 목록 요청, 장소 선택, snackbar, 완료 revision 등 다수의 callback과 state를 직접 전달한다.
 - 특히 `HomeView`는 상위 flow의 상태를 10개 이상 받으므로 호출 지점 변경 시 인자 누락·순서 오류를 검토하기 어렵다.
@@ -120,7 +120,7 @@ Presentation/Debug/
 
 ### P2 — 중복된 코스 등록 생성 지점 제거
 
-대상: [MainTabView.swift](/Users/yundal/Documents/SwiftUI/Rodi/Rodi/Presentation/MainTab/MainTabView.swift:132), [MyView.swift](/Users/yundal/Documents/SwiftUI/Rodi/Rodi/Presentation/My/MyView.swift:184)
+대상: [MainTabView.swift](../Rodi/Presentation/MainTab/MainTabView.swift#L132), [MyView.swift](../Rodi/Presentation/My/MyView.swift#L184)
 
 - 등록 탭과 마이페이지 route가 각각 `CourseRegistrationView`를 만들며 같은 repository·완료 처리 계약을 조립한다.
 - 향후 등록 flow에 새 의존성이나 완료 상태가 추가되면 두 진입점의 동기화가 필요하다.
@@ -131,18 +131,18 @@ Presentation/Debug/
 
 | 대상 | 근거 | 최소 분리 단위 |
 | --- | --- | --- |
-| [HomeBottomSheetView.swift](/Users/yundal/Documents/SwiftUI/Rodi/Rodi/Presentation/Home/BottomSheet/HomeBottomSheetView.swift) (807줄) | sheet chrome, 3개 gesture, 높이 측정 UIKit bridge, destination routing이 한 파일 | `BottomSheetContentHeightObserver`는 Adapter, 각 sheet gesture policy는 전용 helper/Section |
-| [MyPostsView.swift](/Users/yundal/Documents/SwiftUI/Rodi/Rodi/Presentation/My/SubPage/MyPosts/MyPostsView.swift) (779줄) | 후기/코스 행, empty state, dropdown, 삭제 dialog를 모두 소유 | `MyCourseRow`, `MyPostReviewRow`, empty/retry/dialog를 `Component`로 추출 |
-| [CourseReviewSection.swift](/Users/yundal/Documents/SwiftUI/Rodi/Rodi/Presentation/Home/BottomSheet/CourseDetail/Section/Review/Component/CourseReviewSection.swift) (678줄) | 요약, 난이도, 목록, 카드, dropdown가 동일 파일 | summary/list/card를 개별 Component로. reducer 책임은 이동하지 않음 |
-| [CourseDetailExpandedPage.swift](/Users/yundal/Documents/SwiftUI/Rodi/Rodi/Presentation/Home/BottomSheet/CourseDetail/SubPage/CourseDetailExpandedPage.swift) (535줄) | 상세 정보와 전체 후기·menu overlay를 함께 조립 | 상세 정보 Section과 후기 전체보기 SubPage/Component를 분리 |
+| [HomeBottomSheetView.swift](../Rodi/Presentation/Home/BottomSheet/HomeBottomSheetView.swift) (842줄) | sheet chrome, 3개 gesture, 높이 측정 UIKit bridge, destination routing이 한 파일 | `BottomSheetContentHeightObserver`는 Adapter, 각 sheet gesture policy는 전용 helper/Section |
+| [MyPostsView.swift](../Rodi/Presentation/My/SubPage/MyPosts/MyPostsView.swift) (779줄) | 후기/코스 행, empty state, dropdown, 삭제 dialog를 모두 소유 | `MyCourseRow`, `MyPostReviewRow`, empty/retry/dialog를 `Component`로 추출 |
+| [CourseReviewSection.swift](../Rodi/Presentation/Home/BottomSheet/CourseDetail/Section/Review/Component/CourseReviewSection.swift) (694줄) | 요약, 난이도, 목록, 카드, dropdown가 동일 파일 | summary/list/card를 개별 Component로. reducer 책임은 이동하지 않음 |
+| [CourseDetailExpandedPage.swift](../Rodi/Presentation/Home/BottomSheet/CourseDetail/SubPage/CourseDetailExpandedPage.swift) (535줄) | 상세 정보와 전체 후기·menu overlay를 함께 조립 | 상세 정보 Section과 후기 전체보기 SubPage/Component를 분리 |
 
 ### P3 — 기존 화면 크기 접근 재검토
 
 | 대상 | 근거 | 방향 |
 | --- | --- | --- |
-| [LoginView.swift](/Users/yundal/Documents/SwiftUI/Rodi/Rodi/Presentation/Login/LoginView.swift:154) | `UIScreen.main.bounds.width`에 의존 | stack/flexible frame으로 대체 가능한지 로그인 UI 수정 때 확인 |
-| [OnboardingAnalysisDialog.swift](/Users/yundal/Documents/SwiftUI/Rodi/Rodi/Presentation/Onboarding/Component/OnboardingAnalysisDialog.swift:26) | `UIScreen.main.bounds.height`에 의존 | content 기반 크기·safe area로 전환 검토 |
-| [CourseRegistrationView.swift](/Users/yundal/Documents/SwiftUI/Rodi/Rodi/Presentation/CourseRegistration/CourseRegistrationView.swift:860) | tutorial 이미지 폭 72%를 GeometryReader로 계산 | iOS 16.1 호환 범위에서 대안 검토 후에만 변경 |
+| [LoginView.swift](../Rodi/Presentation/Login/LoginView.swift#L154) | `UIScreen.main.bounds.width`에 의존 | stack/flexible frame으로 대체 가능한지 로그인 UI 수정 때 확인 |
+| [OnboardingAnalysisDialog.swift](../Rodi/Presentation/Onboarding/Component/OnboardingAnalysisDialog.swift#L26) | `UIScreen.main.bounds.height`에 의존 | content 기반 크기·safe area로 전환 검토 |
+| [CourseRegistrationView.swift](../Rodi/Presentation/CourseRegistration/CourseRegistrationView.swift#L860) | tutorial 이미지 폭 72%를 GeometryReader로 계산 | iOS 16.1 호환 범위에서 대안 검토 후에만 변경 |
 
 `MyPostsView`, `CourseDetailExpandedPage`, `CourseReviewSection`의 anchor preference/GeometryReader는 custom dropdown 위치 정렬에 쓰인다. 이 항목은 일반적인 화면 측정과 달리 현재 목적이 명확하므로, 대체안을 검증하기 전에는 제거하지 않는다.
 

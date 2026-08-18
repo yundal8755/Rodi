@@ -1,5 +1,7 @@
 # 홈 초기 진입 목록·마커 무반응 장애 기록
 
+> **Historical incident record — MUST NOT be used as current implementation or policy.** Read only when diagnosing this past rendering failure; use live code and active Docs for current work.
+
 ## 1. 현상
 
 일부 iOS 26 기기 및 iPhone SE 3rd 시뮬레이터에서 앱을 처음 홈으로 진입했을 때 아래 현상이 발생했다.

@@ -1,5 +1,7 @@
 # RODI Dev And Prod Environment Strategy
 
+> **Superseded historical plan — MUST NOT be used as the current environment or release policy.** Use `Docs/RELEASE.md`, `Config/*.xcconfig`, and `fastlane/Fastfile` for active work.
+
 Rodi는 단일 `Rodi` 타깃과 두 개의 Xcode Configuration으로 환경을 분리한다.
 
 | 구분 | Dev | Prod |

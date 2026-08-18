@@ -30,7 +30,7 @@
 | [RELEASE.md](RELEASE.md) | Dev/Prod 환경, signing, TestFlight, privacy, analytics, 배포 검증 | Release archive, 배포, 개인정보, 환경 이슈 | 배포·환경·심사 절차 변경 시 |
 | [SECOND_UPDATE.md](SECOND_UPDATE.md) | GPS 측정, Live Activity, 외부 앱 재진입, 후기 팝업 정책 | 연습 측정·방문 인증·Live Activity 동작 변경 시 | 해당 정책·테스트 기준 변경 시 |
 | [VERSION_HISTORY.md](VERSION_HISTORY.md) | 배포 버전별 변경 내역과 패치노트 | 배포 준비, 버전 기능 확인 | 새 버전의 사용자 노출 변경이 확정될 때 |
-| `Docs/Archive/*` | 과거 결정·사고·마이그레이션의 증거 | 사용자가 과거 사건/결정을 물을 때만 | 기본 작업에서는 읽거나 수정하지 않음 |
+| `Docs/Archive/*` | 과거 결정·사고·마이그레이션의 증거 | 사용자가 과거 사건/결정을 물을 때만 | MUST NOT 현재 정책·구현 규칙으로 사용. 기본 작업에서는 읽거나 수정하지 않음 |
 
 ## Project Skill
 

@@ -54,7 +54,7 @@ Coordinator는 해당 `NavigationStack`을 소유하는 composition root에서 �
 
 ```swift
 struct AppNavigationView: View {
-    @State private var coordinator = Coordinator<AppRoute>()
+    @StateObject private var coordinator = Coordinator<AppRoute>()
 
     var body: some View {
         NavigationStack(path: coordinator.pathBinding) {
@@ -158,13 +158,21 @@ Coordinator는 `@MainActor`로 path를 직렬화합니다. Coordinator가 시작
 
 이 정책은 두 번 탭했을 때 화면이 두 번 push되는 문제를 막기 위한 것입니다. 요청을 큐잉하거나 마지막 요청으로 바꾸지 않습니다. 의도적인 여러 경로 변경은 `NavigationPlan`으로 명시해야 합니다.
 
-잠금 해제는 시간 기반 delay가 아니라 `Transaction.addAnimationCompletion(criteria: .logicallyComplete)`를 사용합니다. 따라서 Coordinator Core의 최소 지원 버전은 이 API가 제공되는 watchOS 10.0 이상입니다.
+RODI의 최소 지원 버전은 iOS 16.1입니다. iOS 17 이상에서는
+`Transaction.addAnimationCompletion(criteria: .logicallyComplete)`로 전환 완료를 감지하고,
+iOS 16.1~16.x에서는 다음 run loop에서 잠금을 해제하는 fallback을 사용합니다. iOS 17의
+completion callback이 호출되지 않는 경우에는 전환 식별자를 확인하는 제한된 fallback으로
+잠금을 해제합니다.
 
 ## 시스템 뒤로가기
 
 `Coordinator.pathBinding`은 `NavigationStack`이 사용자 뒤로가기 동작으로 변경한 path도 수신합니다.
 
 사용자 스와이프나 시스템 뒤로가기 버튼이 path를 바꾸면 Coordinator는 자동 전환보다 그 결과를 우선합니다. 진행 중인 전환 완료 콜백은 전환 식별자로 무효화되고, 이후 Router 요청은 새 path를 기준으로 처리됩니다.
+
+특정 feature가 시스템 path를 제한해야 하면 생성 시 `acceptsSystemPath` closure를 제공합니다.
+이 closure는 `NavigationStack`이 제안한 system path 변경에만 적용되며, `Router`가 요청한
+정상 전환을 차단하지 않습니다.
 
 `LockIsolated`, `NSLock` 등은 이 정책에 사용하지 않습니다. Coordinator path는 MainActor가 이미 직렬화하며, lock은 SwiftUI의 화면 전환 수명 전체를 보장하지 못합니다.
 
