@@ -42,48 +42,54 @@ struct CourseRegistrationView: View {
         Group {
             switch store.state.route {
             case .tutorial:
-                tutorial
+                CourseRegistrationTutorialView(
+                    state: store.state.tutorial,
+                    closeAction: closeAction,
+                    send: { store.send(.tutorial($0)) }
+                )
             case .registration:
                 CourseRegistrationEntryView(
-                    waypoints: store.state.waypoints,
-                    selectedPlaces: store.state.selectedPlaces,
-                    routePath: store.state.routePath,
-                    isRouteLoading: store.state.isRouteLoading,
-                    map: store.state.map,
+                    waypoints: store.state.mapSelection.waypoints,
+                    selectedPlaces: store.state.mapSelection.selectedPlaces,
+                    routePath: store.state.mapSelection.routePath,
+                    isRouteLoading: store.state.mapSelection.isRouteLoading,
+                    map: store.state.mapSelection.map,
                     closeAction: { store.send(.registrationCloseTapped) },
-                    addWaypointAction: { store.send(.waypointAddTapped) },
-                    removeWaypointAction: { store.send(.waypointRemoveTapped($0)) },
-                    inputTargetTappedAction: { store.send(.inputTargetTapped($0)) },
-                    currentLocationAction: { store.send(.currentLocationTapped) },
+                    addWaypointAction: { store.send(.mapSelection(.waypointAddTapped)) },
+                    removeWaypointAction: { store.send(.mapSelection(.waypointRemoveTapped($0))) },
+                    inputTargetTappedAction: { store.send(.mapSelection(.inputTargetTapped($0))) },
+                    currentLocationAction: { store.send(.mapSelection(.currentLocationTapped)) },
                     mapViewportChangedAction: { center, isUserInitiated in
-                        store.send(.mapViewportChanged(center, isUserInitiated: isUserInitiated))
+                        store.send(.mapSelection(.viewportChanged(center, isUserInitiated: isUserInitiated)))
                     },
-                    routePointTappedAction: { store.send(.routePointTapped($0)) },
-                    placeSelectionAction: { store.send(.placeSelectionTapped) },
-                    selectionCompletionAction: { store.send(.selectionCompletionTapped) },
-                    registrationCompletionAction: { store.send(.registrationCompletionTapped) }
+                    routePointTappedAction: { store.send(.mapSelection(.routePointTapped($0))) },
+                    placeSelectionAction: { store.send(.mapSelection(.placeSelectionTapped)) },
+                    selectionCompletionAction: { store.send(.mapSelection(.selectionCompletionTapped)) },
+                    registrationCompletionAction: { store.send(.mapSelection(.registrationCompletionTapped)) }
                 )
-                .onAppear { store.send(.mapAppeared) }
+                .onAppear { store.send(.mapSelection(.appeared)) }
             case .registrationSearch:
                 CourseRegistrationPlaceSearchView(
                     closeAction: { store.send(.registrationSearchDismissed) },
                     resultSelectedAction: { store.send(.registrationSearchResultSelected($0)) }
                 )
             case .pinEditing:
-                if let pinEdit = store.state.pinEdit {
+                if let pinEdit = store.state.pinEditing {
                     CourseRegistrationPinEditView(
                         pinEdit: pinEdit,
-                        waypoints: store.state.waypoints,
-                        selectedPlaces: store.state.selectedPlaces,
+                        waypoints: store.state.mapSelection.waypoints,
+                        selectedPlaces: store.state.mapSelection.selectedPlaces,
                         mapViewportChangedAction: { center, isUserInitiated in
-                            store.send(.mapViewportChanged(center, isUserInitiated: isUserInitiated))
+                            store.send(.pinEditing(.viewportChanged(center, isUserInitiated: isUserInitiated)))
                         },
-                        currentLocationAction: { store.send(.currentLocationTapped) },
-                        addressTappedAction: { store.send(.pinEditAddressTapped) },
-                        selectionAction: { store.send(.pinEditSelectionTapped) },
-                        retryAction: { store.send(.pinEditRetryTapped) },
-                        completionAction: { store.send(.pinEditCompletionTapped) },
-                        backAction: { store.send(.pinEditBackTapped) }
+                        currentLocationAction: { store.send(.pinEditing(.currentLocationTapped)) },
+                        addressTappedAction: { store.send(.pinEditing(.addressTapped)) },
+                        selectionAction: { store.send(.pinEditing(.selectionTapped)) },
+                        retryAction: { store.send(.pinEditing(.retryTapped)) },
+                        completionAction: { points in
+                            store.send(.pinEditing(.completionTapped(points)))
+                        },
+                        backAction: { store.send(.pinEditing(.backTapped)) }
                     )
                 }
             case .pinEditSearch:
@@ -93,21 +99,8 @@ struct CourseRegistrationView: View {
                 )
             case .details:
                 CourseRegistrationDetailsView(
-                    loadState: store.state.detailsLoadState,
-                    draft: store.state.detailsDraft,
-                    isSubmitting: store.state.isSubmittingCourse,
-                    alertToast: store.state.alertToast,
-                    isDiscardConfirmationPresented: store.state.isDetailsDiscardConfirmationPresented,
-                    categoryAction: { store.send(.detailsCategoryTapped($0)) },
-                    practiceTypeAction: { store.send(.detailsPracticeTypeTapped($0)) },
-                    cautionChangedAction: { store.send(.detailsCautionChanged($0)) },
-                    descriptionChangedAction: { store.send(.detailsDescriptionChanged($0)) },
-                    retryAction: { store.send(.registrationFormRetryTapped) },
-                    backAction: { store.send(.detailsBackTapped) },
-                    discardAction: { store.send(.detailsDiscardConfirmed) },
-                    keepWritingAction: { store.send(.detailsDiscardCancelled) },
-                    submitAction: { store.send(.detailsSubmitTapped) },
-                    alertDismissAction: { store.send(.alertToastDismissed($0)) }
+                    state: store.state.details,
+                    send: { store.send(.details($0)) }
                 )
             }
         }
@@ -135,11 +128,11 @@ struct CourseRegistrationView: View {
             }
         }
         .overlay {
-            if store.state.isSubmittingCourse {
+            if store.state.details.isSubmitting {
                 CourseRegistrationSubmittingDialog()
-            } else if store.state.isCourseRegistrationCompletionPresented {
+            } else if store.state.details.isCompletionPresented {
                 CourseRegistrationCompletionDialog(
-                    confirmAction: { store.send(.courseRegistrationCompletionConfirmed) }
+                    confirmAction: { store.send(.details(.completionConfirmed)) }
                 )
             }
         }
@@ -147,7 +140,6 @@ struct CourseRegistrationView: View {
             guard revision > handledCompletionRevision else { return }
             handledCompletionRevision = revision
             tutorialCompletedAction()
-            store.send(.tutorialCompletionSynced)
         }
         .onChange(of: store.state.courseRegistrationCompletionRevision) { revision in
             guard revision > handledCourseRegistrationCompletionRevision else { return }
@@ -161,39 +153,6 @@ struct CourseRegistrationView: View {
         }
     }
 
-    private var tutorial: some View {
-        VStack(spacing: 0) {
-            CourseRegistrationHeader(title: "코스 등록 방법", closeAction: closeAction)
-            StepProgressView(activeCount: store.state.tutorialPage + 1, totalCount: 3)
-            TabView(
-                selection: Binding(
-                    get: { store.state.tutorialPage },
-                    set: { store.send(.tutorialPageChanged($0)) }
-                )
-            ) {
-                ForEach(CourseTutorialPage.allCases, id: \.rawValue) { page in
-                    CourseTutorialPageView(page: page)
-                        .tag(page.rawValue)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            if page.rawValue < 2 { store.send(.tutorialTapped) }
-                        }
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-
-            if store.state.tutorialPage == 2 {
-                PrimaryBottomButton(
-                    title: store.state.isCompletingTutorial ? "저장 중..." : "완료",
-                    isEnabled: !store.state.isCompletingTutorial,
-                    showsDivider: true,
-                    action: { store.send(.completeTutorialTapped) }
-                )
-                .shadow(color: RodiColor.black.opacity(0.08), radius: 4, x: 0, y: -3)
-            }
-        }
-        .background(RodiColor.white)
-    }
 }
 
 private enum RegistrationDiscardAction {
@@ -364,7 +323,7 @@ private struct CourseRegistrationEntryView: View {
 }
 
 private struct CourseRegistrationPinEditView: View {
-    let pinEdit: CourseRegistrationPinEditState
+    let pinEdit: CourseRegistrationPinEditingReducer.State
     let waypoints: [CourseRegistrationWaypoint]
     let selectedPlaces: [CourseRegistrationInputTarget: CourseRegistrationSelectedPlace]
     let mapViewportChangedAction: (RodiCoordinate, Bool) -> Void
@@ -372,7 +331,7 @@ private struct CourseRegistrationPinEditView: View {
     let addressTappedAction: () -> Void
     let selectionAction: () -> Void
     let retryAction: () -> Void
-    let completionAction: () -> Void
+    let completionAction: ([RodiRouteOverlayPoint]) -> Void
     let backAction: () -> Void
 
     var body: some View {
@@ -420,7 +379,7 @@ private struct CourseRegistrationPinEditView: View {
                     leadingAction: pinEdit.temporaryPlace == nil ? selectionAction : retryAction,
                     trailingTitle: pinEdit.isSaving ? "저장 중..." : "완료",
                     isTrailingEnabled: !pinEdit.isSaving,
-                    trailingAction: completionAction
+                    trailingAction: { completionAction(overlayPoints) }
                 )
             }
             .zIndex(1)
@@ -804,73 +763,5 @@ struct CourseRegistrationHeader: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 56)
-    }
-}
-
-private enum CourseTutorialPage: Int, CaseIterable {
-    case mapPlacement, startSelection, pinEditing
-
-    var title: String {
-        switch self {
-        case .mapPlacement: "지도를 움직여 핀을 놓을 위치를 정하고"
-        case .startSelection: "아래 ‘출발지 선택'을 눌러, 위치를 선택해요"
-        case .pinEditing: "건물이 아닌, 도로 위에 위치 시켜주세요."
-        }
-    }
-
-    var description: String {
-        switch self {
-        case .mapPlacement: "출발지 → 도착지 → 경유지 순서로 코스를 구성해요."
-        case .startSelection: "건물이 아닌, 도로 위에 위치 시켜주세요."
-        case .pinEditing: "‘핀 수정하기' 화면으로 이동할 수 있어요."
-        }
-    }
-}
-
-private struct CourseTutorialPageView: View {
-    let page: CourseTutorialPage
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(page.title)
-                        .rodiTypography(.heading2)
-                        .foregroundStyle(RodiColor.black)
-                    Text(page.description)
-                        .rodiTypography(.body3Medium)
-                        .foregroundStyle(Color(hex: 0xFF966F))
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 24)
-
-                CourseTutorialReferenceImage(page: page)
-                    .padding(.bottom, 24)
-            }
-            .padding(.top, 4)
-        }
-    }
-}
-
-private struct CourseTutorialReferenceImage: View {
-    let page: CourseTutorialPage
-
-    var body: some View {
-        GeometryReader { proxy in
-            Image(imageName)
-                .resizable()
-                .scaledToFit()
-                .frame(width: proxy.size.width * 0.72)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        }
-        .aspectRatio(CGFloat(552) / (CGFloat(1078) * 0.72), contentMode: .fit)
-    }
-
-    private var imageName: String {
-        switch page {
-        case .mapPlacement: "img_course_tutorial_step_1"
-        case .startSelection: "img_course_tutorial_step_2"
-        case .pinEditing: "img_course_tutorial_step_3"
-        }
     }
 }

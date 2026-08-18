@@ -10,25 +10,12 @@ struct CourseRegistrationDetailsView: View {
     @FocusState private var isCautionFocused: Bool
     @FocusState private var isDescriptionFocused: Bool
 
-    let loadState: CourseRegistrationDetailsLoadState
-    let draft: CourseRegistrationDetailsDraft
-    let isSubmitting: Bool
-    let alertToast: CourseRegistrationAlertToastState?
-    let isDiscardConfirmationPresented: Bool
-    let categoryAction: (String) -> Void
-    let practiceTypeAction: (String) -> Void
-    let cautionChangedAction: (String) -> Void
-    let descriptionChangedAction: (String) -> Void
-    let retryAction: () -> Void
-    let backAction: () -> Void
-    let discardAction: () -> Void
-    let keepWritingAction: () -> Void
-    let submitAction: () -> Void
-    let alertDismissAction: (Int) -> Void
+    let state: CourseRegistrationDetailsReducer.State
+    let send: (CourseRegistrationDetailsReducer.Action) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            CourseRegistrationHeader(title: "코스 등록", closeAction: backAction)
+            CourseRegistrationHeader(title: "코스 등록", closeAction: { send(.backTapped) })
                 .background(RodiColor.white)
 
             content
@@ -41,7 +28,7 @@ struct CourseRegistrationDetailsView: View {
         .ignoresSafeArea(.container)
         .ignoresSafeArea([], edges: .bottom)
         .overlay(alignment: .bottom) {
-            if let alertToast {
+            if let alertToast = state.alertToast {
                 CourseRegistrationAlertToast(message: alertToast.message)
                     .padding(.horizontal, 16)
                     .padding(.bottom, isTextFieldFocused ? 24 : 96)
@@ -50,17 +37,17 @@ struct CourseRegistrationDetailsView: View {
                     .task(id: alertToast.revision) {
                         try? await Task.sleep(for: .seconds(3))
                         guard !Task.isCancelled else { return }
-                        alertDismissAction(alertToast.revision)
+                        send(.alertToastDismissed(alertToast.revision))
                     }
             }
         }
         .overlay {
-            if isDiscardConfirmationPresented {
+            if state.isDiscardConfirmationPresented {
                 ReviewDiscardConfirmationView(
                     send: { action in
                         switch action {
-                        case .discard: discardAction()
-                        case .keepWriting: keepWritingAction()
+                        case .discard: send(.discardConfirmed)
+                        case .keepWriting: send(.discardCancelled)
                         }
                     },
                     confirmAction: ConfirmationAction.discard,
@@ -68,12 +55,12 @@ struct CourseRegistrationDetailsView: View {
                 )
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: alertToast)
+        .animation(.easeInOut(duration: 0.2), value: state.alertToast)
     }
 
     @ViewBuilder
     private var content: some View {
-        switch loadState {
+        switch state.loadState {
         case .idle, .loading:
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -82,7 +69,7 @@ struct CourseRegistrationDetailsView: View {
                 Text("등록 정보를 불러오지 못했어요.")
                     .rodiTypography(.body1SemiBold)
                     .foregroundStyle(RodiColor.black)
-                Button(action: retryAction) {
+                Button(action: { send(.retryTapped) }) {
                     Text("다시 시도")
                         .rodiTypography(.buttonMedium)
                         .foregroundStyle(RodiColor.primary)
@@ -109,7 +96,10 @@ struct CourseRegistrationDetailsView: View {
                         practiceTypeSection(form)
                         textInputSection(
                             title: form.sections.caution,
-                            text: Binding(get: { draft.caution }, set: cautionChangedAction),
+                            text: Binding(
+                                get: { state.draft.caution },
+                                set: { send(.cautionChanged($0)) }
+                            ),
                             spec: form.inputs.caution,
                             isFocused: $isCautionFocused,
                             anchor: .cautionKeyboardAnchor,
@@ -117,7 +107,10 @@ struct CourseRegistrationDetailsView: View {
                         )
                         textInputSection(
                             title: form.sections.description,
-                            text: Binding(get: { draft.description }, set: descriptionChangedAction),
+                            text: Binding(
+                                get: { state.draft.description },
+                                set: { send(.descriptionChanged($0)) }
+                            ),
                             spec: form.inputs.description,
                             isFocused: $isDescriptionFocused,
                             anchor: .descriptionKeyboardAnchor,
@@ -143,9 +136,9 @@ struct CourseRegistrationDetailsView: View {
             if !isTextFieldFocused {
                 PrimaryBottomButton(
                     title: "완료",
-                    isEnabled: canSubmit(form) && !isSubmitting,
+                    isEnabled: state.isSubmitEnabled,
                     showsDivider: true,
-                    action: submitAction
+                    action: { send(.submitTapped) }
                 )
             }
         }
@@ -161,8 +154,8 @@ struct CourseRegistrationDetailsView: View {
                 ForEach(form.practiceType.categories) { category in
                     RodiSelectionChip(
                         title: category.label,
-                        isSelected: draft.selectedCategoryCodes.contains(category.code),
-                        action: { categoryAction(category.code) }
+                        isSelected: state.draft.selectedCategoryCodes.contains(category.code),
+                        action: { send(.categoryTapped(category.code)) }
                     )
                 }
             }
@@ -179,8 +172,8 @@ struct CourseRegistrationDetailsView: View {
                 ForEach(selectedPracticeTypes(in: form)) { type in
                     RodiSelectionChip(
                         title: type.label,
-                        isSelected: draft.selectedPracticeTypeCodes.contains(type.code),
-                        action: { practiceTypeAction(type.code) }
+                        isSelected: state.draft.selectedPracticeTypeCodes.contains(type.code),
+                        action: { send(.practiceTypeTapped(type.code)) }
                     )
                 }
             }
@@ -239,21 +232,10 @@ struct CourseRegistrationDetailsView: View {
     private func selectedPracticeTypes(in form: CourseRegistrationForm) -> [CourseRegistrationPracticeType] {
         guard let defaultCategory = form.practiceType.categories.first else { return [] }
         let additionallySelectedCategories = form.practiceType.categories.filter {
-            $0.code != defaultCategory.code && draft.selectedCategoryCodes.contains($0.code)
+            $0.code != defaultCategory.code && state.draft.selectedCategoryCodes.contains($0.code)
         }
         return ([defaultCategory] + additionallySelectedCategories)
             .flatMap(\.practiceTypes)
-    }
-
-    private func canSubmit(_ form: CourseRegistrationForm) -> Bool {
-        guard !draft.selectedCategoryCodes.isEmpty, !draft.selectedPracticeTypeCodes.isEmpty else { return false }
-        return inputIsPresent(form.inputs.caution, draft.caution)
-            && inputIsPresent(form.inputs.description, draft.description)
-            && draft.description.trimmingCharacters(in: .whitespacesAndNewlines).count >= 10
-    }
-
-    private func inputIsPresent(_ spec: CourseRegistrationTextInputSpec, _ text: String) -> Bool {
-        !spec.required || !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var isTextFieldFocused: Bool {
