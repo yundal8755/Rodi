@@ -43,13 +43,24 @@ struct CourseDetailBottomSheetReducer: Reducer {
     private let placeRepository: PlaceRepository
     private let practiceMeasurementStore: PracticeMeasurementStoring
     private let hasActiveSession: () -> Bool
+    private let directionsService: KakaoDirectionsService
     private let reviewsReducer: CourseReviewReducer
     private let onDelegate: (Delegate) -> Void
 
-    init(placeRepository: PlaceRepository, memberRepository: MemberRepository, practiceRepository: PracticeRepository, reviewRepository: ReviewRepository, practiceMeasurementStore: PracticeMeasurementStoring, hasActiveSession: @escaping () -> Bool, onDelegate: @escaping (Delegate) -> Void = { _ in }) {
+    init(
+        placeRepository: PlaceRepository,
+        memberRepository: MemberRepository,
+        practiceRepository: PracticeRepository,
+        reviewRepository: ReviewRepository,
+        practiceMeasurementStore: PracticeMeasurementStoring,
+        hasActiveSession: @escaping () -> Bool,
+        directionsService: KakaoDirectionsService = .init(),
+        onDelegate: @escaping (Delegate) -> Void = { _ in }
+    ) {
         self.placeRepository = placeRepository
         self.practiceMeasurementStore = practiceMeasurementStore
         self.hasActiveSession = hasActiveSession
+        self.directionsService = directionsService
         self.onDelegate = onDelegate
         reviewsReducer = .init(repository: reviewRepository, memberRepository: memberRepository, hasActiveSession: hasActiveSession)
     }
@@ -153,8 +164,9 @@ private extension CourseDetailBottomSheetReducer {
         let points = item.routeOverlayPoints
         guard points.count >= 2 else { state.routeOverlay = nil; state.routeStatusMessage = "경로 좌표가 아직 준비되지 않았어요."; return .cancel(id: BottomSheetEffectID.routeLoading) }
         state.routeOverlay = .init(courseID: item.id, points: points, path: points.map(\.coordinate), isRoadRoute: false); state.isRouteLoading = true
+        let directionsService = directionsService
         return .run { send in
-            do { await send(.roadRouteLoaded(courseID: item.id, path: try await KakaoDirectionsService().fetchRoute(points: points))) }
+            do { await send(.roadRouteLoaded(courseID: item.id, path: try await directionsService.fetchRoute(points: points))) }
             catch is CancellationError { }
             catch let error as KakaoDirectionsError { await send(.roadRouteFailed(courseID: item.id, message: error.fallbackMessage)) }
             catch { await send(.roadRouteFailed(courseID: item.id, message: "도로 경로를 불러오지 못해 대체 경로로 표시 중이에요.")) }

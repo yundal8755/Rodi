@@ -87,32 +87,15 @@ private extension CourseDetailExpandedPage {
     }
 
     func allReviewsPage(detail: PlaceDetail) -> some View {
-        ZStack {
-            RodiColor.white
-                .ignoresSafeArea()
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    CourseReviewView(
-                        state: state.reviews,
-                        activeDropdown: $activeReviewDropdown,
-                        send: { send(.reviews($0)) }
-                    )
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 20)
-                .padding(.bottom, 24)
-            }
-            .scrollIndicators(.hidden)
-            .simultaneousGesture(dropdownDismissDragGesture)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            fixedHeader(title: "레벨별 후기")
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            fixedActionBar(detail: detail)
-        }
+        CourseDetailAllReviewsPage(
+            detail: detail,
+            reviewState: state.reviews,
+            activeReviewDropdown: $activeReviewDropdown,
+            sendReviewAction: { send(.reviews($0)) },
+            backAction: { send(.reviews(.backTapped)) },
+            dismissDropdownAction: { activeReviewDropdown = nil },
+            actionBar: { fixedActionBar(detail: detail) }
+        )
     }
 
     func fullWidthDivider(height: CGFloat) -> some View {
