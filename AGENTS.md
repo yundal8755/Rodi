@@ -110,7 +110,9 @@ Figma work uses `Docs/Guides/UI_FIGMA.md`; generated React/Tailwind MUST NOT be 
 ## Git Staging And Push
 
 - MUST when the user requests split staging and push, separate changes into coherent commits by feature or responsibility.
-- MUST use `feat: <한글 명사형>` for each resulting commit message, ending the Korean summary with a noun such as `구현`, `분리`, or `정리`.
+- MUST choose the Conventional Commit type from the actual change: `feat`, `fix`, `hotfix`, `refactor`, or `chore`.
+- MUST use `<type>: <한글 명사형>` for each resulting commit message, ending the Korean summary with a noun such as `구현`, `분리`, or `정리`.
+- MUST use `refactor` for behavior-preserving structural changes and `chore` for documentation, tooling, or repository maintenance.
 - MUST NOT mix unrelated feature, refactoring, and documentation changes in the same commit.
 - MUST inspect the staged diff for each commit and verify its scope before committing or pushing.
 
