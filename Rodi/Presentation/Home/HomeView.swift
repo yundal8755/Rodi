@@ -79,7 +79,15 @@ struct HomeView: View {
         _store = StateObject(wrappedValue: Store(
             state: HomeReducer.State(),
             reducer: HomeReducer(
-                dependencies: dependencies,
+                dependencies: .init(
+                    tokenStore: dependencies.tokenStore,
+                    placeRepository: dependencies.placeRepository,
+                    practiceRepository: dependencies.practiceRepository,
+                    recentSearchRepository: dependencies.recentSearchRepository,
+                    reviewRepository: dependencies.reviewRepository,
+                    memberRepository: dependencies.memberRepository,
+                    practiceMeasurementStore: dependencies.practiceMeasurementStore
+                ),
                 authenticationRequired: onAuthenticationRequired,
                 reviewWritingRequested: onReviewRequested,
                 reviewEditingRequested: onReviewEditRequested

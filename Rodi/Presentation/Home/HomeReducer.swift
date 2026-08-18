@@ -16,6 +16,16 @@ struct HomeReducer: Reducer {
         var presentation = PresentationState()
     }
 
+    struct Dependencies {
+        let tokenStore: TokenStoring
+        let placeRepository: PlaceRepository
+        let practiceRepository: PracticeRepository
+        let recentSearchRepository: RecentSearchRepository
+        let reviewRepository: ReviewRepository
+        let memberRepository: MemberRepository
+        let practiceMeasurementStore: PracticeMeasurementStoring
+    }
+
     struct MapState {
         // MARK: Map lifecycle
         var mapLifecycle: MapLifecycle = .inactive
@@ -124,7 +134,7 @@ struct HomeReducer: Reducer {
     }
 
     init(
-        dependencies: AppDependencies,
+        dependencies: Dependencies,
         authenticationRequired: @escaping () -> Void = {},
         reviewWritingRequested: @escaping (ReviewWriteRequest) -> Void = { _ in },
         reviewEditingRequested: @escaping (Int) -> Void = { _ in }
@@ -134,7 +144,16 @@ struct HomeReducer: Reducer {
             locationService: MapLocationService()
         )
         markerRenderingService = MapMarkerRenderingService()
-        bottomSheetReducer = HomeBottomSheetReducer(dependencies: dependencies)
+        bottomSheetReducer = HomeBottomSheetReducer(
+            dependencies: .init(
+                tokenStore: dependencies.tokenStore,
+                placeRepository: dependencies.placeRepository,
+                practiceRepository: dependencies.practiceRepository,
+                reviewRepository: dependencies.reviewRepository,
+                memberRepository: dependencies.memberRepository,
+                practiceMeasurementStore: dependencies.practiceMeasurementStore
+            )
+        )
         searchReducer = HomeSearchReducer(
             placeRepository: dependencies.placeRepository,
             recentSearchRepository: dependencies.recentSearchRepository

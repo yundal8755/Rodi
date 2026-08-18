@@ -56,7 +56,8 @@ struct MainTabReducer: Reducer {
     }
 }
 
-// MARK: Core Logics
+
+// MARK: - Core Logics
 extension MainTabReducer {
     
     func reduce(_ state: inout State, with action: Action) -> Effect<Action> {

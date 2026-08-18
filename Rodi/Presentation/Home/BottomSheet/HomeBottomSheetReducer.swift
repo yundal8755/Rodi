@@ -21,6 +21,15 @@ struct HomeBottomSheetReducer: Reducer {
         var parkingDetail = ParkingDetailBottomSheetReducer.State()
     }
 
+    struct Dependencies {
+        let tokenStore: TokenStoring
+        let placeRepository: PlaceRepository
+        let practiceRepository: PracticeRepository
+        let reviewRepository: ReviewRepository
+        let memberRepository: MemberRepository
+        let practiceMeasurementStore: PracticeMeasurementStoring
+    }
+
     enum Action {
         case showRecommendList
         case showFilter
@@ -64,9 +73,10 @@ struct HomeBottomSheetReducer: Reducer {
     private let courseDetailReducer: CourseDetailBottomSheetReducer
     private let parkingDetailReducer: ParkingDetailBottomSheetReducer
 
-    init(dependencies: AppDependencies) {
+    init(dependencies: Dependencies) {
+        let tokenStore = dependencies.tokenStore
         let hasActiveSession = {
-            [dependencies.tokenStore.accessToken, dependencies.tokenStore.refreshToken]
+            [tokenStore.accessToken, tokenStore.refreshToken]
                 .contains { $0?.isEmpty == false }
         }
         placeRepository = dependencies.placeRepository
