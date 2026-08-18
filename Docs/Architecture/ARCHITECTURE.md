@@ -36,7 +36,7 @@
 - `RepositoryImpl`은 DTO를 Domain 모델로 변환하는 Mapper와 repository 구현을 담당한다.
 - `Local`은 명시적으로 승인된 로컬 저장 구현만 담당한다.
 - Presentation에 DTO, data source 또는 repository 구현 타입을 노출하지 않는다.
-- 세부 Swagger 계약과 구현 순서는 `Docs/API_SWAGGER.md`를 따른다.
+- 세부 Swagger 계약과 구현 순서는 `Docs/API/API_SWAGGER.md`를 따른다.
 
 ### Domain
 

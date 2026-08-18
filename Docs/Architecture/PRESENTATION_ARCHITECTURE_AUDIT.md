@@ -1,7 +1,7 @@
 # Presentation 아키텍처·폴더링 점검
 
 > 기준일: 2026-08-18
-> 범위: `Rodi/Presentation`의 실제 Swift 코드와 `Docs/ARCHITECTURE.md`
+> 범위: `Rodi/Presentation`의 실제 Swift 코드와 `Docs/Architecture/ARCHITECTURE.md`
 > 목적: 기능 동작을 바꾸지 않고, 이후 기능 추가 시 안전하게 분리할 우선순위와 기준을 관리한다.
 
 ## 현재 인벤토리
@@ -62,16 +62,20 @@
 
 대상: [CourseRegistrationReducer.swift](../Rodi/Presentation/CourseRegistration/CourseRegistrationReducer.swift), [CourseRegistrationView.swift](../Rodi/Presentation/CourseRegistration/CourseRegistrationView.swift)
 
-- Reducer가 1,141줄이며 튜토리얼, 지도 최초 선택, 장소 검색 전환, 핀 수정, 경로 계산, 상세 폼 조회·제출, 이탈 확인, 토스트를 함께 소유한다.
-- View도 877줄이며 튜토리얼, 지도 선택 화면, 핀 수정 화면, 하단바, 입력 행을 한 파일에서 조립한다.
-- 이는 `CourseRegistration`이 실제로 독립 단계 4개 이상을 갖는 flow라는 뜻이다. 현재 root가 모든 Action을 직접 해석해 이후 핀 수정·등록 폼 변경이 서로 영향을 줄 가능성이 크다.
+- 1차로 `Details/CourseRegistrationDetailsReducer`를 분리했다. 폼 GET·입력·검증·POST·이탈 확인·완료 상태는 child가 소유하고, root는 `.details` route와 child delegate만 중재한다.
+- 상세정보 child에는 출발·경유·도착·도로 경로를 불변 컨텍스트로 전달한다. child가 지도 선택 상태를 직접 변경하지 않으며, 등록 완료 확인만 delegate로 root에 전달한다.
+- 2차로 `Tutorial/CourseRegistrationTutorialReducer`를 분리했다. 페이지 전환, 완료 요청, 저장 실패 상태는 child가 소유하고 완료 성공만 delegate로 root에 전달한다.
+- 3차로 `MapSelection/CourseRegistrationMapSelectionReducer`를 분리했다. waypoint·선택 장소·도로 경로·지도 카메라·현재 위치·역지오코딩·초기 경로 요청은 child가 소유하고, root는 검색 route·핀 수정 route·상세정보 route와 child delegate만 중재한다.
+- 4차로 `SubPage/PinEditing/CourseRegistrationPinEditingReducer`를 분리했다. 핀 수정의 임시 장소·현재 위치·주소 조회·다시하기·완료 경로 계산은 child가 소유하고, root는 검색 route와 child delegate를 중재한다.
+- View는 기존 파일에서 핀 수정 화면을 계속 조립하며, child State·Action만 전달한다. 지도 선택과 핀 수정의 실제 UI·카메라·핀 표현은 변경하지 않았다.
+- 다음은 root의 route·delegate 조립 코드와 화면 책임을 검토하되, 실기기에서 PinEditing 핵심 흐름을 확인한 뒤 작은 단위로 진행한다.
 
 권장 구조:
 
 ```text
 CourseRegistration/
   CourseRegistrationReducer.swift      // route·최종 Delegate만 중재
-  Tutorial/                            // TutorialReducer, TutorialPageView
+  Tutorial/                            // TutorialReducer, TutorialView
   MapSelection/                        // MapSelectionReducer, EntryView, SelectionBar
   PinEditing/                          // PinEditReducer, PinEditView
   Details/                             // DetailsReducer, DetailsView
@@ -86,8 +90,9 @@ CourseRegistration/
 
 대상: [PlaceListView.swift](../Rodi/Presentation/Home/BottomSheet/RecommendList/Component/PlaceListView.swift#L266)
 
-- 빈 추천 목록 Component 안에 triple tap 진입, Live Activity picker, 후기 팝업, 등록 코스 preview, 즉시 탈퇴 API·다이얼로그가 약 330줄 포함되어 있다.
-- `#if DEBUG`라 Release 바이너리에는 들어가지 않지만, 제품 empty state가 Debug 테스트의 소유자가 되는 구조다.
+- `DebugFeatureTestPage`와 관련 미리보기·확인 다이얼로그를 `Presentation/Debug/`으로 분리했다.
+- `PlaceListEmptyResultView`에는 `#if DEBUG`의 triple tap 진입과 full-screen presentation만 남겼다.
+- Debug 빌드와 `git diff --check`는 완료했으며, Debug 테스트 화면과 Release 제외 조건의 실기기 확인은 대기 상태다.
 
 권장 조치:
 
@@ -104,8 +109,9 @@ Presentation/Debug/
 
 대상: [HomeReducer.swift](../Rodi/Presentation/Home/HomeReducer.swift#L127), [HomeBottomSheetReducer.swift](../Rodi/Presentation/Home/BottomSheet/HomeBottomSheetReducer.swift#L66)
 
-- 두 reducer가 `AppDependencies` 전체를 받아 내부에서 일부 repository/store를 골라 쓴다.
-- `AppDependencies`는 App composition root로는 적절하지만, feature reducer가 전체 graph를 알면 신규 의존성이 숨겨지고 테스트용 대체 구현을 주입하기 어렵다.
+- 두 reducer는 이제 실제 사용하는 repository, 측정 store, token store만 담은 중첩 `Dependencies`를 받는다.
+- `HomeView`가 App composition root에서 전달받은 의존성으로 feature 의존성을 조립하며, reducer 내부에서는 `AppDependencies`를 직접 참조하지 않는다.
+- Debug 빌드와 `git diff --check`는 완료했으며, 지도·검색·바텀시트의 실기기 흐름 확인은 대기 상태다.
 
 권장 조치: `HomeDependencies`와 `HomeBottomSheetDependencies` 같은 feature 범위 값으로 `PlaceRepository`, `RecentSearchRepository`, `MemberRepository`, `PracticeRepository`, `ReviewRepository`, 필요한 store만 명시적으로 주입한다. `RootView`/`MainTabView`만 AppDependencies를 소유한다.
 
@@ -131,10 +137,10 @@ Presentation/Debug/
 
 | 대상 | 근거 | 최소 분리 단위 |
 | --- | --- | --- |
-| [HomeBottomSheetView.swift](../Rodi/Presentation/Home/BottomSheet/HomeBottomSheetView.swift) (842줄) | sheet chrome, 3개 gesture, 높이 측정 UIKit bridge, destination routing이 한 파일 | `BottomSheetContentHeightObserver`는 Adapter, 각 sheet gesture policy는 전용 helper/Section |
-| [MyPostsView.swift](../Rodi/Presentation/My/SubPage/MyPosts/MyPostsView.swift) (779줄) | 후기/코스 행, empty state, dropdown, 삭제 dialog를 모두 소유 | `MyCourseRow`, `MyPostReviewRow`, empty/retry/dialog를 `Component`로 추출 |
-| [CourseReviewSection.swift](../Rodi/Presentation/Home/BottomSheet/CourseDetail/Section/Review/Component/CourseReviewSection.swift) (694줄) | 요약, 난이도, 목록, 카드, dropdown가 동일 파일 | summary/list/card를 개별 Component로. reducer 책임은 이동하지 않음 |
-| [CourseDetailExpandedPage.swift](../Rodi/Presentation/Home/BottomSheet/CourseDetail/SubPage/CourseDetailExpandedPage.swift) (535줄) | 상세 정보와 전체 후기·menu overlay를 함께 조립 | 상세 정보 Section과 후기 전체보기 SubPage/Component를 분리 |
+| [HomeBottomSheetView.swift](../Rodi/Presentation/Home/BottomSheet/HomeBottomSheetView.swift) (763줄) | sheet chrome, 3개 gesture, destination routing이 한 파일 | 높이 측정 UIKit bridge와 활성 측정 다이얼로그는 분리 완료. 각 sheet gesture policy는 전용 helper/Section으로 추가 검토 |
+| [MyPostsView.swift](../Rodi/Presentation/My/SubPage/MyPosts/MyPostsView.swift) (416줄) | Store·탭·목록 조립·dropdown을 소유 | 코스/후기 행, empty/retry, 삭제 dialog는 `Component`로 분리 완료. 실기기 검증 대기 |
+| [CourseReviewSection.swift](../Rodi/Presentation/Home/BottomSheet/CourseDetail/Section/Review/Component/CourseReviewSection.swift) (233줄) | 요약, 난이도, 목록, 카드, dropdown 분리 후의 섹션 조립 | summary/list/card를 개별 Component로 분리 완료. reducer 책임은 이동하지 않음 |
+| [CourseDetailExpandedPage.swift](../Rodi/Presentation/Home/BottomSheet/CourseDetail/SubPage/CourseDetailExpandedPage.swift) (518줄) | 상세 정보와 전체 후기·menu overlay를 함께 조립 | 전체 후기 화면은 SubPage로 분리 완료. 상세 정보 Section은 별도 검토 |
 
 ### P3 — 기존 화면 크기 접근 재검토
 

@@ -2,7 +2,7 @@
 
 이 문서는 2차 업데이트 범위의 연습 측정, 외부 길안내 복귀, 방문 인증, 후기 팝업을 다룬다.
 동작의 최종 원본은 `Rodi/App/RootReducer.swift`, `Rodi/Presentation/PracticeTracking`,
-`Rodi/Core/Service/PracticeMeasurementStore.swift`다. API 계약은 `Docs/API_SWAGGER.md`를 확인한다.
+`Rodi/Core/Service/PracticeMeasurementStore.swift`다. API 계약은 `Docs/API/API_SWAGGER.md`를 확인한다.
 
 ## 연습 코스 팝업 환경 차이
 

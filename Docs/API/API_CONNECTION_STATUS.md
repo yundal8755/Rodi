@@ -1,4 +1,4 @@
-# API 연결 현황
+# RODI API 연결 현황
 
 > 기준일: 2026-08-18
 > Swagger: `https://api.stillstar.store/v3/api-docs`

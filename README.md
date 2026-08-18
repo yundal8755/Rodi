@@ -45,7 +45,7 @@ Rodi는 운전 연습이 막막한 초보 운전자에게 주변 연습 코스�
 > Rodi는 운전 연습에 참고할 수 있는 코스 정보를 제공하는 서비스이며, 실제 도로 상황과 안전을 보장하지 않습니다. 사용자는 항상 교통 법규와 현장 상황을 우선해야 합니다.
 > 
 
-> 이 README는 공개 서비스 소개와 개발 진입점 안내를 위한 문서입니다. 구현 구조·API 계약·배포 정책의 원본은 각각 `Docs/ARCHITECTURE.md`, `Docs/API_SWAGGER.md`, `Docs/RELEASE.md`와 현재 코드에서 확인합니다.
+> 이 README는 공개 서비스 소개와 개발 진입점 안내를 위한 문서입니다. 구현 구조·API 계약·배포 정책의 원본은 각각 `Docs/Architecture/ARCHITECTURE.md`, `Docs/API/API_SWAGGER.md`, `Docs/Release/RELEASE.md`와 현재 코드에서 확인합니다.
 
 <br/>
 

@@ -32,13 +32,12 @@ If documentation and live code differ, MUST use the live implementation and repa
 
 MUST read `AGENTS.md`, then normally only one task document:
 
-문서·skill·작업 절차의 전체 안내는 `Docs/WORKING_GUIDE.md`를 참고한다. 단, 실제 구현 작업에서는 아래의 주제별 문서를 먼저 선택하고, 안내 문서는 필요할 때만 추가로 읽는다.
+문서·skill·작업 절차의 전체 안내는 `Docs/Guides/WORKING_GUIDE.md`를 참고한다. 단, 실제 구현 작업에서는 아래의 주제별 문서를 먼저 선택하고, 안내 문서는 필요할 때만 추가로 읽는다.
 
-- Foldering, MVI, ownership, refactoring: `Docs/ARCHITECTURE.md`
-- Figma, SwiftUI, UIKit, assets, layout: `Docs/UI_FIGMA.md`
-- Swagger, DTO, API, repository: `Docs/API_SWAGGER.md` 및 `Docs/API_CONNECTION_STATUS.md`
-- Dev/Prod, TestFlight, privacy, analytics: `Docs/RELEASE.md`
-- 2차 업데이트의 연습 측정·재진입·후기 팝업: `Docs/SECOND_UPDATE.md`
+- Foldering, MVI, ownership, refactoring: `Docs/Architecture/ARCHITECTURE.md`
+- Figma, SwiftUI, UIKit, assets, layout: `Docs/Guides/UI_FIGMA.md`
+- Swagger, DTO, API, repository: `Docs/API/API_SWAGGER.md` 및 `Docs/API/API_CONNECTION_STATUS.md`
+- Dev/Prod, TestFlight, privacy, analytics: `Docs/Release/RELEASE.md`
 
 SHOULD load a second document only for a genuinely mixed task. MUST start with `rg` for the target symbol and adjacent implementation instead of reading a whole layer.
 
@@ -54,6 +53,13 @@ SHOULD load a second document only for a genuinely mixed task. MUST start with `
 6. MUST run verification proportional to the change and report what was and was not verified.
 
 MUST NOT create handoff files, nested `AGENTS.md`, temporary TODO documents, or new skills for one-off work. SHOULD add durable documentation only when it reduces repeated decisions across tasks.
+
+## Markdown Documentation Style
+
+- MUST write new Markdown documents in Korean unless the user explicitly requests another language.
+- MUST express normative rules with `MUST`, `MUST NOT`, or `SHOULD`.
+- MUST NOT use those keywords for non-normative background, examples, or historical facts.
+- SHOULD structure durable guidance with clear headings for purpose, scope, and verification when applicable.
 
 ## Final Report Requirements
 
@@ -76,7 +82,7 @@ Rodi/
 
 Use the live filesystem as the source of truth. Xcode uses filesystem-synchronized groups, but verify file moves and build membership after structural changes.
 
-For a non-trivial Presentation feature, keep the feature root as the entry point and organize implementation by responsibility. Put only real responsibilities in `Component`, `SubView`, `SubPage`, `Section`, `Model`, `Service`, or `Adapter`; do not leave a flow root View to accumulate its pages, reusable UI, models, and I/O. Read `Docs/ARCHITECTURE.md` before making foldering decisions.
+For a non-trivial Presentation feature, keep the feature root as the entry point and organize implementation by responsibility. Put only real responsibilities in `Component`, `SubView`, `SubPage`, `Section`, `Model`, `Service`, or `Adapter`; do not leave a flow root View to accumulate its pages, reusable UI, models, and I/O. Read `Docs/Architecture/ARCHITECTURE.md` before making foldering decisions.
 
 ## Skills
 
@@ -95,11 +101,18 @@ Figma URL 또는 `node-id`가 포함된 구현 요청에서는 다음을 따른�
 5. SHOULD also use `figma-swiftui` for SwiftUI or iOS implementation work.
 6. If the required Figma tooling is unavailable, MUST report that limitation before implementation and use the supplied screenshot only as a fallback.
 
-Figma work uses `Docs/UI_FIGMA.md`; generated React/Tailwind MUST NOT be copied literally.
+Figma work uses `Docs/Guides/UI_FIGMA.md`; generated React/Tailwind MUST NOT be copied literally.
 
 ## Touch Targets
 
 - For a selectable row, tile, card, or container, make the entire visible rectangle tappable with `Button` and `contentShape(Rectangle())`; empty space must trigger the same primary action unless it contains a separate control.
+
+## Git Staging And Push
+
+- MUST when the user requests split staging and push, separate changes into coherent commits by feature or responsibility.
+- MUST use `feat: <한글 명사형>` for each resulting commit message, ending the Korean summary with a noun such as `구현`, `분리`, or `정리`.
+- MUST NOT mix unrelated feature, refactoring, and documentation changes in the same commit.
+- MUST inspect the staged diff for each commit and verify its scope before committing or pushing.
 
 ## Verification
 
@@ -109,7 +122,7 @@ After Swift code or project-structure changes, run the Dev Debug build:
 xcodebuild -project /Users/mac/Documents/iOS_projects/SwiftUI/Rodi/Rodi.xcodeproj -scheme "Rodi Dev" -configuration Debug -destination "generic/platform=iOS Simulator" build
 ```
 
-For release, signing, configuration, or environment changes, also verify the `Rodi` Release path described in `Docs/RELEASE.md`. Documentation-only and project-skill-only changes do not require an Xcode build.
+For release, signing, configuration, or environment changes, also verify the `Rodi` Release path described in `Docs/Release/RELEASE.md`. Documentation-only and project-skill-only changes do not require an Xcode build.
 
 The project currently has no test target. Do not claim tests passed. Report static checks, builds, and manual scenarios separately.
 

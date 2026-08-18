@@ -17,7 +17,7 @@ UI 계약의 우선순위는 다음과 같다.
 - 문서와 코드가 다르면 현재 코드를 따르고 같은 작업에서 문서 차이를 바로잡는다.
 - 전체 `Docs`, `Presentation`, asset catalog를 먼저 읽지 않는다. `rg`로 대상 심볼과 인접 구현부터 찾는다.
 - `Docs/Archive`는 과거 UI 조사 요청이 있을 때 필요한 파일만 명시적으로 읽는다.
-- Reducer 구조나 foldering 판단이 작업의 핵심이면 그때만 `Docs/ARCHITECTURE.md`를 추가로 읽는다.
+- Reducer 구조나 foldering 판단이 작업의 핵심이면 그때만 `Docs/Architecture/ARCHITECTURE.md`를 추가로 읽는다.
 
 ## Figma Dev Mode → SwiftUI
 

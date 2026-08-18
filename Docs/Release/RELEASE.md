@@ -1,4 +1,4 @@
-# RODI Release
+# RODI 배포·심사 가이드
 
 이 문서는 Dev/Prod 환경, TestFlight, 관측 SDK, 개인정보 및 App Store 출시 게이트를 다루며, 변동값은 아래 live source에서 확인한다.
 

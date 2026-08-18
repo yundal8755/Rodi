@@ -1,4 +1,4 @@
-# RODI API and Swagger
+# RODI API · Swagger
 
 RODI backend API 작업의 계약과 Data 흐름을 정의한다. 현재 코드는 사실의 원본이고 API 계약은 작업 대상 환경의 Swagger를 원본으로 삼는다.
 
