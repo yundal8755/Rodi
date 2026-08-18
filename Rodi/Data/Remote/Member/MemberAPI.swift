@@ -11,10 +11,12 @@ enum MemberAPI: TargetType {
     case updateDrivingGoal(MemberDrivingGoalUpdateRequestDTO)
     case updatePlaceFilterTags(MemberPlaceFilterTagsUpdateRequestDTO)
     case withdraw
+    case hardWithdraw
     case block(memberID: Int)
     case blockedMembers(query: BlockedMemberQuery)
     case unblock(memberID: Int)
     case submitOnboarding(MemberOnboardingRequestDTO)
+    case completeCourseTutorial
 
     var method: HTTPMethod {
         switch self {
@@ -27,7 +29,7 @@ enum MemberAPI: TargetType {
         case .updatePlaceFilterTags:
             .put
             
-        case .withdraw:
+        case .withdraw, .hardWithdraw:
             .delete
 
         case .block:
@@ -41,6 +43,8 @@ enum MemberAPI: TargetType {
             
         case .submitOnboarding:
             .post
+        case .completeCourseTutorial:
+            .patch
         }
     }
 
@@ -48,6 +52,9 @@ enum MemberAPI: TargetType {
         switch self {
         case .myProfile, .updateDrivingGoal, .withdraw:
             "/api/v1/members/me"
+
+        case .hardWithdraw:
+            "/api/v1/members/me/hard"
 
         case .block(let memberID):
             "/api/v1/members/\(memberID)/block"
@@ -63,6 +70,8 @@ enum MemberAPI: TargetType {
             
         case .submitOnboarding:
             "/api/v1/members/me/onboarding"
+        case .completeCourseTutorial:
+            "/api/v1/members/me/course-tutorial"
         }
     }
 
@@ -80,7 +89,7 @@ enum MemberAPI: TargetType {
 
     var body: Data? {
         switch self {
-        case .myProfile, .withdraw, .block, .blockedMembers, .unblock:
+        case .myProfile, .withdraw, .hardWithdraw, .block, .blockedMembers, .unblock, .completeCourseTutorial:
             nil
             
         case .updateDrivingGoal(let request):
@@ -98,7 +107,7 @@ enum MemberAPI: TargetType {
         switch self {
         case .blockedMembers:
             .url
-        case .myProfile, .updateDrivingGoal, .updatePlaceFilterTags, .withdraw, .block, .unblock, .submitOnboarding:
+        case .myProfile, .updateDrivingGoal, .updatePlaceFilterTags, .withdraw, .hardWithdraw, .block, .unblock, .submitOnboarding, .completeCourseTutorial:
             .json
         }
     }
@@ -109,7 +118,7 @@ enum MemberAPI: TargetType {
         switch self {
         case .myProfile:
             20
-        case .updateDrivingGoal, .updatePlaceFilterTags, .withdraw, .block, .blockedMembers, .unblock, .submitOnboarding:
+        case .updateDrivingGoal, .updatePlaceFilterTags, .withdraw, .hardWithdraw, .block, .blockedMembers, .unblock, .submitOnboarding, .completeCourseTutorial:
             nil
         }
     }

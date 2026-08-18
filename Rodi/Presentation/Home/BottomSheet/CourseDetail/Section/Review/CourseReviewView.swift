@@ -29,6 +29,7 @@ struct CourseReviewView: View {
                 isSummaryLoading: summaryState.isLoading,
                 summaryErrorMessage: summaryState.errorMessage,
                 selectedLevel: state.selectedLevel,
+                profileLevel: reviewProfileLevel,
                 activeDropdown: $activeDropdown,
                 onLoadMore: { send(.nextPageRequested) },
                 onRetry: { send(.retryTapped) }
@@ -43,5 +44,13 @@ struct CourseReviewView: View {
 private extension CourseReviewView {
     var summaryState: CourseReviewReducer.SummaryState {
         state.summaries[state.selectedLevel] ?? .init()
+    }
+
+    var reviewProfileLevel: ReviewLevel {
+        switch state.selectedLevel {
+        case .level(let level): level
+        case .current: summaryState.value?.level ?? .seed
+        case .all: .seed
+        }
     }
 }

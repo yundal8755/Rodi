@@ -213,8 +213,12 @@ extension CourseReviewReducer {
             state.isDeleting = false
             switch result {
             case .success:
+                let shouldDismissAllReviews = shouldDismissAllReviewsAfterDeletion(state: state)
                 state.deleteTargetReviewID = nil
                 state.deleteErrorMessage = nil
+                if shouldDismissAllReviews {
+                    state.route = .preview
+                }
                 return .run { send in
                     await send(.retryTapped)
                     await send(.delegate(.showSnackbar("후기를 삭제했습니다.")))
@@ -296,6 +300,20 @@ private extension CourseReviewReducer {
 
 // MARK: - Effect
 private extension CourseReviewReducer {
+    func shouldDismissAllReviewsAfterDeletion(state: State) -> Bool {
+        guard state.route == .allReviews,
+              let page = state.pages[state.selectedLevel]
+        else {
+            return false
+        }
+
+        if let totalCount = page.totalCount {
+            return totalCount <= 1
+        }
+
+        return page.items.count <= 1 && !page.hasNext
+    }
+
     func loadIfNeeded(state: inout State, force: Bool) -> Effect<Action> {
         guard let placeID = state.placeID else { return .none }
         let level = state.selectedLevel

@@ -23,6 +23,7 @@ final class AppRouter: ObservableObject {
     @Published private(set) var rootRoute: RootRoute
     @Published private(set) var isLoginRequiredPresented = false
     @Published private(set) var homeTabSelectionRequestID = 0
+    @Published private(set) var isCourseTutorialCompleted = false
 
     private let onboardingProgressStore: OnboardingProgressStore
     private var pendingAuthenticationIntent: MainTabIntent?
@@ -40,18 +41,21 @@ final class AppRouter: ObservableObject {
         rootRoute = .launching
     }
 
-    func completeOnboarding() {
+    func completeOnboarding(isCourseTutorialCompleted: Bool = false) {
+        self.isCourseTutorialCompleted = isCourseTutorialCompleted
         homeTabSelectionRequestID += 1
         rootRoute = .mainTabs
     }
 
-    func resolveInitialSession(isOnboarded: Bool) {
+    func resolveInitialSession(isOnboarded: Bool, isCourseTutorialCompleted: Bool) {
         guard !isLoginRequiredPresented else { return }
+        self.isCourseTutorialCompleted = isCourseTutorialCompleted
         rootRoute = isOnboarded ? .mainTabs : .onboarding(.normal)
     }
 
     func resolveInitialUnauthenticatedSession() {
         guard !isLoginRequiredPresented else { return }
+        isCourseTutorialCompleted = false
         rootRoute = .onboarding(.normal)
     }
 
@@ -60,6 +64,7 @@ final class AppRouter: ObservableObject {
         rootRoute = .onboarding(.normal)
         isLoginRequiredPresented = false
         pendingAuthenticationIntent = nil
+        isCourseTutorialCompleted = false
     }
 
     func requireLogin(for intent: MainTabIntent? = nil) {
@@ -87,5 +92,9 @@ final class AppRouter: ObservableObject {
     func consumePendingAuthenticationIntent() -> MainTabIntent? {
         defer { pendingAuthenticationIntent = nil }
         return pendingAuthenticationIntent
+    }
+
+    func markCourseTutorialCompleted() {
+        isCourseTutorialCompleted = true
     }
 }

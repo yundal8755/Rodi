@@ -20,10 +20,13 @@ struct MyView: View {
     let onReviewEditRequested: (Int) -> Void
     let myPracticeRecordsReviewFlowFinishedRequestID: Int
     let myPostsReviewFlowFinishedRequestID: Int
+    let isCourseTutorialCompleted: Bool
+    let onCourseTutorialCompleted: () -> Void
     private let memberRepository: MemberRepository
     private let placeRepository: PlaceRepository
     private let practiceRepository: PracticeRepository
     private let reviewRepository: ReviewRepository
+    private let courseRepository: CourseRepository
     private var router: Router<MyRoute> { coordinator.router }
 
     init(
@@ -37,6 +40,8 @@ struct MyView: View {
         onReviewEditRequested: @escaping (Int) -> Void,
         myPracticeRecordsReviewFlowFinishedRequestID: Int,
         myPostsReviewFlowFinishedRequestID: Int,
+        isCourseTutorialCompleted: Bool,
+        onCourseTutorialCompleted: @escaping () -> Void,
         dependencies: AppDependencies
     ) {
         self.coordinator = coordinator
@@ -49,6 +54,8 @@ struct MyView: View {
         self.onReviewEditRequested = onReviewEditRequested
         self.myPracticeRecordsReviewFlowFinishedRequestID = myPracticeRecordsReviewFlowFinishedRequestID
         self.myPostsReviewFlowFinishedRequestID = myPostsReviewFlowFinishedRequestID
+        self.isCourseTutorialCompleted = isCourseTutorialCompleted
+        self.onCourseTutorialCompleted = onCourseTutorialCompleted
         _store = StateObject(
             wrappedValue: Store(
                 state: MyReducer.State(),
@@ -65,6 +72,7 @@ struct MyView: View {
         placeRepository = dependencies.placeRepository
         practiceRepository = dependencies.practiceRepository
         reviewRepository = dependencies.reviewRepository
+        courseRepository = dependencies.courseRepository
     }
 
     var body: some View {
@@ -91,12 +99,8 @@ struct MyView: View {
                 confirmLevelUp: { store.send(.levelUpDialogConfirmed) }
             )
             .navigationDestination(for: MyRoute.self) { route in
-                    destinationView(for: route)
+                destinationView(for: route)
                     .background(RodiInteractivePopGestureEnabler())
-                    .rodiEdgeSwipeBack(
-                        isTopRoute: coordinator.path.last == route,
-                        router: router
-                    )
             }
         }
         .rodiSnackbar(message: store.state.snackbarMessage)
@@ -164,12 +168,26 @@ private extension MyView {
             MyPostsView(
                 reviewRepository: reviewRepository,
                 practiceRepository: practiceRepository,
+                courseRepository: courseRepository,
                 backAction: { router.pop() },
                 openPracticeRecords: { router.push(.practiceRecords) },
+                openCourseRegistration: { router.push(.courseRegistration) },
                 practiceRecordsRefreshRequested: { store.send(.practiceRecordsAppeared) },
                 reviewFlowFinishedRequestID: myPostsReviewFlowFinishedRequestID,
                 editRequested: onReviewEditRequested
             )
+
+        case .courseRegistration:
+            CourseRegistrationView(
+                isCourseTutorialCompleted: isCourseTutorialCompleted,
+                memberRepository: memberRepository,
+                courseRepository: courseRepository,
+                closeAction: { router.pop() },
+                tutorialCompletedAction: onCourseTutorialCompleted,
+                courseRegistrationCompletedAction: { router.pop() }
+            )
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
             
         case .permissions:
             MyPermissionSettingsView(backAction: { router.pop() })

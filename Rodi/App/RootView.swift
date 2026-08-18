@@ -83,6 +83,13 @@ struct RootView: View {
                 .zIndex(3)
             }
 
+            if let update = store.state.pendingUpdate {
+                RodiMandatoryUpdateDialog {
+                    openURL(update.appStoreURL)
+                }
+                .zIndex(4)
+            }
+
         }
         .rodiSnackbar(message: store.state.reviewSnackbarMessage)
         .background {
@@ -104,8 +111,11 @@ struct RootView: View {
             switch verification {
             case .pending:
                 break
-            case .authenticated(let isOnboarded):
-                appRouter.resolveInitialSession(isOnboarded: isOnboarded)
+            case .authenticated(let isOnboarded, let isCourseTutorialCompleted):
+                appRouter.resolveInitialSession(
+                    isOnboarded: isOnboarded,
+                    isCourseTutorialCompleted: isCourseTutorialCompleted
+                )
             case .unauthenticated:
                 appRouter.resolveInitialUnauthenticatedSession()
             }
@@ -123,18 +133,6 @@ struct RootView: View {
         }
         .onOpenURL { url in
             _ = SocialLoginService.handleOpenURL(url)
-        }
-        .alert("새 버전이 있어요", isPresented: updateAlertBinding) {
-            Button("나중에", role: .cancel) {
-                store.send(.appVersionUpdateDismissed)
-            }
-            Button("업데이트") {
-                guard let appStoreURL = store.state.pendingUpdate?.appStoreURL else { return }
-                store.send(.appVersionUpdateDismissed)
-                openURL(appStoreURL)
-            }
-        } message: {
-            Text("더 안정적인 사용을 위해 최신 버전으로 업데이트할 수 있어요.")
         }
     }
 
@@ -205,6 +203,8 @@ extension RootView {
                 isCourseDetailReviewPresented: store.state.reviewEntrySource == .courseDetail
                     && store.state.review.route != .hidden,
                 sendReview: { store.send(.review($0)) },
+                isCourseTutorialCompleted: appRouter.isCourseTutorialCompleted,
+                onCourseTutorialCompleted: appRouter.markCourseTutorialCompleted,
                 dependencies: dependencies
             )
         }
@@ -213,17 +213,6 @@ extension RootView {
     private func automaticLoginProvider(for context: OnboardingLaunchContext) -> SocialLoginProvider? {
         guard case .automaticLogin(let provider) = context else { return nil }
         return provider
-    }
-
-    private var updateAlertBinding: Binding<Bool> {
-        Binding(
-            get: { store.state.pendingUpdate != nil },
-            set: { isPresented in
-                if !isPresented {
-                    store.send(.appVersionUpdateDismissed)
-                }
-            }
-        )
     }
 
 }

@@ -9,6 +9,7 @@ struct RecommendListBottomSheetView: View {
     let state: RecommendListBottomSheetReducer.State
     let send: (RecommendListBottomSheetReducer.Action) -> Void
     let debugReviewTestAction: () -> Void
+    let debugHardWithdrawAction: @MainActor () async throws -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,6 +22,7 @@ struct RecommendListBottomSheetView: View {
             PlaceListView(
                 items: state.items,
                 isInitialLoading: state.isInitialLoading,
+                isAwaitingRegionViewport: state.isAwaitingRegionViewport,
                 isNextPageLoading: state.isNextPageLoading,
                 errorMessage: state.errorMessage,
                 hasNextPage: state.hasNext,
@@ -28,7 +30,8 @@ struct RecommendListBottomSheetView: View {
                 selectAction: { send(.select($0)) },
                 reloadAction: { send(.reloadCurrentViewport(origin: nil)) },
                 loadNextPageAction: { send(.loadNextPage) },
-                debugReviewTestAction: debugReviewTestAction
+                debugReviewTestAction: debugReviewTestAction,
+                debugHardWithdrawAction: debugHardWithdrawAction
             )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

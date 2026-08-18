@@ -30,6 +30,7 @@ struct RodiInteractivePopGestureEnabler: UIViewControllerRepresentable {
 
 final class RodiPopGestureHostingViewController: UIViewController {
     private var isPopGestureEnabled: Bool
+    private weak var configuredNavigationController: UINavigationController?
 
     init(isEnabled: Bool) {
         isPopGestureEnabled = isEnabled
@@ -52,72 +53,39 @@ final class RodiPopGestureHostingViewController: UIViewController {
     }
 
     func update(isEnabled: Bool) {
-        guard isPopGestureEnabled != isEnabled else {
-            applyInteractivePopGesturePolicy()
-            return
-        }
         isPopGestureEnabled = isEnabled
         applyInteractivePopGesturePolicy()
     }
 
     func restoreInteractivePopGesture() {
-        navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+        configuredNavigationController?.interactivePopGestureRecognizer?.isEnabled = true
     }
 
     private func applyInteractivePopGesturePolicy() {
         DispatchQueue.main.async { [weak self] in
-            guard let self,
-                  let navigationController,
-                  navigationController.viewControllers.count > 1,
+            guard let self else { return }
+            guard let navigationController = self.nearestNavigationController(),
                   let gestureRecognizer = navigationController.interactivePopGestureRecognizer
-            else {
-                return
-            }
+            else { return }
 
-            gestureRecognizer.isEnabled = isPopGestureEnabled
-            if isPopGestureEnabled {
+            self.configuredNavigationController = navigationController
+            gestureRecognizer.isEnabled = self.isPopGestureEnabled
+            // SwiftUI가 navigation bar를 숨긴 화면에서도 native interactive-pop의
+            // 진행률 기반 전환을 유지하도록 시스템 기본 delegate 제약을 해제합니다.
+            if self.isPopGestureEnabled {
                 gestureRecognizer.delegate = nil
             }
         }
     }
-}
 
-private struct RodiEdgeSwipeBackModifier<Destination: Route>: ViewModifier {
-    let isEnabled: Bool
-    let isTopRoute: Bool
-    let router: Router<Destination>
-
-    func body(content: Content) -> some View {
-        content.simultaneousGesture(
-            DragGesture(minimumDistance: 12)
-                .onEnded { value in
-                    guard isEnabled,
-                          value.startLocation.x <= 24,
-                          value.translation.width >= 80,
-                          abs(value.translation.height) <= 80,
-                          isTopRoute
-                    else {
-                        return
-                    }
-
-                    router.pop()
-                }
-        )
-    }
-}
-
-extension View {
-    func rodiEdgeSwipeBack<Destination: Route>(
-        isEnabled: Bool = true,
-        isTopRoute: Bool,
-        router: Router<Destination>
-    ) -> some View {
-        modifier(
-            RodiEdgeSwipeBackModifier(
-                isEnabled: isEnabled,
-                isTopRoute: isTopRoute,
-                router: router
-            )
-        )
+    private func nearestNavigationController() -> UINavigationController? {
+        var current: UIViewController? = self
+        while let viewController = current {
+            if let navigationController = viewController as? UINavigationController {
+                return navigationController
+            }
+            current = viewController.parent
+        }
+        return nil
     }
 }

@@ -84,9 +84,11 @@ extension ReviewWritingReducer {
         switch action {
         case .start(let request):
             state = .init(page: .first, mode: .create, target: request, requestID: state.requestID + 1)
+            RodiAnalytics.track(.reviewWritingOpened(mode: "create"))
 
         case .editStarted(let reviewID):
             state = .init(page: .loading, mode: .edit(reviewID: reviewID), requestID: state.requestID + 1)
+            RodiAnalytics.track(.reviewWritingOpened(mode: "edit"))
             return detailEffect(reviewID: reviewID, flowID: state.flowID, requestID: state.requestID)
 
         case .detailLoaded(let result, let flowID, let requestID):
@@ -167,6 +169,12 @@ extension ReviewWritingReducer {
             }
             state.isSubmitting = true
             state.requestID += 1
+            RodiAnalytics.track(
+                .reviewSubmitted(
+                    mode: state.mode.analyticsName,
+                    hasContent: !state.draft.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                )
+            )
             return submitEffect(
                 mode: state.mode,
                 placeID: target.placeID,
@@ -187,7 +195,9 @@ extension ReviewWritingReducer {
             switch result {
             case .success:
                 state.isCompletionPresented = true
+                RodiAnalytics.track(.reviewCompleted(mode: state.mode.analyticsName))
             case .failure(let message):
+                RodiAnalytics.track(.reviewSubmissionFailed(mode: state.mode.analyticsName))
                 return .send(.delegate(.showSnackbar(message)))
             }
 
@@ -220,6 +230,15 @@ extension ReviewWritingReducer {
         }
 
         return .none
+    }
+}
+
+private extension ReviewWritingReducer.State.Mode {
+    var analyticsName: String {
+        switch self {
+        case .create: "create"
+        case .edit: "edit"
+        }
     }
 }
 

@@ -13,8 +13,11 @@ final class MapLocationService: NSObject {
     private var continuation: CheckedContinuation<Result, Never>?
     private var headingContinuation: AsyncStream<Double>.Continuation?
     private var locationRequestTimeoutTask: Task<Void, Never>?
+    private var locationRequestStartedAt: Date?
 
     private let locationRequestTimeoutNanoseconds: UInt64 = 20_000_000_000
+    private let maximumLocationAge: TimeInterval = 5
+    private let maximumHorizontalAccuracy: CLLocationAccuracy = 100
 
     override init() {
         super.init()
@@ -32,6 +35,7 @@ final class MapLocationService: NSObject {
 
         return await withCheckedContinuation { continuation in
             self.continuation = continuation
+            locationRequestStartedAt = Date()
             requestLocation(for: locationManager.authorizationStatus)
         }
     }
@@ -54,6 +58,8 @@ final class MapLocationService: NSObject {
         switch status {
         case .authorizedAlways, .authorizedWhenInUse:
             scheduleLocationRequestTimeout()
+            locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+            locationManager.startUpdatingLocation()
             locationManager.requestLocation()
         case .notDetermined:
             locationManager.requestWhenInUseAuthorization()
@@ -88,7 +94,9 @@ final class MapLocationService: NSObject {
         self.continuation = nil
         locationRequestTimeoutTask?.cancel()
         locationRequestTimeoutTask = nil
+        locationRequestStartedAt = nil
         locationManager.stopUpdatingLocation()
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
         continuation.resume(returning: result)
     }
 
@@ -124,18 +132,25 @@ extension MapLocationService: CLLocationManagerDelegate {
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
-        let coordinate = RodiCoordinate(
-            latitude: location.coordinate.latitude,
-            longitude: location.coordinate.longitude
-        )
         Task { @MainActor [weak self] in
-            guard let self else { return }
+            guard let self,
+                  isFreshAndAccurate(location)
+            else {
+                return
+            }
+            let coordinate = RodiCoordinate(
+                latitude: location.coordinate.latitude,
+                longitude: location.coordinate.longitude
+            )
             finish(isSupported(coordinate) ? .resolved(coordinate) : .unavailable)
         }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         Task { @MainActor [weak self] in
+            if (error as? CLError)?.code == .locationUnknown {
+                return
+            }
             self?.finish(.unavailable)
         }
     }
@@ -149,5 +164,17 @@ extension MapLocationService: CLLocationManagerDelegate {
         Task { @MainActor [weak self] in
             self?.headingContinuation?.yield(degrees)
         }
+    }
+
+    @MainActor
+    private func isFreshAndAccurate(_ location: CLLocation) -> Bool {
+        guard location.horizontalAccuracy >= 0,
+              location.horizontalAccuracy <= maximumHorizontalAccuracy,
+              let locationRequestStartedAt
+        else {
+            return false
+        }
+
+        return location.timestamp.timeIntervalSince(locationRequestStartedAt) >= -maximumLocationAge
     }
 }

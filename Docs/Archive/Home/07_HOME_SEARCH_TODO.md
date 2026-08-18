@@ -1,5 +1,7 @@
 # Home Search TODO
 
+> **Historical record — MUST NOT be used as current implementation or policy.** Read only when investigating the Home Search migration; use live code, `AGENTS.md`, and active Docs for current work.
+
 Home Search는 `HomeReducer`가 child State와 Action을 합성하고, `HomeSearchReducer`가 최종 Delegate로 지도·바텀싯·공통 presentation에 필요한 결과만 부모로 전달한다.
 
 ## Legacy Search 이식

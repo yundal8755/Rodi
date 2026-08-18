@@ -130,6 +130,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
         locationManager.startUpdatingLocation()
         startLiveActivity(for: session)
         syncLiveActivity(session, force: true)
+        RodiAnalytics.track(.practiceTrackingStarted(placeType: session.analyticsPlaceType))
         RodiLogger.info("Practice tracking started sessionID=\(session.id.uuidString), courseID=\(course.id)")
         return .started
     }
@@ -169,6 +170,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
         endBackgroundActivitySession()
         didStartSessionInCurrentProcess = false
         lastInCourseLocation = nil
+        RodiAnalytics.track(.practiceTrackingCancelled(placeType: session.analyticsPlaceType))
         RodiLogger.info("Practice tracking cancelled sessionID=\(session.id.uuidString)")
     }
 
@@ -213,6 +215,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
             session.furthestMatchedRouteDistanceMeters = match.distanceAlongRouteMeters
             session.courseProgress = 0
             applyLocationPolicy(for: session)
+            RodiAnalytics.track(.practiceTrackingEnteredCourse(placeType: session.analyticsPlaceType))
             RodiLogger.info(
                 "Practice tracking entered course sessionID=\(session.id.uuidString), progress=\(match.progress)"
             )
@@ -229,6 +232,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
             markCertificationPending(for: session)
             self.session = session
             sessionStore.save(session)
+            RodiAnalytics.track(.practiceTrackingCompleted(placeType: session.analyticsPlaceType))
             return
         }
 
@@ -246,6 +250,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
             RodiLogger.info(
                 "Practice tracking completed sessionID=\(session.id.uuidString), progress=\(session.courseProgress), seconds=\(session.activeDrivingSeconds)"
             )
+            RodiAnalytics.track(.practiceTrackingCompleted(placeType: session.analyticsPlaceType))
         }
 
         self.session = session
@@ -393,6 +398,12 @@ final class PracticeTrackingService: NSObject, ObservableObject {
     private func cancelLiveActivity() {
         guard #available(iOS 16.1, *) else { return }
         PracticeLiveActivityService.shared.cancel()
+    }
+}
+
+private extension PracticeTrackingSession {
+    var analyticsPlaceType: String {
+        placeType?.rawValue ?? "unknown"
     }
 }
 

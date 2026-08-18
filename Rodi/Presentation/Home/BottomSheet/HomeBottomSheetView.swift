@@ -16,6 +16,7 @@ struct HomeBottomSheetView: View {
     @State private var settlementTask: Task<Void, Never>?
     @State private var panTranslation: CGFloat = 0
     @State private var courseDetailHeight: CGFloat = 180
+    @State private var parkingDetailHeight: CGFloat = 180
     @State private var activeCourseMeasurementDialog: ActiveCourseMeasurementDialogConfiguration?
 
     let state: HomeBottomSheetReducer.State
@@ -25,11 +26,14 @@ struct HomeBottomSheetView: View {
     let memberRepository: MemberRepository
     let bottomTabBarHeight: CGFloat
     let onCourseDetailHeightChanged: (CGFloat) -> Void
+    let onParkingDetailHeightChanged: (CGFloat) -> Void
     let onVisibleHeightChanged: (CGFloat, Bool) -> Void
     let onCourseExpansionSettled: () -> Void
     let requestLocationPermission: () -> Void
     let presentLiveActivityPermissionDialog: (LiveActivityPermissionDialogConfiguration) -> Void
+    let presentRouteGuidanceDialog: (RouteGuidanceAppDialogConfiguration) -> Void
     let debugReviewTestAction: () -> Void
+    let debugHardWithdrawAction: @MainActor () async throws -> Void
 
     init(
         state: HomeBottomSheetReducer.State,
@@ -39,11 +43,14 @@ struct HomeBottomSheetView: View {
         memberRepository: MemberRepository,
         bottomTabBarHeight: CGFloat,
         onCourseDetailHeightChanged: @escaping (CGFloat) -> Void = { _ in },
+        onParkingDetailHeightChanged: @escaping (CGFloat) -> Void = { _ in },
         onVisibleHeightChanged: @escaping (CGFloat, Bool) -> Void = { _, _ in },
         onCourseExpansionSettled: @escaping () -> Void = {},
         requestLocationPermission: @escaping () -> Void,
         presentLiveActivityPermissionDialog: @escaping (LiveActivityPermissionDialogConfiguration) -> Void = { _ in },
-        debugReviewTestAction: @escaping () -> Void = {}
+        presentRouteGuidanceDialog: @escaping (RouteGuidanceAppDialogConfiguration) -> Void = { _ in },
+        debugReviewTestAction: @escaping () -> Void = {},
+        debugHardWithdrawAction: @escaping @MainActor () async throws -> Void = {}
     ) {
         self.state = state
         self.send = send
@@ -52,11 +59,14 @@ struct HomeBottomSheetView: View {
         self.memberRepository = memberRepository
         self.bottomTabBarHeight = bottomTabBarHeight
         self.onCourseDetailHeightChanged = onCourseDetailHeightChanged
+        self.onParkingDetailHeightChanged = onParkingDetailHeightChanged
         self.onVisibleHeightChanged = onVisibleHeightChanged
         self.onCourseExpansionSettled = onCourseExpansionSettled
         self.requestLocationPermission = requestLocationPermission
         self.presentLiveActivityPermissionDialog = presentLiveActivityPermissionDialog
+        self.presentRouteGuidanceDialog = presentRouteGuidanceDialog
         self.debugReviewTestAction = debugReviewTestAction
+        self.debugHardWithdrawAction = debugHardWithdrawAction
     }
 
     var body: some View {
@@ -192,8 +202,10 @@ extension HomeBottomSheetView {
 
     private var fixedSheetHeight: CGFloat {
         switch state.route {
-        case .filter, .parkingDetail:
+        case .filter:
             return mediumHeight
+        case .parkingDetail:
+            return parkingSheetHeight
         case .courseDetail:
             return courseSheetHeight
         case .recommendList:
@@ -237,7 +249,7 @@ extension HomeBottomSheetView {
 
         case .parkingDetail:
             if state.parkingDetail.detail != nil {
-                fixedSheet(height: mediumHeight, dismissThreshold: 48) {
+                fixedSheet(height: parkingSheetHeight, dismissThreshold: 48) {
                     ParkingDetailBottomSheetView(
                         state: state.parkingDetail,
                         send: handleParkingDetailAction,
@@ -248,8 +260,14 @@ extension HomeBottomSheetView {
                         presentActiveMeasurementDialog: { configuration in
                             activeCourseMeasurementDialog = configuration
                         },
-                        presentLiveActivityPermissionDialog: presentLiveActivityPermissionDialog
+                        presentLiveActivityPermissionDialog: presentLiveActivityPermissionDialog,
+                        presentRouteGuidanceDialog: presentRouteGuidanceDialog
                     )
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.bottom, screenSafeAreaInsets.bottom)
+                    .background {
+                        BottomSheetContentHeightObserver(onHeightChanged: updateParkingDetailHeight)
+                    }
                 }
             } else if state.resolvingPlaceID != nil || state.isDetailPresentationPending {
                 recommendationSheet
@@ -274,7 +292,8 @@ extension HomeBottomSheetView {
                         RecommendListBottomSheetView(
                             state: state.recommendList,
                             send: { send(.recommendList($0)) },
-                            debugReviewTestAction: debugReviewTestAction
+                            debugReviewTestAction: debugReviewTestAction,
+                            debugHardWithdrawAction: debugHardWithdrawAction
                         )
                         .padding(.bottom, screenSafeAreaInsets.bottom)
                     }
@@ -291,7 +310,8 @@ extension HomeBottomSheetView {
             RecommendListBottomSheetView(
                 state: state.recommendList,
                 send: { send(.recommendList($0)) },
-                debugReviewTestAction: debugReviewTestAction
+                debugReviewTestAction: debugReviewTestAction,
+                debugHardWithdrawAction: debugHardWithdrawAction
             )
             .padding(.bottom, screenSafeAreaInsets.bottom)
         }
@@ -322,7 +342,8 @@ extension HomeBottomSheetView {
                         presentActiveMeasurementDialog: { configuration in
                             activeCourseMeasurementDialog = configuration
                         },
-                        presentLiveActivityPermissionDialog: presentLiveActivityPermissionDialog
+                        presentLiveActivityPermissionDialog: presentLiveActivityPermissionDialog,
+                        presentRouteGuidanceDialog: presentRouteGuidanceDialog
                     )
                 }
                 .fixedSize(horizontal: false, vertical: true)
@@ -412,13 +433,32 @@ extension HomeBottomSheetView {
         onCourseDetailHeightChanged(height)
     }
 
+    private func updateParkingDetailHeight(_ height: CGFloat) {
+        guard height > 0,
+              abs(parkingDetailHeight - height) > 0.5
+        else {
+            return
+        }
+
+        parkingDetailHeight = height
+        onParkingDetailHeightChanged(parkingSheetHeight)
+    }
+
+    /// 주차장 콘텐츠 높이에는 fixedSheet가 추가하는 indicator 영역이 포함되지 않는다.
+    /// 실제 화면·지도 제어에 사용하는 높이는 둘을 합친 값이어야 한다.
+    private var parkingSheetHeight: CGFloat {
+        parkingDetailHeight + dragHandleHeight
+    }
+
+    private var dragHandleHeight: CGFloat { 24 }
+
     private func dragHandle(
         onChanged: @escaping (CGFloat) -> Void,
         onEnded: @escaping (CGFloat) -> Void
     ) -> some View {
         dragIndicator
             .frame(maxWidth: .infinity)
-            .frame(height: 24, alignment: .top)
+            .frame(height: dragHandleHeight, alignment: .top)
             .contentShape(Rectangle())
             .overlay {
                 BottomSheetPanGestureView(

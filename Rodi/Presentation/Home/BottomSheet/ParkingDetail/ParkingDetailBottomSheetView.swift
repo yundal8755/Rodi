@@ -24,8 +24,8 @@ struct ParkingDetailBottomSheetView: View {
     let requestLocationPermission: () -> Void
     let presentActiveMeasurementDialog: (ActiveCourseMeasurementDialogConfiguration) -> Void
     let presentLiveActivityPermissionDialog: (LiveActivityPermissionDialogConfiguration) -> Void
+    let presentRouteGuidanceDialog: (RouteGuidanceAppDialogConfiguration) -> Void
 
-    @State private var isGuidanceDialogPresented = false
     @State private var settingsRequest: RouteGuidanceRequest?
 
     var body: some View {
@@ -41,13 +41,6 @@ struct ParkingDetailBottomSheetView: View {
                     routeGuidanceAction: requestRouteGuidance
                 )
                 .frame(maxWidth: .infinity, alignment: .top)
-                .confirmationDialog("경로 안내 앱 선택", isPresented: $isGuidanceDialogPresented, titleVisibility: .visible) {
-                    Button("카카오맵으로 보기") { startRouteGuidance(.kakaoMap, detail: detail) }
-                    Button("카카오내비로 안내") { startRouteGuidance(.kakaoNavi, detail: detail) }
-                    Button("취소", role: .cancel) {}
-                } message: {
-                    Text("현재 위치에서 선택한 장소까지 안내해요.")
-                }
             }
         }
         .onChange(of: scenePhase) { phase in
@@ -70,7 +63,15 @@ struct ParkingDetailBottomSheetView: View {
             send(.delegate(.showSnackbar("현재 위치를 확인한 뒤 다시 시도해주세요.")))
             return
         }
-        isGuidanceDialogPresented = true
+        switch RouteGuidanceService.shared.launchOption() {
+        case .open(let app):
+            guard let detail = state.detail else { return }
+            startRouteGuidance(app, detail: detail)
+        case .choose:
+            presentRouteGuidanceDialog(routeGuidanceDialogConfiguration(mode: .choose))
+        case .install:
+            presentRouteGuidanceDialog(routeGuidanceDialogConfiguration(mode: .install))
+        }
     }
 
     private func startRouteGuidance(_ app: RouteGuidanceApp, detail: PlaceDetail) {
@@ -194,5 +195,32 @@ struct ParkingDetailBottomSheetView: View {
     private var areLiveActivitiesEnabled: Bool {
         guard #available(iOS 16.1, *) else { return false }
         return ActivityAuthorizationInfo().areActivitiesEnabled
+    }
+
+    private func openInstallPage(_ app: RouteGuidanceApp) {
+        Task {
+            let result = await RouteGuidanceService.shared.openInstallPage(for: app)
+            if let message = result.userMessage {
+                send(.delegate(.showSnackbar(message)))
+            }
+        }
+    }
+
+    private func routeGuidanceDialogConfiguration(
+        mode: RouteGuidanceAppDialog.Mode
+    ) -> RouteGuidanceAppDialogConfiguration {
+        .init(
+            mode: mode,
+            onceAction: { app in
+                guard let detail = state.detail else { return }
+                startRouteGuidance(app, detail: detail)
+            },
+            alwaysAction: { app in
+                RouteGuidanceService.shared.savePreferredApp(app)
+                guard let detail = state.detail else { return }
+                startRouteGuidance(app, detail: detail)
+            },
+            installAction: openInstallPage
+        )
     }
 }

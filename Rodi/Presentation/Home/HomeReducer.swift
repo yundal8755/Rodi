@@ -29,6 +29,8 @@ struct HomeReducer: Reducer {
         var cameraRequestID = 0
         var animatedCameraRequestID: Int?
         var cameraFocus: RodiMapCameraFocus = .koreaOverview
+        var pendingRegionViewportReloadOrigin: RodiCoordinate?
+        var pendingRegionCameraRequestID: Int?
         var mapZoomLevel = 6
         var isCurrentLocationButtonActive = false
 
@@ -254,11 +256,23 @@ extension HomeReducer {
                 )
             }
 
-            return .send(.bottomSheet(.recommendList(.viewportChanged(
-                viewport: viewport,
-                center: center,
-                isUserInitiated: isUserInitiated
-            ))))
+            var followUpActions: [Action] = [
+                .bottomSheet(.recommendList(.viewportChanged(
+                    viewport: viewport,
+                    center: center,
+                    isUserInitiated: isUserInitiated
+                )))
+            ]
+
+            if !isUserInitiated,
+               map.pendingRegionCameraRequestID != nil,
+               let origin = map.pendingRegionViewportReloadOrigin {
+                map.pendingRegionCameraRequestID = nil
+                map.pendingRegionViewportReloadOrigin = nil
+                followUpActions.append(.bottomSheet(.recommendList(.reloadAfterRegionViewport(origin: origin))))
+            }
+
+            return actions(followUpActions)
 
         case .markerTapped(let markerID):
             guard let interaction = markerInteractionResolver.resolve(
@@ -335,6 +349,8 @@ extension HomeReducer {
         case .cameraMoveFinished(let requestID):
             guard map.animatedCameraRequestID == requestID else { return .none }
             map.animatedCameraRequestID = nil
+            // Kakao의 camera completion은 viewport 갱신보다 먼저 올 수 있습니다.
+            // 지역 검색 목록은 새 viewport 이벤트에서만 다시 조회합니다.
             return .none
 
         case .currentLocationRequested:
@@ -492,6 +508,9 @@ extension HomeReducer {
         state.presentation.isBottomTabBarVisible = isBottomTabBarVisible
         state.map.isResearchButtonVisible = isResearchButtonVisible
 
+    case .recommendationCollapsed:
+        state.map.selectedSearchResultName = nil
+
     case .requestAuthentication:
         authenticationRequired()
 
@@ -531,6 +550,31 @@ extension HomeReducer {
                     ?? RodiHomeMarkerClusterIndex.Tier(zoomLevel: state.map.mapZoomLevel)
             )
             return .send(.bottomSheet(.resolvePlace(id: id)))
+
+        case let .regionSelected(name, center):
+            state.presentation.isSearchPresented = false
+            state.presentation.searchOrigin = nil
+            state.presentation.isBottomTabBarVisible = true
+            state.search = .init()
+            state.map.selectedSearchResultName = name
+            state.map.routeOverlay = nil
+            state.map.selectedMarkerID = nil
+            state.map.isResearchButtonVisible = false
+            state.map.markers = RodiHomeMarkerClusterIndex.markers(
+                for: state.map.mapItems,
+                tier: state.map.displayedMarkerTier
+                    ?? RodiHomeMarkerClusterIndex.Tier(zoomLevel: state.map.mapZoomLevel)
+            )
+            state.map.cameraTarget = center
+            state.map.cameraFocus = .region
+            state.map.cameraRequestID += 1
+            state.map.animatedCameraRequestID = state.map.cameraRequestID
+            state.map.pendingRegionViewportReloadOrigin = center
+            state.map.pendingRegionCameraRequestID = state.map.cameraRequestID
+            return actions([
+                .bottomSheet(.recommendList(.regionViewportReloadStarted)),
+                .bottomSheet(.recommendList(.present))
+            ])
 
         case .dismissed:
             state.presentation.isSearchPresented = false
@@ -641,6 +685,14 @@ extension HomeReducer {
 // MARK: - Effect
 
 extension HomeReducer {
+
+    private func actions(_ actions: [Action]) -> Effect<Action> {
+        .run { send in
+            for action in actions {
+                await send(action)
+            }
+        }
+    }
 
     private func updateMapVisibility(
         wasMapInteractive: Bool, state: inout MapState) -> Effect<Action> {

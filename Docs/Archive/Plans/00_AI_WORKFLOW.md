@@ -1,5 +1,7 @@
 # RODI AI Workflow
 
+> **Superseded historical plan — MUST NOT be used as active AI guidance.** The current sources are `AGENTS.md`, `Docs/WORKING_GUIDE.md`, and the task-specific active document.
+
 This document is the main operating guide for AI agents working in this repository. It also replaces project-local skill and handoff files for day-to-day work.
 
 ## How To Start
@@ -28,7 +30,7 @@ This document is the main operating guide for AI agents working in this reposito
 | Transient feedback | `Rodi/Core/Feedback/RodiSnackbar.swift` | Use the shared snackbar for transient success, failure, and informational feedback. |
 | Network interruption UI | `Rodi/Core/Service/NetworkUnavailableOverlayPresenter.swift` | Owns the app-window overlay that blocks every presented screen while the network is unavailable. |
 | Networking primitives | `Rodi/Core/Network/` | Generic network layer foundation, not yet full server integration. |
-| Fastlane/release | `fastlane/`, `Docs/03_RELEASE_APPSTORE_LEGAL.md` | Local Mac fastlane only; no GitHub Actions. |
+| Fastlane/release | `fastlane/`, `Docs/RELEASE.md` | Local Mac fastlane only; no GitHub Actions. |
 
 ## Code Map
 
@@ -233,7 +235,7 @@ If a concurrency warning depends on project settings, inspect the `.pbxproj` set
 
 Use when changing versioning, TestFlight, App Store metadata, legal links, privacy, or permissions.
 
-1. Read `Docs/03_RELEASE_APPSTORE_LEGAL.md`.
+1. Read `Docs/RELEASE.md`.
 2. Verify `Config/Info.plist`.
 3. Verify secrets are local-only.
 4. Verify Privacy Label and app behavior alignment.

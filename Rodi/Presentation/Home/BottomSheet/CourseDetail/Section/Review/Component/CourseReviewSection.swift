@@ -74,7 +74,7 @@ private extension CourseReviewSection {
                         .overlay(RodiColor.primaryMinus100)
                         .padding(.vertical, 12)
                 }
-                CourseReviewCard(review: review) {
+                CourseReviewCard(review: review, level: profileLevel) {
                     activeDropdown = .reviewMenu(review.id)
                 }
                 fullWidthDivider(height: 1)
@@ -107,6 +107,14 @@ private extension CourseReviewSection {
 
     var hasAnyReviews: Bool {
         (summary?.totalReviewCount ?? 0) > 0
+    }
+
+    var profileLevel: ReviewLevel {
+        switch selectedLevel {
+        case .level(let level): level
+        case .current: summary?.level ?? .seed
+        case .all: .seed
+        }
     }
 
     var emptyReviewCallToAction: some View {
@@ -204,6 +212,7 @@ struct CourseReviewAllContent: View {
     let isSummaryLoading: Bool
     let summaryErrorMessage: String?
     let selectedLevel: ReviewLevelFilter
+    let profileLevel: ReviewLevel
     @Binding var activeDropdown: CourseReviewDropdown?
     let onLoadMore: () -> Void
     let onRetry: () -> Void
@@ -335,7 +344,7 @@ private extension CourseReviewAllContent {
     var reviewList: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(page?.items ?? []) { review in
-                CourseReviewCard(review: review) {
+                CourseReviewCard(review: review, level: profileLevel) {
                     activeDropdown = .reviewMenu(review.id)
                 }
                     .onAppear {
@@ -533,22 +542,29 @@ struct CourseReviewSummaryView: View {
 
 struct CourseReviewCard: View {
     let review: PlaceReviewItem
+    let level: ReviewLevel
     let onMoreTapped: (() -> Void)?
 
     init(
         review: PlaceReviewItem,
+        level: ReviewLevel,
         onMoreTapped: (() -> Void)? = nil
     ) {
         self.review = review
+        self.level = level
         self.onMoreTapped = onMoreTapped
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Circle()
-                    .fill(RodiColor.primary100)
-                    .frame(width: 30, height: 30)
+                RodiLevelProfileImage(
+                    level: level,
+                    size: 30,
+                    backgroundColor: RodiColor.primary100,
+                    cornerRadius: 15,
+                    imageOffsetY: 0
+                )
 
                 Text(review.displayNickname)
                     .rodiTypography(.body1SemiBold)

@@ -1,5 +1,7 @@
 # Home BottomSheet TODO
 
+> **Historical record — MUST NOT be used as current implementation or policy.** Read only when investigating the Home BottomSheet migration; use live code, `AGENTS.md`, and active Docs for current work.
+
 Home의 BottomSheet는 `HomeReducer`가 child State와 Action을 합성하고, `HomeBottomSheetReducer`가 하위 delegate를 최종 Delegate로 평탄화해 Map·presentation 교차 흐름을 중재한다.
 
 ## Legacy BottomSheet 복귀

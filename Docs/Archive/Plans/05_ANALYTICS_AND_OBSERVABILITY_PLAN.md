@@ -1,5 +1,7 @@
 # RODI Analytics And Observability Plan
 
+> **Historical plan — MUST NOT be used as the current analytics or privacy policy.** Use `Rodi/Core/Analytics/RodiAnalytics.swift`, `Docs/RELEASE.md`, and live SDK configuration for active work.
+
 이 문서는 Firebase Analytics(GA4), Firebase Crashlytics, Firebase Performance
 Monitoring, Microsoft Clarity의 설계·구현 기준이다. Firebase 초기화와 P0 이벤트
 전송은 적용되어 있으며, 신규 이벤트도 이 문서의 개인정보 경계를 따라 추가한다.

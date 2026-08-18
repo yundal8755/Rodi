@@ -5,6 +5,11 @@
 
 import Foundation
 
+struct CourseTutorialCompletion: Equatable {
+    /// 서버가 기록한 완료 시각 원문이다. 시간대 표기가 없는 응답도 허용하므로 변환 없이 보존한다.
+    let completedAt: String?
+}
+
 /// 마이페이지에 표시하는 로그인 회원의 요약 정보입니다.
 struct MemberProfile: Equatable {
     let nickname: String

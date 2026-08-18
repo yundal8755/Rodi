@@ -1,5 +1,7 @@
 # Home Course Route TODO
 
+> **Historical record — MUST NOT be used as current implementation or policy.** Read only when investigating the Home course-route migration; use live code, `AGENTS.md`, and active Docs for current work.
+
 Home에서 코스 marker를 선택했을 때 지도 경로를 단계적으로 복원한다. 각 단계는 구현과 `Rodi Dev` 빌드가 통과한 뒤에만 완료 처리한다.
 
 ## Phase 1 — 코스 marker부터 지도 경로 overlay

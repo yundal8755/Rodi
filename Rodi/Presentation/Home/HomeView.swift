@@ -15,11 +15,13 @@ struct HomeView: View {
     @StateObject private var store: StoreOf<HomeReducer>
     @ObservedObject private var snackbarService: SnackbarService
     @State private var courseBottomSheetHeight: CGFloat = 180
+    @State private var parkingBottomSheetHeight: CGFloat = 180
     @State private var transientBottomSheetHeight: CGFloat?
     @State private var handledListPresentationRequestID = 0
     @State private var handledPlaceSelectionRequestID = 0
     @State private var handledReviewFlowFinishedRequestID = 0
     @State private var liveActivityPermissionDialog: LiveActivityPermissionDialogConfiguration?
+    @State private var routeGuidanceDialog: RouteGuidanceAppDialogConfiguration?
 
     private let isHomeTabSelected: Bool
     private let onAuthenticationRequired: () -> Void
@@ -88,7 +90,10 @@ struct HomeView: View {
     var body: some View {
         core
             .overlay {
-                liveActivityPermissionDialogOverlay
+                ZStack {
+                    liveActivityPermissionDialogOverlay
+                    routeGuidanceDialogOverlay
+                }
             }
             .onAppear {
                 store.send(.map(.tabSelectionChanged(isHomeTabSelected)))
@@ -147,6 +152,9 @@ struct HomeView: View {
                         },
                         presentLiveActivityPermissionDialog: { configuration in
                             liveActivityPermissionDialog = configuration
+                        },
+                        presentRouteGuidanceDialog: { configuration in
+                            routeGuidanceDialog = configuration
                         }
                     )
                     .interactiveDismissDisabled()
@@ -160,6 +168,7 @@ struct HomeView: View {
                     }
 
                     liveActivityPermissionDialogOverlay
+                    routeGuidanceDialogOverlay
                 }
                 .rodiSnackbar(message: snackbarService.message)
             }
@@ -230,6 +239,31 @@ extension HomeView {
         }
     }
 
+    @ViewBuilder
+    private var routeGuidanceDialogOverlay: some View {
+        if let configuration = routeGuidanceDialog {
+            RouteGuidanceAppDialog(
+                mode: configuration.mode,
+                closeAction: {
+                    routeGuidanceDialog = nil
+                },
+                onceAction: { app in
+                    routeGuidanceDialog = nil
+                    configuration.onceAction(app)
+                },
+                alwaysAction: { app in
+                    routeGuidanceDialog = nil
+                    configuration.alwaysAction(app)
+                },
+                installAction: { app in
+                    routeGuidanceDialog = nil
+                    configuration.installAction(app)
+                }
+            )
+            .zIndex(11)
+        }
+    }
+
     private var core: some View {
         ZStack(alignment: .bottom) {
             if store.state.map.mapLifecycle != .inactive {
@@ -261,6 +295,10 @@ extension HomeView {
                         guard abs(courseBottomSheetHeight - height) > 0.5 else { return }
                         courseBottomSheetHeight = height
                     },
+                    onParkingDetailHeightChanged: { height in
+                        guard abs(parkingBottomSheetHeight - height) > 0.5 else { return }
+                        parkingBottomSheetHeight = height
+                    },
                     onVisibleHeightChanged: { height, isTransient in
                         transientBottomSheetHeight = isTransient ? height : nil
                     },
@@ -271,7 +309,13 @@ extension HomeView {
                     presentLiveActivityPermissionDialog: { configuration in
                         liveActivityPermissionDialog = configuration
                     },
-                    debugReviewTestAction: onReviewTestRequested
+                    presentRouteGuidanceDialog: { configuration in
+                        routeGuidanceDialog = configuration
+                    },
+                    debugReviewTestAction: onReviewTestRequested,
+                    debugHardWithdrawAction: {
+                        try await dependencies.memberRepository.hardWithdraw()
+                    }
                 )
             } else {
                 initialMapLoadingView
@@ -417,6 +461,9 @@ extension HomeView {
                 case .markerTap(let markerID):
                     store.send(.map(.markerTapped(markerID)))
 
+                case .routePointTap:
+                    break
+
                 case let .viewportChanged(center, zoomLevel, viewport, isUserInitiated):
                     store.send(.map(.viewportChanged(
                         center: center,
@@ -440,7 +487,7 @@ extension HomeView {
         ZStack {
             VStack(spacing: 16) {
                 if store.state.map.mapLifecycle == .ready,
-                   store.state.map.isMapInteractive {
+                   store.state.map.isHomeTabSelected {
                     HomeSearchEntryButton(
                         selectedSearchResultName: store.state.map.selectedSearchResultName,
                         action: { store.send(.map(.searchEntryTapped)) },
@@ -455,7 +502,7 @@ extension HomeView {
                 }
 
                 if store.state.map.isResearchButtonVisible,
-                   store.state.map.isMapInteractive {
+                   store.state.map.isHomeTabSelected {
                     HomeResearchButton(
                         isLoading: store.state.bottomSheet.recommendList.isManualResearchLoading
                     ) {
@@ -497,7 +544,7 @@ extension HomeView {
             // 화면 상단 45% / 하단 55% 위치에 포커스 대상을 둔다.
             return screenHeight * 0.1
 
-        case .normal, .koreaOverview, .cluster:
+        case .normal, .koreaOverview, .region, .cluster:
             break
         }
 
@@ -522,7 +569,7 @@ extension HomeView {
 
     private var shouldShowCurrentLocationButton: Bool {
         guard store.state.map.mapLifecycle == .ready,
-              store.state.map.isMapInteractive
+              store.state.map.isHomeTabSelected
         else {
             return false
         }
@@ -619,8 +666,12 @@ extension HomeView {
             case .expanded:
                 return screenHeight
             }
-        case .filter, .parkingDetail:
+        case .filter:
             return screenHeight * 0.5
+
+        case .parkingDetail:
+            return parkingBottomSheetHeight
+
         case .courseDetail:
             return store.state.bottomSheet.courseDetail.presentation == .sheet
                 ? courseBottomSheetHeight

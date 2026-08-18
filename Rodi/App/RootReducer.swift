@@ -13,7 +13,7 @@ struct RootReducer: Reducer {
     struct State {
         enum InitialSessionVerification: Equatable {
             case pending
-            case authenticated(isOnboarded: Bool)
+            case authenticated(isOnboarded: Bool, isCourseTutorialCompleted: Bool)
             case unauthenticated
         }
 
@@ -41,7 +41,6 @@ struct RootReducer: Reducer {
         case activeMeasurementContinued
         case activeMeasurementEnded
         case appVersionCheckCompleted(AppVersionUpdate?)
-        case appVersionUpdateDismissed
         case sessionRestoreCompleted(SessionRestoreResult)
         case debugReviewTestRequested
         case reviewRequested(ReviewFlowRequest)
@@ -154,19 +153,16 @@ extension RootReducer {
         case .appVersionCheckCompleted(let update):
             state.pendingUpdate = update
 
-        case .appVersionUpdateDismissed:
-            state.pendingUpdate = nil
-
         case .sessionRestoreCompleted(let result):
             state.isRestoringSession = false
 
             switch result {
             case .refreshed(let token):
-                if state.initialSessionVerification == .pending {
-                    state.initialSessionVerification = .authenticated(
-                        isOnboarded: token.isOnboarded
-                    )
-                }
+                // 토큰 재발급 응답도 서버의 튜토리얼 완료 상태를 세션에 반영한다.
+                state.initialSessionVerification = .authenticated(
+                    isOnboarded: token.isOnboarded,
+                    isCourseTutorialCompleted: token.isCourseTutorialCompleted
+                )
                 RodiLogger.info("Auth session restored")
             case .invalidated:
                 authRepository.clearSession()
@@ -291,7 +287,7 @@ extension RootReducer {
         state.hasCheckedAppVersion = true
 
         return .run { send in
-            let update = await AppVersionUpdateChecker.checkForOptionalUpdate()
+            let update = await AppVersionUpdateChecker.checkForRequiredUpdate()
             await send(.appVersionCheckCompleted(update))
         }
         .cancelTask(id: EffectID.appVersionCheck)
