@@ -3,7 +3,6 @@
 //  Rodi
 //
 
-import FirebaseAnalytics
 import Foundation
 
 /// Firebase Analytics에 전달할 Rodi의 제품 행동 이벤트다.
@@ -211,7 +210,7 @@ enum RodiAnalytics {
     }
 
     static func track(_ event: Event) {
-        Analytics.logEvent(event.name, parameters: event.parameters)
+        FirebaseAnalyticsTracker.track(name: event.name, parameters: event.parameters)
     }
 
     static func setUserContext(
@@ -220,10 +219,13 @@ enum RodiAnalytics {
         memberLevel: String?,
         hasDrivingGoal: Bool?
     ) {
-        Analytics.setUserProperty(userMode, forName: "user_mode")
-        Analytics.setUserProperty(loginProvider, forName: "login_provider")
-        Analytics.setUserProperty(memberLevel, forName: "member_level")
-        Analytics.setUserProperty(hasDrivingGoal.map { $0 ? "true" : "false" }, forName: "has_driving_goal")
+        FirebaseAnalyticsTracker.setUserProperty(userMode, forName: "user_mode")
+        FirebaseAnalyticsTracker.setUserProperty(loginProvider, forName: "login_provider")
+        FirebaseAnalyticsTracker.setUserProperty(memberLevel, forName: "member_level")
+        FirebaseAnalyticsTracker.setUserProperty(
+            hasDrivingGoal.map { $0 ? "true" : "false" },
+            forName: "has_driving_goal"
+        )
     }
 
     static func lengthBucket(for value: String) -> String {
