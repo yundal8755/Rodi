@@ -13,7 +13,6 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @StateObject private var store: StoreOf<RootReducer>
-    @StateObject private var appRouter: AppRouter
     @StateObject private var networkConnectionMonitor: NetworkConnectionMonitor
     @StateObject private var networkUnavailableOverlayPresenter: NetworkUnavailableOverlayPresenter
     private let dependencies: AppDependencies
@@ -22,9 +21,15 @@ struct RootView: View {
         let onboardingProgressStore = OnboardingProgressStore()
         let dependencies = AppDependencies()
         self.dependencies = dependencies
-        PracticeTrackingService.shared.configure(
+        let reviewFlowReducer = ReviewFlowFactory.make(
+            placeRepository: dependencies.placeRepository,
             practiceRepository: dependencies.practiceRepository,
-            measurementStore: dependencies.practiceMeasurementStore
+            reviewRepository: dependencies.reviewRepository
+        )
+        let practiceTrackingReducer = PracticeTrackingReducer(
+            practiceRepository: dependencies.practiceRepository,
+            measurementStore: dependencies.practiceMeasurementStore,
+            trackingService: dependencies.practiceTrackingService
         )
 
         _store = StateObject(
@@ -33,17 +38,10 @@ struct RootView: View {
                 reducer: RootReducer(
                     tokenStore: dependencies.tokenStore,
                     authRepository: dependencies.authRepository,
-                    placeRepository: dependencies.placeRepository,
-                    practiceRepository: dependencies.practiceRepository,
-                    reviewRepository: dependencies.reviewRepository,
-                    practiceMeasurementStore: dependencies.practiceMeasurementStore
+                    onboardingProgressStore: onboardingProgressStore,
+                    reviewFlowReducer: reviewFlowReducer,
+                    practiceTrackingReducer: practiceTrackingReducer
                 )
-            )
-        )
-        _appRouter = StateObject(
-            wrappedValue: AppRouter(
-                onboardingProgressStore: onboardingProgressStore,
-                tokenStore: dependencies.tokenStore
             )
         )
         let networkConnectionMonitor = NetworkConnectionMonitor()
@@ -57,31 +55,28 @@ struct RootView: View {
         ZStack {
             rootContent
 
-            if appRouter.isLoginRequiredPresented {
+            if store.state.isLoginRequiredPresented {
                 LoginRequiredDialog(
-                    dismissAction: appRouter.dismissLoginRequired,
-                    kakaoLoginAction: { appRouter.startLogin(provider: .kakao) },
-                    appleLoginAction: { appRouter.startLogin(provider: .apple) }
+                    dismissAction: { store.send(.loginRequiredDismissed) },
+                    kakaoLoginAction: { store.send(.socialLoginRequested(.kakao)) },
+                    appleLoginAction: { store.send(.socialLoginRequested(.apple)) }
                 )
                 .transition(.opacity)
             }
 
-            if store.state.reviewEntrySource != .courseDetail {
-                ReviewFlowView(
-                    state: store.state.review,
-                    send: { store.send(.review($0)) }
-                )
+            ReviewFlowHostView(
+                state: store.state.reviewFlow,
+                send: { store.send(.reviewFlow($0)) }
+            )
                 .zIndex(2)
-            }
 
-            if let measurement = store.state.activeMeasurementContinuation {
-                ActivePracticeMeasurementDialog(
-                    courseName: measurement.placeName,
-                    continueAction: { store.send(.activeMeasurementContinued) },
-                    endAction: { store.send(.activeMeasurementEnded) }
-                )
+            PracticeTrackingView(
+                state: store.state.practiceTracking,
+                canPresentReviewPrompt: store.state.reviewFlow.review.route == .hidden,
+                service: dependencies.practiceTrackingService,
+                send: { store.send(.practiceTracking($0)) }
+            )
                 .zIndex(3)
-            }
 
             if let update = store.state.pendingUpdate {
                 RodiMandatoryUpdateDialog {
@@ -91,39 +86,22 @@ struct RootView: View {
             }
 
         }
-        .rodiSnackbar(message: store.state.reviewSnackbarMessage)
+        .rodiSnackbar(message: store.state.reviewFlow.snackbarMessage)
         .background {
-            NetworkUnavailableOverlayHost(presenter: networkUnavailableOverlayPresenter)
-                .frame(width: 0, height: 0)
-                .allowsHitTesting(false)
+            ZStack {
+                NetworkUnavailableOverlayHost(presenter: networkUnavailableOverlayPresenter)
+                    .frame(width: 0, height: 0)
+                    .allowsHitTesting(false)
+            }
         }
         .environmentObject(networkConnectionMonitor)
-        .onReceive(PracticeTrackingService.shared.$certificationRevision) { _ in
-            guard scenePhase == .active else { return }
-            store.send(.sceneBecameActive)
-        }
         .onAppear {
             store.send(.launched)
-            PracticeTrackingService.shared.restoreIfNeeded()
             store.send(.sceneBecameActive)
-        }
-        .onChange(of: store.state.initialSessionVerification) { verification in
-            switch verification {
-            case .pending:
-                break
-            case .authenticated(let isOnboarded, let isCourseTutorialCompleted):
-                appRouter.resolveInitialSession(
-                    isOnboarded: isOnboarded,
-                    isCourseTutorialCompleted: isCourseTutorialCompleted
-                )
-            case .unauthenticated:
-                appRouter.resolveInitialUnauthenticatedSession()
-            }
         }
         .onChange(of: scenePhase) { phase in
             switch phase {
             case .active:
-                PracticeTrackingService.shared.restoreIfNeeded()
                 store.send(.sceneBecameActive)
             case .inactive, .background:
                 store.send(.sceneBecameInactive)
@@ -138,73 +116,54 @@ struct RootView: View {
 
 }
 
-private struct ActivePracticeMeasurementDialog: View {
-    let courseName: String
-    let continueAction: () -> Void
-    let endAction: () -> Void
 
-    var body: some View {
-        RodiModalBackground {
-            RodiDialog {
-                VStack(spacing: 0) {
-                    Text("‘\(courseName)’")
-                        .rodiTypography(.body1SemiBold)
-                        .foregroundStyle(RodiColor.primary)
-                    Text("아직 코스를 연습 중이신가요?")
-                        .rodiTypography(.body1SemiBold)
-                        .foregroundStyle(RodiColor.black)
-                        .padding(.top, 4)
-                    Text("코스 주행을 이어서 측정할까요?")
-                        .rodiTypography(.caption1Medium)
-                        .foregroundStyle(RodiColor.black)
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 24)
-                    HStack(spacing: 8) {
-                        ReviewDialogButton(title: "측정 종료", isPrimary: false, action: endAction)
-                        ReviewDialogButton(title: "계속 측정", isPrimary: true, action: continueAction)
-                    }
-                    .padding(.top, 24)
-                }
-            } closeAction: {
-                continueAction()
-            }
-        }
-    }
-}
-
-// MARK: Layout
+// MARK: - Layout
 extension RootView {
 
     @ViewBuilder
     private var rootContent: some View {
-        switch appRouter.rootRoute {
+        switch store.state.rootRoute {
         case .launching:
-            RootLaunchLoadingView()
+            ZStack {
+                RodiColor.white
+                    .ignoresSafeArea()
+                ProgressView()
+                    .tint(RodiColor.primary)
+                    .accessibilityLabel("세션 확인 중")
+            }
+
         case .onboarding(let context):
             OnboardingRouterView(
-                onComplete: appRouter.completeOnboarding,
+                onComplete: { store.send(.onboardingCompleted(isCourseTutorialCompleted: $0)) },
                 automaticLoginProvider: automaticLoginProvider(for: context),
-                automaticLoginRequestConsumed: appRouter.consumeAutomaticLogin,
+                automaticLoginRequestConsumed: { store.send(.automaticLoginRequestConsumed) },
                 dependencies: dependencies
             )
+
         case .mainTabs:
             MainTabView(
-                consumePendingAuthenticationIntent: appRouter.consumePendingAuthenticationIntent,
-                requestLogin: appRouter.requireLogin,
-                onLogoutCompleted: appRouter.completeLogout,
-                homeTabSelectionRequestID: appRouter.homeTabSelectionRequestID,
-                homeReviewFlowFinishedRequestID: store.state.homeReviewFlowFinishedRequestID,
-                myPracticeRecordsReviewFlowFinishedRequestID: store.state.myPracticeRecordsReviewFlowFinishedRequestID,
-                myPostsReviewFlowFinishedRequestID: store.state.myPostsReviewFlowFinishedRequestID,
-                onReviewTestRequested: { store.send(.debugReviewTestRequested) },
-                onReviewRequested: { store.send(.reviewRequested($0)) },
-                reviewState: store.state.review,
-                reviewSnackbarMessage: store.state.reviewSnackbarMessage,
-                isCourseDetailReviewPresented: store.state.reviewEntrySource == .courseDetail
-                    && store.state.review.route != .hidden,
-                sendReview: { store.send(.review($0)) },
-                isCourseTutorialCompleted: appRouter.isCourseTutorialCompleted,
-                onCourseTutorialCompleted: appRouter.markCourseTutorialCompleted,
+                consumePendingAuthenticationIntent: {
+                    let intent = store.state.pendingAuthenticationIntent
+                    store.send(.pendingAuthenticationIntentConsumed)
+                    return intent
+                },
+                requestLogin: { store.send(.loginRequired($0)) },
+                onLogoutCompleted: { store.send(.logoutCompleted) },
+                homeTabSelectionRequestID: store.state.homeTabSelectionRequestID,
+                homeReviewFlowFinishedRequestID: store.state.reviewFlow.homeFinishedRequestID,
+                myPracticeRecordsReviewFlowFinishedRequestID: store.state.reviewFlow.myPracticeRecordsFinishedRequestID,
+                myPostsReviewFlowFinishedRequestID: store.state.reviewFlow.myPostsFinishedRequestID,
+                onReviewTestRequested: { store.send(.reviewFlow(.debugPromptRequested)) },
+                onReviewRequested: { store.send(.reviewFlow(.requested($0))) },
+                courseDetailReviewPresentation: .init(
+                    state: store.state.reviewFlow.review,
+                    snackbarMessage: store.state.reviewFlow.snackbarMessage,
+                    isPresented: store.state.reviewFlow.entrySource == .courseDetail
+                        && store.state.reviewFlow.review.route != .hidden,
+                    send: { store.send(.reviewFlow(.review($0))) }
+                ),
+                isCourseTutorialCompleted: store.state.isCourseTutorialCompleted,
+                onCourseTutorialCompleted: { store.send(.courseTutorialCompleted) },
                 dependencies: dependencies
             )
         }
@@ -216,6 +175,7 @@ extension RootView {
     }
 
 }
+
 
 private struct RootLaunchLoadingView: View {
     var body: some View {
