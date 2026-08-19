@@ -1,6 +1,6 @@
 //
 //  PracticeLiveActivityAttributes.swift
-//  Rodi
+//  RodiPracticeLiveActivity
 //
 
 import ActivityKit
