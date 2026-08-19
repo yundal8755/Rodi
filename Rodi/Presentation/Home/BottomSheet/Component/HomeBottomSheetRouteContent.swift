@@ -56,7 +56,10 @@ private extension HomeBottomSheetRouteContent {
                         state: state.recommendList,
                         send: sendRecommendation,
                         debugReviewTestAction: debugReviewTestAction,
-                        debugHardWithdrawAction: debugHardWithdrawAction
+                        debugHardWithdrawAction: debugHardWithdrawAction,
+                        titlePanEnabled: !isSettling,
+                        titlePanChanged: recommendationPanChanged,
+                        titlePanEnded: recommendationPanEnded
                     )
                     .padding(.bottom, screenSafeAreaInsets.bottom)
                 }
@@ -77,7 +80,10 @@ private extension HomeBottomSheetRouteContent {
                             state: state.recommendList,
                             send: sendRecommendation,
                             debugReviewTestAction: debugReviewTestAction,
-                            debugHardWithdrawAction: debugHardWithdrawAction
+                            debugHardWithdrawAction: debugHardWithdrawAction,
+                            titlePanEnabled: !isSettling,
+                            titlePanChanged: recommendationPanChanged,
+                            titlePanEnded: recommendationPanEnded
                         )
                         .padding(.bottom, screenSafeAreaInsets.bottom)
                     }
@@ -107,7 +113,10 @@ private extension HomeBottomSheetRouteContent {
                         send: sendCourseDetail,
                         userLocation: userLocation,
                         hasLocationPermission: hasLocationPermission,
-                        requestLocationPermission: requestLocationPermission
+                        requestLocationPermission: requestLocationPermission,
+                        titlePanEnabled: !isSettling,
+                        titlePanChanged: coursePanChanged,
+                        titlePanEnded: coursePanEnded
                     )
                 }
                 .fixedSize(horizontal: false, vertical: true)
@@ -133,7 +142,10 @@ private extension HomeBottomSheetRouteContent {
                     send: sendParkingDetail,
                     userLocation: userLocation,
                     hasLocationPermission: hasLocationPermission,
-                    requestLocationPermission: requestLocationPermission
+                    requestLocationPermission: requestLocationPermission,
+                    titlePanEnabled: !isSettling,
+                    titlePanChanged: detailPanChanged,
+                    titlePanEnded: { detailPanEnded($0, 48) }
                 )
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.bottom, screenSafeAreaInsets.bottom)

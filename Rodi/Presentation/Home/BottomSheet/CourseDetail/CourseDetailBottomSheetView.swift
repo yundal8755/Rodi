@@ -11,6 +11,9 @@ struct CourseDetailBottomSheetView: View {
     let userLocation: RodiCoordinate?
     let hasLocationPermission: Bool
     let requestLocationPermission: () -> Void
+    let titlePanEnabled: Bool
+    let titlePanChanged: (CGFloat) -> Void
+    let titlePanEnded: (CGFloat) -> Void
     let renderingMode: RenderingMode
     let expandedBackAction: () -> Void
 
@@ -20,6 +23,9 @@ struct CourseDetailBottomSheetView: View {
         userLocation: RodiCoordinate?,
         hasLocationPermission: Bool,
         requestLocationPermission: @escaping () -> Void,
+        titlePanEnabled: Bool = false,
+        titlePanChanged: @escaping (CGFloat) -> Void = { _ in },
+        titlePanEnded: @escaping (CGFloat) -> Void = { _ in },
         renderingMode: RenderingMode = .sheet,
         expandedBackAction: @escaping () -> Void = {}
     ) {
@@ -28,6 +34,9 @@ struct CourseDetailBottomSheetView: View {
         self.userLocation = userLocation
         self.hasLocationPermission = hasLocationPermission
         self.requestLocationPermission = requestLocationPermission
+        self.titlePanEnabled = titlePanEnabled
+        self.titlePanChanged = titlePanChanged
+        self.titlePanEnded = titlePanEnded
         self.renderingMode = renderingMode
         self.expandedBackAction = expandedBackAction
     }
@@ -60,6 +69,9 @@ private extension CourseDetailBottomSheetView {
                 isBookmarkUpdating: state.isBookmarkUpdating,
                 isRouteLoading: state.isRouteLoading || state.isRouteGuidanceLaunching,
                 isRouteGuidanceEnabled: detail.course?.waypoints.count ?? 0 >= 2,
+                titlePanEnabled: titlePanEnabled,
+                titlePanChanged: titlePanChanged,
+                titlePanEnded: titlePanEnded,
                 closeAction: { send(.dismiss) },
                 bookmarkAction: { send(.toggleBookmark) },
                 routeGuidanceAction: requestRouteGuidance

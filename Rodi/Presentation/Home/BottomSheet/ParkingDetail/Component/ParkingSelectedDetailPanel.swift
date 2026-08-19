@@ -17,6 +17,9 @@ struct ParkingSelectedDetailPanel: View {
     let isBookmarkUpdating: Bool
     let isRouteLoading: Bool
     let isRouteGuidanceEnabled: Bool
+    let titlePanEnabled: Bool
+    let titlePanChanged: (CGFloat) -> Void
+    let titlePanEnded: (CGFloat) -> Void
     let closeAction: () -> Void
     let bookmarkAction: () -> Void
     let routeGuidanceAction: () -> Void
@@ -90,14 +93,22 @@ struct ParkingSelectedDetailPanel: View {
 
     private var header: some View {
         HStack(spacing: 4) {
-            Text(detail.name)
-                .rodiTypography(.headline1)
-                .foregroundStyle(RodiColor.black)
-                .lineLimit(1)
+            HomeBottomSheetTitleDragRegion(
+                isEnabled: titlePanEnabled,
+                onChanged: titlePanChanged,
+                onEnded: titlePanEnded
+            ) {
+                HStack(spacing: 4) {
+                    Text(detail.name)
+                        .rodiTypography(.headline1)
+                        .foregroundStyle(RodiColor.black)
+                        .lineLimit(1)
 
-            bookmarkCountLabel
+                    bookmarkCountLabel
 
-            Spacer(minLength: 0)
+                    Spacer(minLength: 0)
+                }
+            }
 
             Button(action: closeAction) {
                 Image("ic_close")

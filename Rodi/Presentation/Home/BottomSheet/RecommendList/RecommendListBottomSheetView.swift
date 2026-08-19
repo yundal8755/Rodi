@@ -10,6 +10,27 @@ struct RecommendListBottomSheetView: View {
     let send: (RecommendListBottomSheetReducer.Action) -> Void
     let debugReviewTestAction: () -> Void
     let debugHardWithdrawAction: @MainActor @Sendable () async throws -> Void
+    let titlePanEnabled: Bool
+    let titlePanChanged: (CGFloat) -> Void
+    let titlePanEnded: (CGFloat) -> Void
+
+    init(
+        state: RecommendListBottomSheetReducer.State,
+        send: @escaping (RecommendListBottomSheetReducer.Action) -> Void,
+        debugReviewTestAction: @escaping () -> Void,
+        debugHardWithdrawAction: @escaping @MainActor @Sendable () async throws -> Void,
+        titlePanEnabled: Bool = false,
+        titlePanChanged: @escaping (CGFloat) -> Void = { _ in },
+        titlePanEnded: @escaping (CGFloat) -> Void = { _ in }
+    ) {
+        self.state = state
+        self.send = send
+        self.debugReviewTestAction = debugReviewTestAction
+        self.debugHardWithdrawAction = debugHardWithdrawAction
+        self.titlePanEnabled = titlePanEnabled
+        self.titlePanChanged = titlePanChanged
+        self.titlePanEnded = titlePanEnded
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,9 +64,15 @@ struct RecommendListBottomSheetView: View {
 
     private var standardHeader: some View {
         HStack {
-            Text("추천 목록")
-                .rodiTypography(.headline1)
-            Spacer()
+            HomeBottomSheetTitleDragRegion(
+                isEnabled: titlePanEnabled,
+                onChanged: titlePanChanged,
+                onEnded: titlePanEnded
+            ) {
+                Text("추천 목록")
+                    .rodiTypography(.headline1)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            }
             filterButton
         }
         .padding(.horizontal, 16)
@@ -54,8 +81,16 @@ struct RecommendListBottomSheetView: View {
 
     private var expandedHeader: some View {
         ZStack {
-            Text("추천 목록")
-                .rodiTypography(.headline1)
+            HomeBottomSheetTitleDragRegion(
+                isEnabled: titlePanEnabled,
+                onChanged: titlePanChanged,
+                onEnded: titlePanEnded
+            ) {
+                Text("추천 목록")
+                    .rodiTypography(.headline1)
+                    .padding(.horizontal, 24)
+                    .frame(height: 56)
+            }
 
             HStack {
                 Button(action: { send(.present) }) {

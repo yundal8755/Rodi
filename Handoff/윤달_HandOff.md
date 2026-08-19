@@ -7,6 +7,8 @@
 
 ## Recent Work
 
+- 추천 목록·코스·주차장 바텀시트의 제목 비버튼 영역에도 기존 vertical pan을 연결했다. indicator의 기존 동작은 보존하고 filter·닫기·북마크 버튼은 drag overlay에서 제외했다.
+- 코스 등록 상세 입력의 카테고리 비선택 초기 상태, 카테고리 선택 뒤 연습유형 노출, 카테고리·연습유형·한줄 소개의 primary 필수 표기를 정적 확인했다.
 - 코스 등록 상세 입력에서 연습유형 카테고리·연습유형·한줄 소개에 primary 필수 표기를 추가했다. 카테고리를 실제로 선택한 뒤에만 해당 카테고리의 연습유형을 표시·선택하도록 기본 카테고리 암묵 선택 규칙을 제거했다.
 - 코스 등록 장소 검색의 초기 query를 비우고, 출발지 → 도착지 → 경유지 순서에 따른 검색·경유지 추가 가능 조건을 `MapSelection` State로 단일화했다. 수동 QA가 남아 있다.
 - `release/1.4.1`에서 배포 설정·Live Activity target 분리·로컬 저장소 공통화·Kakao 지도 transport·코스 등록·Home·Login/Onboarding·My/Review/PracticeTracking을 책임 단위로 분리 커밋했다. 최종 빌드 및 push 확인이 남아 있다.
@@ -86,6 +88,8 @@
 
 ## Validation
 
+- 바텀시트 제목 drag hit 영역 확장 뒤 `Rodi Dev` Debug build 성공. `git diff --check`와 실기기 drag·버튼 터치 수동 QA 대기.
+- 코스 등록 상세 입력 필수 표기·선택 상태 확인 뒤 `Rodi Dev` Debug build 성공, `git diff --check` 통과. 실기기 선택 전/후 노출 수동 QA 대기.
 - Fastlane `ios version` lane 성공. Dev는 `1.0.0 (1)`, 로컬 Prod 설정은 `1.4.1 (0)`으로 확인됐다.
 - Fastlane 식별자 분리·코스 등록 검색/경로 실패 상태 변경 뒤 `Rodi Dev` Debug build 성공. 수동 UI QA 대기.
 - iPhone 17 Pro(iOS 26.2) simulator에 Dev 앱 설치·실행 성공. 로그인 화면까지 정상 표시됐으며, My·코스 등록·주차장 길안내 시나리오는 로그인 세션과 실제 서버 데이터가 필요해 수동 QA 대기.
