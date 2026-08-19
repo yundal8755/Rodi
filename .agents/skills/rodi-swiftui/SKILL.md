@@ -13,6 +13,7 @@ description: Implement and review Rodi SwiftUI views, layouts, components, and F
    - [availability.md](references/availability.md) for API selection and compatibility.
    - [swiftui-review.md](references/swiftui-review.md) for identity, performance, and accessibility.
    - [figma-layout.md](references/figma-layout.md) for Figma, screenshots, and adaptive layout.
+   - [external-swiftui-guidelines.md](references/external-swiftui-guidelines.md) only when reviewing general SwiftUI composition, state, list, accessibility, or layout decisions.
 
 ## Workflow
 
