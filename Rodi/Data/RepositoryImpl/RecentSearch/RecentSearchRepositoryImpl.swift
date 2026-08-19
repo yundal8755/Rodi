@@ -1,11 +1,4 @@
-//
-//  RecentSearchRepositoryImpl.swift
-//  Rodi
-//
-
 import Foundation
-
-// Search remote DTO를 앱의 검색 계약으로 변환한다.
 
 final class RecentSearchRepositoryImpl: RecentSearchRepository {
     private let remoteDataSource: RecentSearchRemoteDataSource
@@ -15,12 +8,14 @@ final class RecentSearchRepositoryImpl: RecentSearchRepository {
     }
 
     func fetchRecentSearches() async throws(NetworkError) -> [RecentSearch] {
-        let data = try await remoteDataSource.fetch()
-        return try data.map(RecentSearchMapper.search(from:))
+        let dto = try await remoteDataSource.fetch()
+        return try dto.map(RecentSearchMapper.search(from:))
     }
 
-    func registerRecentSearch(_ registration: RecentSearchRegistration) async throws(NetworkError) {
-        try await remoteDataSource.register(RecentSearchRegisterRequestDTO(type: registration.kind.rawValue, keyword: registration.keyword, placeId: registration.placeID))
+    func registerRecentSearch(
+        _ registration: RecentSearchRegistration
+    ) async throws(NetworkError) {
+        try await remoteDataSource.register(.init(registration))
     }
 
     func deleteRecentSearch(id: Int) async throws(NetworkError) {
@@ -30,5 +25,4 @@ final class RecentSearchRepositoryImpl: RecentSearchRepository {
     func deleteAllRecentSearches() async throws(NetworkError) {
         try await remoteDataSource.deleteAll()
     }
-
 }
