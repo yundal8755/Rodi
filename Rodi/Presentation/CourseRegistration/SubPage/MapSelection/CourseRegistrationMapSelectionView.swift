@@ -9,7 +9,7 @@ struct CourseRegistrationMapSelectionView: View {
             mapView
                 .ignoresSafeArea()
 
-            if let target = state.map.selectionTarget {
+            if let target = state.map.selectionTarget ?? state.map.routeFailureTarget {
                 CourseRegistrationMovingPin(target: target)
             }
 
@@ -22,7 +22,11 @@ struct CourseRegistrationMapSelectionView: View {
                     CourseRegistrationLocationInputs(
                         waypoints: state.waypoints,
                         selectedPlaces: state.selectedPlaces,
+                        candidateTarget: state.map.selectionTarget,
+                        candidateAddress: state.map.candidateAddress,
                         isEditable: state.map.selectionTarget == nil,
+                        isStartSearchEnabled: state.selectedPlaces[.start] == nil
+                            && !state.map.isAddressResolving,
                         send: send
                     )
                 }
@@ -82,10 +86,10 @@ struct CourseRegistrationMapSelectionView: View {
             CourseRegistrationSelectionBar(
                 targetTitle: target.selectionTitle,
                 isSelecting: state.map.isAddressResolving,
-                isSelectionEnabled: state.map.candidateCoordinate != nil && !state.map.isAddressResolving,
-                isCompletionEnabled: state.map.hasSelectedCurrentTarget && !state.map.isAddressResolving,
-                placeSelectionAction: { send(.placeSelectionTapped) },
-                completionAction: { send(.selectionCompletionTapped) }
+                isSelectionEnabled: state.map.candidateCoordinate != nil
+                    && state.map.candidateAddress != nil
+                    && !state.map.isAddressResolving,
+                placeSelectionAction: { send(.placeSelectionTapped) }
             )
         } else {
             CourseRegistrationReadyBar(
@@ -113,9 +117,7 @@ private struct CourseRegistrationSelectionBar: View {
     let targetTitle: String
     let isSelecting: Bool
     let isSelectionEnabled: Bool
-    let isCompletionEnabled: Bool
     let placeSelectionAction: () -> Void
-    let completionAction: () -> Void
 
     var body: some View {
         CourseRegistrationDualButtonBar(
@@ -123,8 +125,8 @@ private struct CourseRegistrationSelectionBar: View {
             isLeadingEnabled: isSelectionEnabled,
             leadingAction: placeSelectionAction,
             trailingTitle: "완료",
-            isTrailingEnabled: isCompletionEnabled,
-            trailingAction: completionAction
+            isTrailingEnabled: false,
+            trailingAction: {}
         )
     }
 }

@@ -67,15 +67,20 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
         case currentLocationTapped
         case currentLocationResolved(LocationRequest, CourseRegistrationMapService.CurrentLocationResult)
         case viewportChanged(RodiCoordinate, isUserInitiated: Bool)
+        case initialLocationRequested
+        case candidateAddressRequested(CourseRegistrationInputTarget, RodiCoordinate, debounce: Bool)
         case placeSelectionTapped
         case reverseGeocodingFinished(AddressRequest, Result<String, CourseRegistrationAddressLookupError>)
-        case selectionCompletionTapped
         case registrationCompletionTapped
         case inputTargetTapped(CourseRegistrationInputTarget)
         case searchResultSelected(CourseRegistrationInputTarget, CourseRegistrationPlaceSearchItem)
+        case regionSelected(CourseRegistrationInputTarget, CourseRegistrationRegionSuggestion)
         case routePointTapped(Int)
         case pinEditApplied(CourseRegistrationInputTarget, CourseRegistrationSelectedPlace, [RodiCoordinate]?)
         case initialRouteFinished(Int, Result<[RodiCoordinate], KakaoDirectionsError>)
+        case cancelLocationTask
+        case cancelAddressTask
+        case cancelRouteTask
         case delegate(Delegate)
     }
 
@@ -88,7 +93,9 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
     }
 
     private enum EffectID: Hashable {
-        case work
+        case location
+        case address
+        case route
     }
 
     struct LocationRequest: Equatable {
@@ -130,11 +137,12 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
                 RodiAnalytics.track(.courseRegistrationOpened)
             }
             state.map.hasRequestedInitialLocation = true
-            state.map.locationRequestRevision += 1
-            return requestCurrentLocation(.init(
-                revision: state.map.locationRequestRevision,
-                source: .initial
-            ))
+            guard let target = state.map.selectionTarget else { return .none }
+            let coordinate = state.map.cameraTarget
+            return .run { send in
+                await send(.candidateAddressRequested(target, coordinate, debounce: false))
+                await send(.initialLocationRequested)
+            }
 
         case .deactivated:
             state.map.locationRequestRevision += 1
@@ -143,13 +151,14 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
             state.map.isCurrentLocationActive = false
             state.map.isAddressResolving = false
             state.isRouteLoading = false
-            return .cancel(id: EffectID.work)
+            return cancelAllTasks()
 
         case .closeTapped:
             return .send(.delegate(.closeRequested(hasInput: state.hasInput)))
 
         case .reset:
             state = .init()
+            return cancelAllTasks()
 
         case .waypointAddTapped:
             guard state.map.selectionTarget == nil, state.waypoints.count < 3 else { return .none }
@@ -166,6 +175,12 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
             state.waypoints.removeAll { $0.id == id }
             state.selectedPlaces[.waypoint(id)] = nil
             state.routePath = []
+            if state.map.routeFailureTarget == .waypoint(id) {
+                state.map.routeFailureTarget = nil
+            }
+            if state.map.lastRouteRequestTarget == .waypoint(id) {
+                state.map.lastRouteRequestTarget = nil
+            }
             RodiAnalytics.track(
                 .courseRegistrationWaypointChanged(action: "removed", waypointCount: state.waypoints.count)
             )
@@ -173,9 +188,11 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
             if state.map.selectionTarget == .waypoint(id) {
                 state.map.selectionTarget = nil
                 state.map.candidateCoordinate = nil
+                state.map.candidateAddress = nil
                 state.map.hasSelectedCurrentTarget = false
                 state.map.isAddressResolving = false
                 state.map.addressRequestRevision += 1
+                return .cancel(id: EffectID.address)
             }
 
         case .currentLocationTapped:
@@ -186,11 +203,22 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
                 source: .userAction
             ))
 
+        case .initialLocationRequested:
+            state.map.locationRequestRevision += 1
+            return requestCurrentLocation(.init(
+                revision: state.map.locationRequestRevision,
+                source: .initial
+            ))
+
         case .currentLocationResolved(let request, let result):
             guard request.revision == state.map.locationRequestRevision else { return .none }
             if case let .resolved(coordinate) = result {
                 state.map.cameraTarget = coordinate
                 state.map.cameraRequestID += 1
+                state.map.isCurrentLocationActive = false
+                if let target = state.map.selectionTarget {
+                    return .send(.candidateAddressRequested(target, coordinate, debounce: false))
+                }
             }
             if request.source == .userAction {
                 state.map.isCurrentLocationActive = false
@@ -205,24 +233,40 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
         case .viewportChanged(let center, let isUserInitiated):
             guard isUserInitiated else { return .none }
             state.map.isCurrentLocationActive = false
-            guard state.map.selectionTarget != nil else { return .none }
-            state.map.candidateCoordinate = center
+            guard let target = state.map.selectionTarget else { return .none }
+            return .send(.candidateAddressRequested(target, center, debounce: true))
 
-        case .placeSelectionTapped:
-            guard let target = state.map.selectionTarget,
-                  let coordinate = state.map.candidateCoordinate,
-                  !state.map.isAddressResolving
-            else {
-                return .none
-            }
+        case .candidateAddressRequested(let target, let coordinate, let debounce):
+            guard state.map.selectionTarget == target else { return .none }
             state.map.addressRequestRevision += 1
+            state.map.candidateCoordinate = coordinate
+            state.map.hasSelectedCurrentTarget = false
             state.map.isAddressResolving = true
             let request = AddressRequest(
                 revision: state.map.addressRequestRevision,
                 target: target,
                 coordinate: coordinate
             )
-            return reverseGeocode(request)
+            return reverseGeocode(request, debounce: debounce)
+
+        case .placeSelectionTapped:
+            guard let target = state.map.selectionTarget,
+                  let coordinate = state.map.candidateCoordinate,
+                  let address = state.map.candidateAddress,
+                  !state.map.isAddressResolving
+            else {
+                return .none
+            }
+            state.selectedPlaces[target] = .init(name: address, coordinate: coordinate)
+            state.map.hasSelectedCurrentTarget = true
+            state.routePath = []
+            RodiAnalytics.track(
+                .courseRegistrationPointSelected(
+                    inputType: target.analyticsInputType,
+                    source: "map"
+                )
+            )
+            return advanceAfterSelection(target, state: &state)
 
         case .reverseGeocodingFinished(let request, let result):
             guard request.revision == state.map.addressRequestRevision,
@@ -233,37 +277,10 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
             state.map.isAddressResolving = false
             switch result {
             case .success(let address):
-                state.selectedPlaces[request.target] = .init(name: address, coordinate: request.coordinate)
-                state.map.hasSelectedCurrentTarget = true
-                RodiAnalytics.track(
-                    .courseRegistrationPointSelected(
-                        inputType: request.target.analyticsInputType,
-                        source: "map"
-                    )
-                )
+                state.map.candidateCoordinate = request.coordinate
+                state.map.candidateAddress = address
             case .failure(let error):
                 return .send(.delegate(.showError(error.userMessage)))
-            }
-
-        case .selectionCompletionTapped:
-            guard let target = state.map.selectionTarget,
-                  state.map.hasSelectedCurrentTarget,
-                  !state.map.isAddressResolving
-            else {
-                return .none
-            }
-            switch target {
-            case .start:
-                beginSelection(.destination, cameraTarget: state.selectedPlaces[.start]?.coordinate, state: &state)
-            case .destination, .waypoint:
-                state.map.selectionTarget = nil
-                state.map.candidateCoordinate = nil
-                state.map.hasSelectedCurrentTarget = false
-                let points = state.routePoints()
-                guard points.count >= 2 else { return .none }
-                state.isRouteLoading = true
-                state.routeRequestRevision += 1
-                return requestInitialRoute(points: points, revision: state.routeRequestRevision)
             }
 
         case .registrationCompletionTapped:
@@ -297,19 +314,13 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
             state.map.locationRequestRevision += 1
             beginSelection(target, cameraTarget: coordinate, state: &state)
             state.map.candidateCoordinate = coordinate
-            state.selectedPlaces[target] = .init(
-                name: result.address.isEmpty ? result.title : result.address,
-                coordinate: coordinate
-            )
-            state.map.hasSelectedCurrentTarget = true
+            state.map.candidateAddress = result.address.isEmpty ? result.title : result.address
             state.map.isCurrentLocationActive = false
-            state.routePath = []
-            RodiAnalytics.track(
-                .courseRegistrationPointSelected(
-                    inputType: target.analyticsInputType,
-                    source: "search"
-                )
-            )
+
+        case .regionSelected(let target, let region):
+            state.map.locationRequestRevision += 1
+            beginSelection(target, cameraTarget: region.coordinate, state: &state)
+            return .send(.candidateAddressRequested(target, region.coordinate, debounce: false))
 
         case .routePointTapped(let pointID):
             guard let target = state.target(at: pointID),
@@ -332,11 +343,23 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
             switch result {
             case .success(let path):
                 state.routePath = path
+                state.map.routeFailureTarget = nil
                 RodiAnalytics.track(.courseRegistrationRoutePrepared(waypointCount: state.waypoints.count))
             case .failure:
+                // 경로선만 준비하지 못한 경우에도 방금 선택한 지점은 지도에서 계속 확인할 수 있어야 한다.
+                state.map.routeFailureTarget = state.map.lastRouteRequestTarget
                 RodiAnalytics.track(.courseRegistrationFailed(stage: "route"))
                 return .send(.delegate(.showError("도로 경로를 불러오지 못했어요. 잠시 후 다시 시도해주세요.")))
             }
+
+        case .cancelLocationTask:
+            return .cancel(id: EffectID.location)
+
+        case .cancelAddressTask:
+            return .cancel(id: EffectID.address)
+
+        case .cancelRouteTask:
+            return .cancel(id: EffectID.route)
 
         case .delegate:
             return .none
@@ -352,8 +375,10 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
     ) {
         state.map.selectionTarget = target
         state.map.candidateCoordinate = nil
+        state.map.candidateAddress = nil
         state.map.hasSelectedCurrentTarget = false
         state.map.isAddressResolving = false
+        state.map.routeFailureTarget = nil
         if let cameraTarget {
             state.map.cameraTarget = cameraTarget
             state.map.cameraRequestID += 1
@@ -364,7 +389,7 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
         .run { send in
             await send(.currentLocationResolved(request, await mapService.requestCurrentLocation()))
         }
-        .cancelTask(id: EffectID.work)
+        .cancelTask(id: EffectID.location)
     }
 
     private func currentLocationFailureMessage(
@@ -380,9 +405,12 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
         }
     }
 
-    private func reverseGeocode(_ request: AddressRequest) -> Effect<Action> {
+    private func reverseGeocode(_ request: AddressRequest, debounce: Bool) -> Effect<Action> {
         .run { send in
             do {
+                if debounce {
+                    try await Task.sleep(for: .milliseconds(250))
+                }
                 await send(.reverseGeocodingFinished(request, .success(try await mapService.reverseGeocode(request.coordinate))))
             } catch is CancellationError {
                 return
@@ -392,7 +420,7 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
                 await send(.reverseGeocodingFinished(request, .failure(.networkFailed)))
             }
         }
-        .cancelTask(id: EffectID.work)
+        .cancelTask(id: EffectID.address)
     }
 
     private func requestInitialRoute(
@@ -410,7 +438,41 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
                 await send(.initialRouteFinished(revision, .failure(.networkFailed("unknown"))))
             }
         }
-        .cancelTask(id: EffectID.work)
+        .cancelTask(id: EffectID.route)
+    }
+
+    private func advanceAfterSelection(
+        _ target: CourseRegistrationInputTarget,
+        state: inout State
+    ) -> Effect<Action> {
+        switch target {
+        case .start:
+            guard let start = state.selectedPlaces[.start] else { return .none }
+            beginSelection(.destination, cameraTarget: start.coordinate, state: &state)
+            state.map.candidateCoordinate = start.coordinate
+            state.map.candidateAddress = start.name
+            return .none
+        case .destination, .waypoint:
+            state.map.selectionTarget = nil
+            state.map.candidateCoordinate = nil
+            state.map.candidateAddress = nil
+            state.map.hasSelectedCurrentTarget = false
+            state.map.routeFailureTarget = nil
+            let points = state.routePoints()
+            guard points.count >= 2 else { return .none }
+            state.isRouteLoading = true
+            state.routeRequestRevision += 1
+            state.map.lastRouteRequestTarget = target
+            return requestInitialRoute(points: points, revision: state.routeRequestRevision)
+        }
+    }
+
+    private func cancelAllTasks() -> Effect<Action> {
+        .run { send in
+            await send(.cancelLocationTask)
+            await send(.cancelAddressTask)
+            await send(.cancelRouteTask)
+        }
     }
 }
 
@@ -422,6 +484,10 @@ struct CourseRegistrationMapState: Equatable {
     var hasRequestedInitialLocation = false
     var addressRequestRevision = 0
     var candidateCoordinate: RodiCoordinate?
+    var candidateAddress: String?
+    /// 경로 요청이 실패해도 사용자가 방금 확정한 지점의 중앙 핀을 유지한다.
+    var routeFailureTarget: CourseRegistrationInputTarget?
+    var lastRouteRequestTarget: CourseRegistrationInputTarget?
     var hasSelectedCurrentTarget = false
     var isAddressResolving = false
     var isCurrentLocationActive = false

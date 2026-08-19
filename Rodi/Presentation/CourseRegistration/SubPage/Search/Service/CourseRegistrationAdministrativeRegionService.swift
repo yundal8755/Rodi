@@ -64,7 +64,11 @@ struct CourseRegistrationAdministrativeRegionService {
                 CourseRegistrationRegionSuggestion(
                     id: match.area.id,
                     displayName: match.area.regionDisplayName,
-                    searchQuery: match.area.keywordSearchQuery
+                    searchQuery: match.area.keywordSearchQuery,
+                    coordinate: .init(
+                        latitude: match.area.latitude,
+                        longitude: match.area.longitude
+                    )
                 )
             }
     }
@@ -81,6 +85,8 @@ private extension CourseRegistrationAdministrativeRegionService {
         let displayName: String
         let parentName: String?
         let aliases: [String]
+        let latitude: Double
+        let longitude: Double
 
         var searchableAliases: [String] {
             let meaningfulAliases: [String]

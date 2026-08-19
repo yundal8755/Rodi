@@ -9,6 +9,7 @@ struct CourseRegistrationRegionSuggestion: Equatable, Identifiable {
     let id: String
     let displayName: String
     let searchQuery: String
+    let coordinate: RodiCoordinate
 }
 
 struct CourseRegistrationPlaceSearchItem: Equatable, Identifiable {

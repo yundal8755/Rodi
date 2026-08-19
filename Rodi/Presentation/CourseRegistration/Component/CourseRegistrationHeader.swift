@@ -3,6 +3,9 @@ import SwiftUI
 struct CourseRegistrationHeader: View {
     let title: String
     let closeAction: () -> Void
+    var trailingImageName: String? = nil
+    var isTrailingEnabled = true
+    var trailingAction: (() -> Void)? = nil
 
     var body: some View {
         ZStack {
@@ -21,6 +24,18 @@ struct CourseRegistrationHeader: View {
                 .accessibilityLabel("뒤로 가기")
 
                 Spacer()
+
+                if let trailingImageName, let trailingAction {
+                    Button(action: trailingAction) {
+                        Image(trailingImageName)
+                            .frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
+                    .contentShape(Rectangle())
+                    .disabled(!isTrailingEnabled)
+                    .accessibilityLabel("완료")
+                }
             }
         }
         .padding(.horizontal, 16)

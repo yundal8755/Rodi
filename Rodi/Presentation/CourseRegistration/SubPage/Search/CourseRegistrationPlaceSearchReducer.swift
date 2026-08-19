@@ -41,6 +41,7 @@ struct CourseRegistrationPlaceSearchReducer: Reducer {
 
     enum Delegate {
         case resultSelected(CourseRegistrationPlaceSearchItem)
+        case regionSelected(CourseRegistrationRegionSuggestion)
         case closeRequested
     }
 
@@ -85,9 +86,7 @@ extension CourseRegistrationPlaceSearchReducer {
             return searchPlaces(state: &state, debounce: true)
 
         case .regionTapped(let region):
-            state.query = region.searchQuery
-            updateRegions(state: &state)
-            return searchPlaces(state: &state, debounce: false)
+            return .send(.delegate(.regionSelected(region)))
 
         case .sampleSearchTapped(let query):
             state.query = query

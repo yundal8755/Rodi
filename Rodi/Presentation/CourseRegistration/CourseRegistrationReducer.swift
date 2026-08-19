@@ -92,7 +92,17 @@ struct CourseRegistrationReducer: Reducer {
 
         case .deactivated:
             state.errorMessage = nil
-            return .cancel(id: EffectID.errorDismissal)
+            let hasPinEditing = state.pinEditing != nil
+            return .run { send in
+                await send(.tutorial(.deactivated))
+                await send(.mapSelection(.deactivated))
+                await send(.placeSearch(.deactivated))
+                await send(.details(.deactivated))
+                if hasPinEditing {
+                    await send(.pinEditing(.deactivated))
+                }
+            }
+            .cancelTask(id: EffectID.errorDismissal)
 
         case .mapSelection(let childAction):
             if case .delegate(let delegate) = childAction {
@@ -303,6 +313,30 @@ struct CourseRegistrationReducer: Reducer {
                 state.route = .pinEditing
                 return pinEditingReducer
                     .reduce(&state.pinEditing!, with: .searchResultSelected(result))
+                    .map(Action.pinEditing)
+            default:
+                return .none
+            }
+
+        case .regionSelected(let region):
+            switch state.route {
+            case .registrationSearch(let target):
+                state.route = .registration
+                return mapSelectionReducer
+                    .reduce(&state.mapSelection, with: .regionSelected(target, region))
+                    .map(Action.mapSelection)
+            case .pinEditSearch:
+                guard state.pinEditing != nil else { return .none }
+                state.route = .pinEditing
+                return pinEditingReducer
+                    .reduce(&state.pinEditing!, with: .searchResultSelected(.init(
+                        id: "region-\(region.id)",
+                        title: region.displayName,
+                        address: region.displayName,
+                        coordinate: region.coordinate,
+                        category: nil,
+                        phone: nil
+                    )))
                     .map(Action.pinEditing)
             default:
                 return .none

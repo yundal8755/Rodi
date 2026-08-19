@@ -6,36 +6,21 @@ struct CourseRegistrationTutorialView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            CourseRegistrationHeader(title: "코스 등록 방법", closeAction: { send(.closeTapped) })
-            StepProgressView(activeCount: state.page + 1, totalCount: 3)
-            TabView(
-                selection: Binding(
-                    get: { state.page },
-                    set: { send(.pageChanged($0)) }
-                )
-            ) {
-                ForEach(CourseRegistrationTutorialPage.allCases, id: \.rawValue) { page in
-                    CourseRegistrationTutorialPageView(page: page)
-                        .tag(page.rawValue)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            if page.rawValue < 2 {
-                                send(.pageTapped)
-                            }
-                        }
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-
-            if state.page == 2 {
-                PrimaryBottomButton(
-                    title: state.isCompleting ? "저장 중..." : "완료",
-                    isEnabled: !state.isCompleting,
-                    showsDivider: true,
-                    action: { send(.completionTapped) }
-                )
-                .shadow(color: RodiColor.black.opacity(0.08), radius: 4, x: 0, y: -3)
-            }
+            CourseRegistrationHeader(
+                title: "코스 등록 방법",
+                closeAction: { send(.closeTapped) },
+                trailingImageName: state.page == 2 ? "ic_check_circle_active" : nil,
+                isTrailingEnabled: !state.isCompleting,
+                trailingAction: { send(.completionTapped) }
+            )
+            CourseRegistrationTutorialProgressView(page: state.page)
+            CourseRegistrationTutorialPager(
+                page: state.page,
+                pages: CourseRegistrationTutorialPage.allCases.map { page in
+                    AnyView(CourseRegistrationTutorialPageView(page: page))
+                },
+                pageChanged: { send(.pageChanged($0)) }
+            )
         }
         .background(RodiColor.white)
         .rodiSnackbar(message: state.errorMessage)
@@ -52,7 +37,7 @@ private enum CourseRegistrationTutorialPage: Int, CaseIterable {
         switch self {
         case .mapPlacement: "지도를 움직여 핀을 놓을 위치를 정하고"
         case .startSelection: "아래 ‘출발지 선택'을 눌러, 위치를 선택해요"
-        case .pinEditing: "건물이 아닌, 도로 위에 위치 시켜주세요."
+        case .pinEditing: "위치 수정 시 해당 핀을 눌러주세요"
         }
     }
 

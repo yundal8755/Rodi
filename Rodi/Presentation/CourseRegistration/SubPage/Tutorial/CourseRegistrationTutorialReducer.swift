@@ -12,7 +12,6 @@ struct CourseRegistrationTutorialReducer: Reducer {
 
     enum Action {
         case pageChanged(Int)
-        case pageTapped
         case closeTapped
         case completionTapped
         case completionFinished(UUID, Result<Void, NetworkError>)
@@ -42,12 +41,12 @@ struct CourseRegistrationTutorialReducer: Reducer {
         case .pageChanged(let page):
             state.page = min(max(page, 0), 2)
 
-        case .pageTapped:
-            guard state.page < 2 else { return .none }
-            state.page += 1
-
         case .closeTapped:
             guard !state.isCompleting else { return .none }
+            guard state.page == 0 else {
+                state.page -= 1
+                return .none
+            }
             return .send(.delegate(.closeRequested))
 
         case .completionTapped:

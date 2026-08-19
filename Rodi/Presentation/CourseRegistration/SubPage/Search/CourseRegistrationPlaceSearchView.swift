@@ -48,26 +48,33 @@ private extension CourseRegistrationPlaceSearchView {
     }
 
     var searchResults: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                if state.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    recentSearchSection
-                } else {
-                    regionResults
+        ZStack {
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    if state.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        recentSearchSection
+                    } else {
+                        regionResults
 
-                    if !state.regions.isEmpty, showsPlaceSection {
-                        RodiColor.primaryMinus100
-                            .frame(height: 4)
+                        if !state.regions.isEmpty, showsPlaceSection {
+                            RodiColor.primaryMinus100
+                                .frame(height: 4)
+                        }
+
+                        placeResults
                     }
-
-                    placeResults
                 }
             }
-        }
-        .scrollDismissesKeyboard(.interactively)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            isSearchFieldFocused = false
+            .scrollDismissesKeyboard(.interactively)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                isSearchFieldFocused = false
+            }
+
+            if shouldShowEmptyResults {
+                CourseRegistrationSearchEmptyState(query: state.query)
+                    .allowsHitTesting(false)
+            }
         }
     }
 
@@ -79,7 +86,7 @@ private extension CourseRegistrationPlaceSearchView {
                     id: UUID(),
                     title: region.displayName,
                     kind: .region,
-                    coordinate: nil
+                    coordinate: region.coordinate
                 ))
                 send(.regionTapped(region))
             } label: {
@@ -103,10 +110,7 @@ private extension CourseRegistrationPlaceSearchView {
         if state.query.trimmingCharacters(in: .whitespacesAndNewlines).count < 2 {
             EmptyView()
         } else if state.isPlaceLoading {
-            ProgressView()
-                .tint(RodiColor.primary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 20)
+            SearchResultSkeletonList()
         } else if let errorMessage = state.placeErrorMessage {
             VStack(spacing: 12) {
                 messageState(errorMessage)
@@ -120,8 +124,8 @@ private extension CourseRegistrationPlaceSearchView {
                     .buttonStyle(.plain)
             }
             .padding(.vertical, 24)
-        } else if state.hasSearchedPlaces, state.places.isEmpty, state.regions.isEmpty {
-            messageState("검색 결과가 없어요.")
+        } else if shouldShowEmptyResults {
+            EmptyView()
         } else {
             ForEach(state.places) { place in
                 Button {
@@ -151,10 +155,7 @@ private extension CourseRegistrationPlaceSearchView {
             }
 
             if state.isLoadingNextPage {
-                ProgressView()
-                    .tint(RodiColor.primary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
+                SearchResultSkeletonList(count: 2)
             }
         }
     }
@@ -163,6 +164,14 @@ private extension CourseRegistrationPlaceSearchView {
         state.isPlaceLoading
             || state.placeErrorMessage != nil
             || !state.places.isEmpty
+    }
+
+    var shouldShowEmptyResults: Bool {
+        state.query.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2
+            && state.hasSearchedPlaces
+            && state.places.isEmpty
+            && state.regions.isEmpty
+            && state.placeErrorMessage == nil
     }
 
     @ViewBuilder
@@ -290,7 +299,16 @@ private extension CourseRegistrationPlaceSearchView {
         isSearchFieldFocused = false
         switch search.kind {
         case .region:
-            send(.sampleSearchTapped(search.title))
+            guard let coordinate = search.coordinate else {
+                send(.sampleSearchTapped(search.title))
+                return
+            }
+            send(.regionTapped(.init(
+                id: "recent-\(search.id.uuidString)",
+                displayName: search.title,
+                searchQuery: search.title,
+                coordinate: coordinate
+            )))
         case .place:
             guard let coordinate = search.coordinate else {
                 send(.sampleSearchTapped(search.title))

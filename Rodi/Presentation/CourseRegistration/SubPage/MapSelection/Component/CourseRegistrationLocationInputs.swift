@@ -3,7 +3,10 @@ import SwiftUI
 struct CourseRegistrationLocationInputs: View {
     let waypoints: [CourseRegistrationWaypoint]
     let selectedPlaces: [CourseRegistrationInputTarget: CourseRegistrationSelectedPlace]
+    let candidateTarget: CourseRegistrationInputTarget?
+    let candidateAddress: String?
     let isEditable: Bool
+    let isStartSearchEnabled: Bool
     let send: (CourseRegistrationMapSelectionReducer.Action) -> Void
 
     var body: some View {
@@ -11,8 +14,16 @@ struct CourseRegistrationLocationInputs: View {
             if waypoints.isEmpty {
                 ZStack(alignment: .trailing) {
                     VStack(spacing: 10) {
-                        row(for: .start, title: "출발지 입력")
-                        row(for: .destination, title: "도착지 입력")
+                        row(
+                            for: .start,
+                            title: "출발지 입력",
+                            isInteractive: isStartSearchEnabled
+                        )
+                        row(
+                            for: .destination,
+                            title: "도착지 입력",
+                            isInteractive: isEditable
+                        )
                     }
 
                     Button(action: { send(.waypointAddTapped) }) {
@@ -26,23 +37,28 @@ struct CourseRegistrationLocationInputs: View {
                 }
             } else {
                 VStack(spacing: 10) {
-                    row(for: .start, title: "출발지 입력")
+                    row(
+                        for: .start,
+                        title: "출발지 입력",
+                        isInteractive: isStartSearchEnabled
+                    )
 
                     ForEach(waypoints) { waypoint in
                         CourseRegistrationLocationRow(
                             iconName: "ic_course_waypoint",
-                            text: selectedPlaces[.waypoint(waypoint.id)]?.name ?? "경유지 입력",
-                            isPlaceholder: selectedPlaces[.waypoint(waypoint.id)] == nil,
+                            text: displayText(for: .waypoint(waypoint.id), placeholder: "경유지 입력"),
+                            isPlaceholder: isPlaceholder(for: .waypoint(waypoint.id)),
                             trailingControl: .minus { send(.waypointRemoveTapped(waypoint.id)) },
                             isInteractive: isEditable,
+                            isTrailingControlEnabled: true,
                             tapAction: { send(.inputTargetTapped(.waypoint(waypoint.id))) }
                         )
                     }
 
                     CourseRegistrationLocationRow(
                         iconName: "ic_course_destination",
-                        text: selectedPlaces[.destination]?.name ?? "도착지 입력",
-                        isPlaceholder: selectedPlaces[.destination] == nil,
+                        text: displayText(for: .destination, placeholder: ""),
+                        isPlaceholder: isPlaceholder(for: .destination),
                         trailingControl: waypoints.count < 3
                             ? .plus { send(.waypointAddTapped) }
                             : nil,
@@ -56,14 +72,32 @@ struct CourseRegistrationLocationInputs: View {
         .padding(.bottom, 5)
     }
 
-    private func row(for target: CourseRegistrationInputTarget, title: String) -> some View {
+    private func row(
+        for target: CourseRegistrationInputTarget,
+        title: String,
+        isInteractive: Bool
+    ) -> some View {
         CourseRegistrationLocationRow(
             iconName: target.inputIconName,
-            text: selectedPlaces[target]?.name ?? title,
-            isPlaceholder: selectedPlaces[target] == nil,
-            isInteractive: isEditable,
+            text: displayText(for: target, placeholder: title),
+            isPlaceholder: isPlaceholder(for: target),
+            isInteractive: isInteractive,
             tapAction: { send(.inputTargetTapped(target)) }
         )
+    }
+
+    private func displayText(for target: CourseRegistrationInputTarget, placeholder: String) -> String {
+        if candidateTarget == target {
+            return candidateAddress ?? placeholder
+        }
+        return selectedPlaces[target]?.name ?? placeholder
+    }
+
+    private func isPlaceholder(for target: CourseRegistrationInputTarget) -> Bool {
+        if candidateTarget == target {
+            return candidateAddress == nil
+        }
+        return candidateTarget != target && selectedPlaces[target] == nil
     }
 }
 
@@ -78,6 +112,7 @@ private struct CourseRegistrationLocationRow: View {
     let isPlaceholder: Bool
     var trailingControl: TrailingControl? = nil
     var isInteractive = true
+    var isTrailingControlEnabled = true
     var tapAction: (() -> Void)? = nil
 
     var body: some View {
@@ -87,7 +122,7 @@ private struct CourseRegistrationLocationRow: View {
                     .fill(RodiColor.white.opacity(0.001))
             }
             .buttonStyle(.plain)
-            .disabled(tapAction == nil)
+            .disabled(tapAction == nil || !isInteractive)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
 
@@ -134,7 +169,7 @@ private struct CourseRegistrationLocationRow: View {
             }
             .buttonStyle(.plain)
             .frame(minWidth: 44, minHeight: 44)
-            .disabled(!isInteractive)
+            .disabled(!isTrailingControlEnabled)
             .accessibilityLabel("경유지 추가")
         case .minus(let action):
             Button(action: action) {
@@ -142,7 +177,7 @@ private struct CourseRegistrationLocationRow: View {
             }
             .buttonStyle(.plain)
             .frame(minWidth: 44, minHeight: 44)
-            .disabled(!isInteractive)
+            .disabled(!isTrailingControlEnabled)
             .accessibilityLabel("경유지 삭제")
         }
     }
@@ -155,6 +190,8 @@ private struct CourseRegistrationCircleIcon: View {
 
     var body: some View {
         ZStack {
+            Circle()
+                .fill(RodiColor.white)
             switch kind {
             case .plus:
                 Image("ic_plus_circle")
