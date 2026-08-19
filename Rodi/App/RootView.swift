@@ -14,7 +14,6 @@ struct RootView: View {
 
     @StateObject private var store: StoreOf<RootReducer>
     @StateObject private var networkConnectionMonitor: NetworkConnectionMonitor
-    @StateObject private var networkUnavailableOverlayPresenter: NetworkUnavailableOverlayPresenter
     private let dependencies: AppDependencies
 
     init() {
@@ -46,9 +45,6 @@ struct RootView: View {
         )
         let networkConnectionMonitor = NetworkConnectionMonitor()
         _networkConnectionMonitor = StateObject(wrappedValue: networkConnectionMonitor)
-        _networkUnavailableOverlayPresenter = StateObject(
-            wrappedValue: NetworkUnavailableOverlayPresenter(monitor: networkConnectionMonitor)
-        )
     }
 
     var body: some View {
@@ -87,11 +83,13 @@ struct RootView: View {
 
         }
         .rodiSnackbar(message: store.state.reviewFlow.snackbarMessage)
-        .background {
-            ZStack {
-                NetworkUnavailableOverlayHost(presenter: networkUnavailableOverlayPresenter)
-                    .frame(width: 0, height: 0)
-                    .allowsHitTesting(false)
+        .overlay(alignment: .bottom) {
+            if networkConnectionMonitor.status == .disconnected {
+                NetworkConnectionSnackbar(refreshAction: networkConnectionMonitor.refresh)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 96)
+                    .transition(.opacity)
+                    .zIndex(5)
             }
         }
         .environmentObject(networkConnectionMonitor)
@@ -137,34 +135,36 @@ extension RootView {
                 onComplete: { store.send(.onboardingCompleted(isCourseTutorialCompleted: $0)) },
                 automaticLoginProvider: automaticLoginProvider(for: context),
                 automaticLoginRequestConsumed: { store.send(.automaticLoginRequestConsumed) },
-                dependencies: dependencies
+                dependencies: OnboardingFeatureDependencies(appDependencies: dependencies)
             )
 
         case .mainTabs:
             MainTabView(
-                consumePendingAuthenticationIntent: {
-                    let intent = store.state.pendingAuthenticationIntent
-                    store.send(.pendingAuthenticationIntentConsumed)
-                    return intent
-                },
-                requestLogin: { store.send(.loginRequired($0)) },
-                onLogoutCompleted: { store.send(.logoutCompleted) },
-                homeTabSelectionRequestID: store.state.homeTabSelectionRequestID,
-                homeReviewFlowFinishedRequestID: store.state.reviewFlow.homeFinishedRequestID,
-                myPracticeRecordsReviewFlowFinishedRequestID: store.state.reviewFlow.myPracticeRecordsFinishedRequestID,
-                myPostsReviewFlowFinishedRequestID: store.state.reviewFlow.myPostsFinishedRequestID,
-                onReviewTestRequested: { store.send(.reviewFlow(.debugPromptRequested)) },
-                onReviewRequested: { store.send(.reviewFlow(.requested($0))) },
-                courseDetailReviewPresentation: .init(
-                    state: store.state.reviewFlow.review,
-                    snackbarMessage: store.state.reviewFlow.snackbarMessage,
-                    isPresented: store.state.reviewFlow.entrySource == .courseDetail
-                        && store.state.reviewFlow.review.route != .hidden,
-                    send: { store.send(.reviewFlow(.review($0))) }
+                presentation: MainTabPresentation(
+                    consumePendingAuthenticationIntent: {
+                        let intent = store.state.pendingAuthenticationIntent
+                        store.send(.pendingAuthenticationIntentConsumed)
+                        return intent
+                    },
+                    requestLogin: { store.send(.loginRequired($0)) },
+                    onLogoutCompleted: { store.send(.logoutCompleted) },
+                    homeTabSelectionRequestID: store.state.homeTabSelectionRequestID,
+                    homeReviewFlowFinishedRequestID: store.state.reviewFlow.homeFinishedRequestID,
+                    myPracticeRecordsReviewFlowFinishedRequestID: store.state.reviewFlow.myPracticeRecordsFinishedRequestID,
+                    myPostsReviewFlowFinishedRequestID: store.state.reviewFlow.myPostsFinishedRequestID,
+                    onReviewTestRequested: { store.send(.reviewFlow(.debugPromptRequested)) },
+                    onReviewRequested: { store.send(.reviewFlow(.requested($0))) },
+                    courseDetailReviewPresentation: .init(
+                        state: store.state.reviewFlow.review,
+                        snackbarMessage: store.state.reviewFlow.snackbarMessage,
+                        isPresented: store.state.reviewFlow.entrySource == .courseDetail
+                            && store.state.reviewFlow.review.route != .hidden,
+                        send: { store.send(.reviewFlow(.review($0))) }
+                    ),
+                    isCourseTutorialCompleted: store.state.isCourseTutorialCompleted,
+                    onCourseTutorialCompleted: { store.send(.courseTutorialCompleted) }
                 ),
-                isCourseTutorialCompleted: store.state.isCourseTutorialCompleted,
-                onCourseTutorialCompleted: { store.send(.courseTutorialCompleted) },
-                dependencies: dependencies
+                dependencies: MainTabFeatureDependencies(appDependencies: dependencies)
             )
         }
     }

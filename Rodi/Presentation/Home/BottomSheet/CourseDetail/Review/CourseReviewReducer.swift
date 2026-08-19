@@ -1,11 +1,10 @@
 import Foundation
 
 struct CourseReviewReducer: Reducer {
-    enum Route: Equatable {
-        case preview
-        case allReviews
-        case report
-    }
+    typealias Route = CourseReviewRoute
+    typealias PageState = CourseReviewPageState
+    typealias SummaryState = CourseReviewSummaryState
+    typealias State = CourseReviewState
 
     enum SummaryResult {
         case success(PlaceReviewSummary)
@@ -20,39 +19,6 @@ struct CourseReviewReducer: Reducer {
     enum DeleteResult {
         case success
         case failure(String)
-    }
-
-    struct PageState: Equatable {
-        var items: [PlaceReviewItem] = []
-        var hasNext = false
-        var nextCursor: String?
-        var totalCount: Int?
-        var isInitialLoading = false
-        var isLoadingNextPage = false
-        var errorMessage: String?
-    }
-
-    struct SummaryState: Equatable {
-        var value: PlaceReviewSummary?
-        var isLoading = false
-        var errorMessage: String?
-    }
-
-    struct State: Equatable {
-        var placeID: Int?
-        var route: Route = .preview
-        var reportReturnRoute: Route?
-        var selectedLevel: ReviewLevelFilter = .current
-        var summaries: [ReviewLevelFilter: SummaryState] = [:]
-        var pages: [ReviewLevelFilter: PageState] = [:]
-        var requestRevision = UUID()
-        var reportedReviewIDs: Set<Int> = []
-        var blockedMemberIDs: Set<Int> = []
-        var report = CourseReviewReportReducer.State()
-        var block = CourseReviewBlockReducer.State()
-        var deleteTargetReviewID: Int?
-        var isDeleting = false
-        var deleteErrorMessage: String?
     }
 
     enum Action {

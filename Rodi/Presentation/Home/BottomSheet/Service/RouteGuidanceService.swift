@@ -69,7 +69,7 @@ struct RouteGuidanceService {
 
     let kakaoMapWaypointLimit = 5
     let kakaoNaviWaypointLimit = 3
-    private let preferredAppDefaultsKey = "routeGuidance.preferredApp"
+    private let preferredAppStore = UserDefaultsStringStore(key: "routeGuidance.preferredApp")
 
     func launchOption() -> RouteGuidanceLaunchOption {
         let installedApps = RouteGuidanceApp.allCases.filter(isInstalled)
@@ -89,7 +89,7 @@ struct RouteGuidanceService {
     }
 
     func savePreferredApp(_ app: RouteGuidanceApp) {
-        UserDefaults.standard.set(app.rawValue, forKey: preferredAppDefaultsKey)
+        preferredAppStore.save(app.rawValue)
     }
 
     func openInstallPage(for app: RouteGuidanceApp) async -> RouteGuidanceResult {
@@ -144,7 +144,7 @@ struct RouteGuidanceService {
     }
 
     private var preferredApp: RouteGuidanceApp? {
-        guard let rawValue = UserDefaults.standard.string(forKey: preferredAppDefaultsKey) else { return nil }
+        guard let rawValue = preferredAppStore.load() else { return nil }
         return RouteGuidanceApp(rawValue: rawValue)
     }
 

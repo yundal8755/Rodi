@@ -174,52 +174,58 @@ struct ParkingSelectedDetailPanel: View {
     }
 
     private var actionBar: some View {
-        HStack(spacing: 5) {
-            Button(action: bookmarkAction) {
-                Group {
-                    if isBookmarkUpdating {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Image(detail.isBookmarked ? "ic_bookmark_action_filled" : "ic_bookmark_action")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 20, height: 20)
+        VStack(spacing: 0) {
+            Divider()
+                .overlay(RodiColor.primaryMinus100)
+
+            HStack(spacing: 5) {
+                Button(action: bookmarkAction) {
+                    Group {
+                        if isBookmarkUpdating {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(detail.isBookmarked ? "ic_bookmark_action_filled" : "ic_bookmark_action")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 20, height: 20)
+                        }
+                    }
+                    .foregroundStyle(RodiColor.gray800)
+                    .frame(width: 46, height: 46)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(RodiColor.gray300, lineWidth: 1)
                     }
                 }
-                .foregroundStyle(RodiColor.gray800)
-                .frame(width: 46, height: 46)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(RodiColor.gray300, lineWidth: 1)
-                }
-            }
-            .buttonStyle(.plain)
-            .disabled(isBookmarkUpdating)
-            .accessibilityLabel(detail.isBookmarked ? "북마크 해제" : "북마크 저장")
+                .buttonStyle(.plain)
+                .disabled(isBookmarkUpdating)
+                .accessibilityLabel(detail.isBookmarked ? "북마크 해제" : "북마크 저장")
 
-            Button(action: routeGuidanceAction) {
-                HStack(spacing: 8) {
-                    if isRouteLoading {
-                        ProgressView()
-                            .controlSize(.small)
-                            .tint(RodiColor.white)
+                Button(action: routeGuidanceAction) {
+                    HStack(spacing: 8) {
+                        if isRouteLoading {
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(RodiColor.white)
+                        }
+
+                        Text("연습하러 가기")
+                            .rodiTypography(.buttonMedium)
                     }
-
-                    Text("연습하러 가기")
-                        .rodiTypography(.buttonMedium)
+                    .foregroundStyle(RodiColor.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(isRouteGuidanceEnabled ? RodiColor.primary : RodiColor.gray300)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
-                .foregroundStyle(RodiColor.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 46)
-                .background(isRouteGuidanceEnabled ? RodiColor.primary : RodiColor.gray300)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .buttonStyle(.plain)
+                .disabled(!isRouteGuidanceEnabled || isRouteLoading)
             }
-            .buttonStyle(.plain)
-            .disabled(!isRouteGuidanceEnabled || isRouteLoading)
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 16)
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 16)
         .background(RodiColor.white)
     }
 

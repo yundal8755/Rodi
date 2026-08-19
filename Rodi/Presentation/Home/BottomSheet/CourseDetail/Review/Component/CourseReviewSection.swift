@@ -2,7 +2,7 @@ import SwiftUI
 
 struct CourseReviewSection: View {
     let summary: PlaceReviewSummary?
-    let page: CourseDetailBottomSheetReducer.ReviewPageState?
+    let page: CourseReviewReducer.PageState?
     let isSummaryLoading: Bool
     let summaryErrorMessage: String?
     let selectedLevel: ReviewLevelFilter
@@ -197,29 +197,6 @@ private extension CourseReviewSection {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 28)
-    }
-}
-
-private extension CourseReviewSection {
-
-    var effectiveSelectedReviewLevel: ReviewLevel? {
-        switch selectedLevel {
-        case .current:
-            summary?.level
-        case .level(let level):
-            level
-        case .all:
-            nil
-        }
-    }
-
-    var reviewLevelDropdown: some View {
-        RodiDropdown(
-            title: effectiveSelectedReviewLevel?.displayName ?? selectedLevel.displayName,
-            anchorID: CourseReviewDropdown.allReviewsHeader,
-            isExpanded: dropdownBinding(for: .allReviewsHeader)
-        )
-        .accessibilityLabel("후기 레벨")
     }
 
     func dropdownBinding(for dropdown: CourseReviewDropdown) -> Binding<Bool> {

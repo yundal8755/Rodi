@@ -21,7 +21,7 @@ struct HomeRecentSearchList: View {
     }
 
     private var recentSearchContent: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("최근 검색어")
                     .rodiTypography(.caption2Medium)
@@ -38,12 +38,10 @@ struct HomeRecentSearchList: View {
                         .buttonStyle(.plain)
                 }
             }
+            .padding(.horizontal, 16)
 
             if isLoading {
-                ProgressView()
-                    .tint(RodiColor.primary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.top, 24)
+                SearchResultSkeletonList()
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(searches) { search in
@@ -90,6 +88,7 @@ struct HomeRecentSearchList: View {
                             .buttonStyle(.plain)
                             .accessibilityLabel("\(search.keyword) 삭제")
                         }
+                        .padding(.horizontal, 16)
 
                         Divider()
                             .overlay(RodiColor.primaryMinus100)

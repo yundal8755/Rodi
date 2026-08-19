@@ -15,10 +15,18 @@ struct HomeBottomSheetReducer: Reducer {
         var isSavedPlaceResolution = false
         var isDetailPresentationPending = false
         var isCurrentLocationRequestPending = false
+        var detailTeardownID = UUID()
+        var pendingDetailTransition: DetailTransition?
         var recommendList = RecommendListBottomSheetReducer.State()
         var filter = FilterBottomSheetReducer.State()
         var courseDetail = CourseDetailBottomSheetReducer.State()
         var parkingDetail = ParkingDetailBottomSheetReducer.State()
+    }
+
+    enum DetailTransition {
+        case resolveSavedPlace(PlaceListItem)
+        case clearSearchSelection
+        case presentRecommendListForRegion(RodiCoordinate)
     }
 
     struct Dependencies {
@@ -38,6 +46,8 @@ struct HomeBottomSheetReducer: Reducer {
         case resolveRecommendedPlace(id: Int)
         case resolveSavedPlace(PlaceListItem)
         case clearSearchSelection
+        case presentRecommendListForRegion(origin: RodiCoordinate)
+        case detailTeardownFinished(UUID)
         case reviewFlowFinished
         case prepareForCurrentLocation
         case placeResolved(PlaceDetail)
@@ -101,6 +111,7 @@ struct HomeBottomSheetReducer: Reducer {
         )
         parkingDetailReducer = ParkingDetailBottomSheetReducer(
             placeRepository: dependencies.placeRepository,
+            memberRepository: dependencies.memberRepository,
             practiceMeasurementStore: dependencies.practiceMeasurementStore,
             practiceTrackingService: dependencies.practiceTrackingService,
             hasActiveSession: hasActiveSession
@@ -135,27 +146,32 @@ extension HomeBottomSheetReducer {
             return resolvePlaceEffect(id: id)
 
         case .resolveSavedPlace(let place):
-            state.resolvingPlaceID = place.id
-            state.isRecommendationPlaceResolution = false
-            state.isSavedPlaceResolution = true
-            state.isDetailPresentationPending = false
-            state.route = .recommendList
-            state.recommendList.presentation = .collapsed
-            state.courseDetail = .init()
-            state.parkingDetail = .init()
-            return resolvePlaceEffect(id: place.id)
+            return beginDetailTeardown(.resolveSavedPlace(place), state: &state)
 
         case .clearSearchSelection:
+            return beginDetailTeardown(.clearSearchSelection, state: &state)
+
+        case .presentRecommendListForRegion(let origin):
             state.resolvingPlaceID = nil
             state.isRecommendationPlaceResolution = false
             state.isSavedPlaceResolution = false
             state.isDetailPresentationPending = false
-            state.isCurrentLocationRequestPending = false
-            state.route = .recommendList
-            state.recommendList.presentation = .collapsed
-            state.courseDetail = .init()
-            state.parkingDetail = .init()
-            return .cancel(id: BottomSheetEffectID.placeDetailLoading)
+
+            guard state.route == .courseDetail || state.route == .parkingDetail else {
+                state.route = .recommendList
+                return presentRecommendListForRegion(origin: origin, state: state)
+            }
+
+            return beginDetailTeardown(.presentRecommendListForRegion(origin), state: &state)
+
+        case .detailTeardownFinished(let id):
+            guard state.detailTeardownID == id,
+                  let transition = state.pendingDetailTransition
+            else {
+                return .none
+            }
+            state.pendingDetailTransition = nil
+            return completeDetailTransition(transition, state: &state)
 
         case .reviewFlowFinished:
             guard state.route == .courseDetail,
@@ -385,6 +401,75 @@ extension HomeBottomSheetReducer {
         if shouldRequestCurrentLocation {
             followUpActions.append(.delegate(.currentLocationReady))
         }
+        return actions(followUpActions)
+    }
+
+    private func beginDetailTeardown(
+        _ transition: DetailTransition,
+        state: inout State
+    ) -> Effect<Action> {
+        state.detailTeardownID = UUID()
+        state.pendingDetailTransition = transition
+        let teardownID = state.detailTeardownID
+
+        return .run { send in
+            await send(.courseDetail(.reset))
+            await send(.parkingDetail(.reset))
+            await send(.detailTeardownFinished(teardownID))
+        }
+        .cancelTask(id: BottomSheetEffectID.detailTeardown)
+    }
+
+    private func completeDetailTransition(
+        _ transition: DetailTransition,
+        state: inout State
+    ) -> Effect<Action> {
+        switch transition {
+        case .resolveSavedPlace(let place):
+            state.resolvingPlaceID = place.id
+            state.isRecommendationPlaceResolution = false
+            state.isSavedPlaceResolution = true
+            state.isDetailPresentationPending = false
+            state.route = .recommendList
+            state.recommendList.presentation = .collapsed
+            return resolvePlaceEffect(id: place.id)
+
+        case .clearSearchSelection:
+            state.resolvingPlaceID = nil
+            state.isRecommendationPlaceResolution = false
+            state.isSavedPlaceResolution = false
+            state.isDetailPresentationPending = false
+            state.isCurrentLocationRequestPending = false
+            state.route = .recommendList
+            state.recommendList.presentation = .collapsed
+            return .cancel(id: BottomSheetEffectID.placeDetailLoading)
+
+        case .presentRecommendListForRegion(let origin):
+            state.resolvingPlaceID = nil
+            state.isRecommendationPlaceResolution = false
+            state.isSavedPlaceResolution = false
+            state.isDetailPresentationPending = false
+            state.isCurrentLocationRequestPending = false
+            state.route = .recommendList
+            state.recommendList.presentation = .collapsed
+            return presentRecommendListForRegion(origin: origin, state: state)
+        }
+    }
+
+    private func presentRecommendListForRegion(
+        origin: RodiCoordinate,
+        state: State
+    ) -> Effect<Action> {
+        var followUpActions: [Action] = [
+            .recommendList(.regionViewportReloadStarted),
+            .recommendList(.present)
+        ]
+
+        if let latestCenter = state.recommendList.latestViewportCenter,
+           latestCenter.distanceKilometers(to: origin) <= 0.5 {
+            followUpActions.append(.recommendList(.reloadAfterRegionViewport(origin: origin)))
+        }
+
         return actions(followUpActions)
     }
 }

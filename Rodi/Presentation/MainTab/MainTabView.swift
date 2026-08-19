@@ -13,49 +13,16 @@ struct MainTabView: View {
     @State private var homeListPresentationRequestID = 0
     @State private var consumedHomeTabSelectionRequestID = 0
 
-    let consumePendingAuthenticationIntent: () -> MainTabIntent?
-    let requestLogin: (MainTabIntent?) -> Void
-    let onLogoutCompleted: () -> Void
-    let homeTabSelectionRequestID: Int
-    let homeReviewFlowFinishedRequestID: Int
-    let myPracticeRecordsReviewFlowFinishedRequestID: Int
-    let myPostsReviewFlowFinishedRequestID: Int
-    let onReviewTestRequested: () -> Void
-    let onReviewRequested: (ReviewFlowRequest) -> Void
-    let courseDetailReviewPresentation: CourseDetailReviewPresentation
-    let isCourseTutorialCompleted: Bool
-    let onCourseTutorialCompleted: () -> Void
-    private let dependencies: AppDependencies
+    let presentation: MainTabPresentation
+    private let dependencies: MainTabFeatureDependencies
 
     init(
-        consumePendingAuthenticationIntent: @escaping () -> MainTabIntent?,
-        requestLogin: @escaping (MainTabIntent?) -> Void,
-        onLogoutCompleted: @escaping () -> Void,
-        homeTabSelectionRequestID: Int,
-        homeReviewFlowFinishedRequestID: Int,
-        myPracticeRecordsReviewFlowFinishedRequestID: Int,
-        myPostsReviewFlowFinishedRequestID: Int,
-        onReviewTestRequested: @escaping () -> Void,
-        onReviewRequested: @escaping (ReviewFlowRequest) -> Void,
-        courseDetailReviewPresentation: CourseDetailReviewPresentation,
-        isCourseTutorialCompleted: Bool,
-        onCourseTutorialCompleted: @escaping () -> Void,
-        dependencies: AppDependencies
+        presentation: MainTabPresentation,
+        dependencies: MainTabFeatureDependencies
     ) {
-        self.consumePendingAuthenticationIntent = consumePendingAuthenticationIntent
-        self.requestLogin = requestLogin
-        self.onLogoutCompleted = onLogoutCompleted
-        self.homeTabSelectionRequestID = homeTabSelectionRequestID
-        self.homeReviewFlowFinishedRequestID = homeReviewFlowFinishedRequestID
-        self.myPracticeRecordsReviewFlowFinishedRequestID = myPracticeRecordsReviewFlowFinishedRequestID
-        self.myPostsReviewFlowFinishedRequestID = myPostsReviewFlowFinishedRequestID
-        self.onReviewTestRequested = onReviewTestRequested
-        self.onReviewRequested = onReviewRequested
-        self.courseDetailReviewPresentation = courseDetailReviewPresentation
-        self.isCourseTutorialCompleted = isCourseTutorialCompleted
-        self.onCourseTutorialCompleted = onCourseTutorialCompleted
+        self.presentation = presentation
         self.dependencies = dependencies
-        
+
         _store = StateObject(
             wrappedValue: Store(
                 state: MainTabReducer.State(),
@@ -67,29 +34,31 @@ struct MainTabView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             HomeView(
-                isHomeTabSelected: store.state.selectedTab == .home,
-                onAuthenticationRequired: { requestLogin(nil) },
-                onReviewTestRequested: onReviewTestRequested,
-                onBottomTabBarVisibilityChanged: {
-                    store.send(.homeBottomTabBarVisibilityChanged($0))
-                },
-                listPresentationRequestID: homeListPresentationRequestID,
-                placeSelectionRequest: store.state.homePlaceSelectionRequest,
-                onPlaceSelectionHandled: {
-                    store.send(.homePlaceSelectionHandled($0))
-                },
-                reviewFlowFinishedRequestID: homeReviewFlowFinishedRequestID,
-                onReviewRequested: {
-                    onReviewRequested(.init(writeRequest: $0, entrySource: .courseDetail))
-                },
-                onReviewEditRequested: {
-                    onReviewRequested(.init(editingReviewID: $0, entrySource: .courseDetail))
-                },
-                courseDetailReviewPresentation: courseDetailReviewPresentation,
+                presentation: .init(
+                    isHomeTabSelected: store.state.selectedTab == .home,
+                    listPresentationRequestID: homeListPresentationRequestID,
+                    placeSelectionRequest: store.state.homePlaceSelectionRequest,
+                    reviewFlowFinishedRequestID: presentation.homeReviewFlowFinishedRequestID,
+                    courseDetailReviewPresentation: presentation.courseDetailReviewPresentation,
+                    requestAuthentication: { presentation.requestLogin(nil) },
+                    reviewTestRequested: presentation.onReviewTestRequested,
+                    bottomTabBarVisibilityChanged: {
+                        store.send(.homeBottomTabBarVisibilityChanged($0))
+                    },
+                    placeSelectionHandled: {
+                        store.send(.homePlaceSelectionHandled($0))
+                    },
+                    reviewWritingRequested: {
+                        presentation.onReviewRequested(.init(writeRequest: $0, entrySource: .courseDetail))
+                    },
+                    reviewEditingRequested: {
+                        presentation.onReviewRequested(.init(editingReviewID: $0, entrySource: .courseDetail))
+                    }
+                ),
                 bottomTabBarHeight: RodiBottomTabBar.totalHeight(
                     safeAreaBottom: screenSafeAreaInsets.bottom
                 ),
-                dependencies: dependencies
+                dependencies: dependencies.home
             )
                 .opacity(store.state.selectedTab == .home ? 1 : 0)
                 .allowsHitTesting(store.state.selectedTab == .home)
@@ -99,19 +68,19 @@ struct MainTabView: View {
                 isMyTabSelected: store.state.selectedTab == .my,
                 dataRefreshRequestID: store.state.myDataRefreshRequestID,
                 navigate: { store.send(.navigationRequested($0)) },
-                onLogoutCompleted: onLogoutCompleted,
-                onReviewTestRequested: onReviewTestRequested,
+                onLogoutCompleted: presentation.onLogoutCompleted,
+                onReviewTestRequested: presentation.onReviewTestRequested,
                 onReviewRequested: {
-                    onReviewRequested(.init(writeRequest: $0, entrySource: .my))
+                    presentation.onReviewRequested(.init(writeRequest: $0, entrySource: .my))
                 },
                 onReviewEditRequested: {
-                    onReviewRequested(.init(editingReviewID: $0, entrySource: .myPosts))
+                    presentation.onReviewRequested(.init(editingReviewID: $0, entrySource: .myPosts))
                 },
-                myPracticeRecordsReviewFlowFinishedRequestID: myPracticeRecordsReviewFlowFinishedRequestID,
-                myPostsReviewFlowFinishedRequestID: myPostsReviewFlowFinishedRequestID,
-                isCourseTutorialCompleted: isCourseTutorialCompleted,
-                onCourseTutorialCompleted: onCourseTutorialCompleted,
-                dependencies: dependencies
+                myPracticeRecordsReviewFlowFinishedRequestID: presentation.myPracticeRecordsReviewFlowFinishedRequestID,
+                myPostsReviewFlowFinishedRequestID: presentation.myPostsReviewFlowFinishedRequestID,
+                isCourseTutorialCompleted: presentation.isCourseTutorialCompleted,
+                onCourseTutorialCompleted: presentation.onCourseTutorialCompleted,
+                dependencies: dependencies.my
             )
             .opacity(store.state.selectedTab == .my ? 1 : 0)
             .allowsHitTesting(store.state.selectedTab == .my)
@@ -119,11 +88,11 @@ struct MainTabView: View {
 
             if store.state.selectedTab == .register {
                 CourseRegistrationView(
-                    isCourseTutorialCompleted: isCourseTutorialCompleted,
+                    isCourseTutorialCompleted: presentation.isCourseTutorialCompleted,
                     memberRepository: dependencies.memberRepository,
                     courseRepository: dependencies.courseRepository,
                     closeAction: { store.send(.courseRegistrationExited) },
-                    tutorialCompletedAction: onCourseTutorialCompleted,
+                    tutorialCompletedAction: presentation.onCourseTutorialCompleted,
                     courseRegistrationCompletedAction: {
                         store.send(.courseRegistrationExited)
                     }
@@ -148,7 +117,7 @@ struct MainTabView: View {
             consumePendingAuthenticationIntentIfNeeded()
             selectHomeAfterAuthenticationIfNeeded()
         }
-        .onChange(of: homeTabSelectionRequestID) { _ in
+        .onChange(of: presentation.homeTabSelectionRequestID) { _ in
             selectHomeAfterAuthenticationIfNeeded()
         }
         .onChange(of: store.state.navigationIntent) { intent in
@@ -157,7 +126,7 @@ struct MainTabView: View {
         }
         .onChange(of: store.state.authenticationIntent) { intent in
             guard let intent else { return }
-            requestLogin(intent)
+            presentation.requestLogin(intent)
             store.send(.authenticationRequestHandled)
         }
     }
@@ -165,12 +134,12 @@ struct MainTabView: View {
 
 // MARK: Core Logics
 private extension MainTabView {
-    
+
     var shouldShowBottomTabBar: Bool {
         switch store.state.selectedTab {
         case .home:
             store.state.isHomeBottomTabBarVisible
-            
+
         case .my:
             myCoordinator.path.isEmpty
 
@@ -180,13 +149,13 @@ private extension MainTabView {
     }
 
     func consumePendingAuthenticationIntentIfNeeded() {
-        guard let intent = consumePendingAuthenticationIntent() else { return }
+        guard let intent = presentation.consumePendingAuthenticationIntent() else { return }
         store.send(.navigationRequested(intent))
     }
 
     func selectHomeAfterAuthenticationIfNeeded() {
-        guard homeTabSelectionRequestID > consumedHomeTabSelectionRequestID else { return }
-        consumedHomeTabSelectionRequestID = homeTabSelectionRequestID
+        guard presentation.homeTabSelectionRequestID > consumedHomeTabSelectionRequestID else { return }
+        consumedHomeTabSelectionRequestID = presentation.homeTabSelectionRequestID
         store.send(.homeTabSelected)
     }
 
@@ -194,13 +163,13 @@ private extension MainTabView {
         switch intent {
         case .presentHomeList:
             homeListPresentationRequestID += 1
-            
+
         case .openHomePlace:
             break
             
         case .openMyProfile:
             myCoordinator.router.popToRoot()
-            
+
         case .openMySavedPlaces:
             myCoordinator.router.replace(with: [.savedPlaces])
 

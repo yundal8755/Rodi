@@ -7,14 +7,9 @@ import Foundation
 
 @MainActor
 struct HomeReducer: Reducer {
-
-    // MARK: State
-    struct State {
-        var map = MapState()
-        var bottomSheet = HomeBottomSheetReducer.State()
-        var search = HomeSearchReducer.State()
-        var presentation = PresentationState()
-    }
+    typealias State = HomeState
+    typealias MapState = HomeMapState
+    typealias PresentationState = HomePresentationState
 
     struct Dependencies {
         let tokenStore: TokenStoring
@@ -25,56 +20,6 @@ struct HomeReducer: Reducer {
         let memberRepository: MemberRepository
         let practiceMeasurementStore: PracticeMeasurementStoring
         let practiceTrackingService: PracticeTrackingService
-    }
-
-    struct MapState {
-        // MARK: Map lifecycle
-        var mapLifecycle: MapLifecycle = .inactive
-        var isHomeTabSelected = false
-        var isAppActive = true
-        // TODO: 계산 프로퍼티(isMapInteractive) 없어야함(윤수)
-        var isMapInteractive: Bool { isHomeTabSelected && isAppActive }
-
-        // MARK: Map camera
-        var cameraTarget = RodiCoordinate.southKoreaCenter
-        var cameraRequestID = 0
-        var animatedCameraRequestID: Int?
-        var cameraFocus: RodiMapCameraFocus = .koreaOverview
-        var pendingRegionViewportReloadOrigin: RodiCoordinate?
-        var pendingRegionCameraRequestID: Int?
-        var mapZoomLevel = 6
-        var isCurrentLocationButtonActive = false
-
-        // MARK: User location
-        var locationState: LocationState = .idle
-        var locationAuthorizationState: LocationAuthorizationState = .notDetermined
-        var hasCompletedInitialLocationResolution = false
-        var userLocation: RodiCoordinate?
-        var userHeadingDegrees: Double?
-
-        // MARK: Map markers
-        var markerState: MarkerState = .idle
-        var mapItems: [RodiCourseItem] = []
-        var markers: [RodiMapMarker] = []
-        var markerRenderingGeneration = 0
-        var hasCompletedInitialMarkerRendering = false
-        var displayedMarkerTier: RodiHomeMarkerClusterIndex.Tier?
-        var forcedMarkerTier: RodiHomeMarkerClusterIndex.Tier?
-        var forcedMarkerTierZoomLevel: Int?
-        var selectedMarkerID: String?
-        var selectedSearchResultName: String?
-        var isResearchButtonVisible = false
-
-        // MARK: Route
-        var routeOverlay: RodiRouteOverlay?
-    }
-
-    struct PresentationState {
-        var pendingSnackbar: ToastStruct?
-        var isLocationSettingsAlertPresented = false
-        var isBottomTabBarVisible = true
-        var isSearchPresented = false
-        var searchOrigin: RodiCoordinate?
     }
 
     // MARK: Action
@@ -106,6 +51,8 @@ struct HomeReducer: Reducer {
         case searchSelectionClearTapped
         case initialLocationRequested
         case initialMarkersLoadRequested
+        case periodicLocationRefreshSchedulingRequested
+        case periodicLocationRefreshTimerFired
         case serviceOutput(MapServiceOutAction)
         case markerRenderBatchUpdated([RodiMapMarker], generation: Int)
         case initialMarkerRenderingFinished(generation: Int)
@@ -132,7 +79,11 @@ struct HomeReducer: Reducer {
     private enum CancellationID: Hashable {
         case progressiveMarkerRendering
         case userHeadingUpdates
+        case periodicLocationRefresh
     }
+
+    private static let periodicLocationRefreshNanoseconds: UInt64 = 60_000_000_000
+    private static let prolongedLocationUnavailableInterval: TimeInterval = 60
 
     init(
         dependencies: Dependencies,
@@ -220,10 +171,16 @@ extension HomeReducer {
             case .authorized:
                 state.presentation.isLocationSettingsAlertPresented = false
                 guard map.mapLifecycle == .ready,
-                      map.userLocation == nil,
                       map.locationState != .requesting
                 else {
-                    return .none
+                    return map.isMapInteractive
+                        ? .send(.map(.periodicLocationRefreshSchedulingRequested))
+                        : .none
+                }
+                guard map.userLocation == nil else {
+                    return map.isMapInteractive
+                        ? .send(.map(.periodicLocationRefreshSchedulingRequested))
+                        : .none
                 }
                 map.locationState = .requesting
                 let source: LocationRequestSource = map.hasCompletedInitialLocationResolution
@@ -318,9 +275,28 @@ extension HomeReducer {
                 map.animatedCameraRequestID = map.cameraRequestID
                 return .cancel(id: CancellationID.progressiveMarkerRendering)
 
-            case .course(let marker, let placeID), .parking(let marker, let placeID):
+            case .course(let marker, let placeID):
                 state.presentation.isBottomTabBarVisible = false
                 map.routeOverlay = nil
+                map.selectedSearchResultName = marker.title
+                map.selectedMarkerID = markerID
+                map.markerRenderingGeneration += 1
+                map.cameraTarget = marker.coordinate
+                map.cameraFocus = .courseMarker
+                map.cameraRequestID += 1
+                map.animatedCameraRequestID = map.cameraRequestID
+                map.markers = RodiHomeMarkerClusterIndex.markers(
+                    for: map.mapItems,
+                    tier: map.displayedMarkerTier
+                        ?? RodiHomeMarkerClusterIndex.Tier(zoomLevel: map.mapZoomLevel),
+                    selectedMarkerID: markerID
+                )
+                return .send(.bottomSheet(.resolvePlace(id: placeID)))
+
+            case .parking(let marker, let placeID):
+                state.presentation.isBottomTabBarVisible = false
+                map.routeOverlay = nil
+                map.selectedSearchResultName = marker.title
                 map.selectedMarkerID = markerID
                 map.markerRenderingGeneration += 1
                 map.cameraTarget = marker.coordinate
@@ -447,6 +423,28 @@ extension HomeReducer {
             map.markerState = .loading
             return mapServiceEffect(.loadPlaceCoordinates)
 
+        case .periodicLocationRefreshSchedulingRequested:
+            guard map.isMapInteractive,
+                  map.mapLifecycle == .ready,
+                  map.locationAuthorizationState == .authorized,
+                  map.locationState != .requesting
+            else {
+                return .cancel(id: CancellationID.periodicLocationRefresh)
+            }
+            return periodicLocationRefreshEffect()
+
+        case .periodicLocationRefreshTimerFired:
+            guard map.isMapInteractive,
+                  map.mapLifecycle == .ready,
+                  mapService.locationAuthorizationState == .authorized,
+                  map.locationState != .requesting
+            else {
+                return .none
+            }
+            map.locationAuthorizationState = .authorized
+            map.locationState = .requesting
+            return mapServiceEffect(.requestCurrentLocation(source: .periodicRefresh))
+
         case .serviceOutput(let output):
             return reduceMapServiceOutput(
                 output,
@@ -493,7 +491,7 @@ extension HomeReducer {
     switch delegate {
     case .mapPlaceResolved(let detail):
         state.presentation.isBottomTabBarVisible = false
-        focusMap(on: detail, state: &state.map)
+        selectResolvedPlaceMarker(detail, state: &state.map)
 
     case .mapRouteOverlayChanged(let overlay):
         state.map.routeOverlay = overlay
@@ -592,10 +590,7 @@ extension HomeReducer {
             state.map.animatedCameraRequestID = state.map.cameraRequestID
             state.map.pendingRegionViewportReloadOrigin = center
             state.map.pendingRegionCameraRequestID = state.map.cameraRequestID
-            return actions([
-                .bottomSheet(.recommendList(.regionViewportReloadStarted)),
-                .bottomSheet(.recommendList(.present))
-            ])
+            return .send(.bottomSheet(.presentRecommendListForRegion(origin: center)))
 
         case .dismissed:
             state.presentation.isSearchPresented = false
@@ -630,12 +625,17 @@ extension HomeReducer {
             map.locationState = .resolved
             map.hasCompletedInitialLocationResolution = true
             map.userLocation = coordinate
+            map.lastLocationResolvedAt = Date()
+            map.hasShownProlongedLocationUnavailableNotice = false
 
-            if source != .foregroundRefresh {
+            if source != .foregroundRefresh, source != .periodicRefresh {
                 map.cameraTarget = coordinate
                 map.cameraFocus = .currentLocation
                 map.cameraRequestID += 1
                 map.animatedCameraRequestID = nil
+            }
+            if source == .periodicRefresh {
+                return .send(.map(.periodicLocationRefreshSchedulingRequested))
             }
             return userHeadingUpdatesEffect(origin: coordinate)
 
@@ -649,6 +649,17 @@ extension HomeReducer {
                     message: "현재 위치를 확인할 수 없어요. 다시 시도해주세요.",
                     state: .error
                 )
+            } else if source == .periodicRefresh,
+                      shouldShowProlongedLocationUnavailableNotice(for: map) {
+                map.hasShownProlongedLocationUnavailableNotice = true
+                presentation.pendingSnackbar = ToastStruct(
+                    message: "현재 위치를 확인할 수 없어요. 위치 신호가 안정되면 다시 갱신할게요.",
+                    state: .error
+                )
+            }
+            if map.isMapInteractive,
+               map.locationAuthorizationState == .authorized {
+                return .send(.map(.periodicLocationRefreshSchedulingRequested))
             }
             return .none
 
@@ -746,7 +757,7 @@ extension HomeReducer {
                 )
                 state.hasCompletedInitialMarkerRendering = true
             }
-            return .none
+            return .send(.map(.periodicLocationRefreshSchedulingRequested))
         }
     }
 
@@ -757,12 +768,47 @@ extension HomeReducer {
         state.animatedCameraRequestID = state.cameraRequestID
     }
 
+    private func selectResolvedPlaceMarker(_ detail: PlaceDetail, state: inout MapState) {
+        let markerID = detail.type == .course
+            ? "course-\(detail.id)"
+            : "parking-\(detail.id)"
+
+        if state.selectedMarkerID != markerID {
+            state.selectedMarkerID = markerID
+            state.markerRenderingGeneration += 1
+            state.forcedMarkerTier = .individual
+            state.forcedMarkerTierZoomLevel = nil
+            state.displayedMarkerTier = .individual
+            state.markers = RodiHomeMarkerClusterIndex.markers(
+                for: state.mapItems,
+                tier: .individual,
+                selectedMarkerID: markerID
+            )
+            if state.markerState == .loaded {
+                state.hasCompletedInitialMarkerRendering = true
+            }
+            focusMap(on: detail, state: &state)
+        }
+    }
+
     private func resetToKoreaOverview(_ state: inout MapState) {
         state.userLocation = nil
         state.cameraTarget = .southKoreaCenter
         state.cameraFocus = .koreaOverview
         state.cameraRequestID += 1
         state.animatedCameraRequestID = nil
+    }
+
+    private func shouldShowProlongedLocationUnavailableNotice(for map: MapState) -> Bool {
+        guard !map.hasShownProlongedLocationUnavailableNotice,
+              map.userLocation != nil,
+              let lastLocationResolvedAt = map.lastLocationResolvedAt
+        else {
+            return false
+        }
+
+        return Date().timeIntervalSince(lastLocationResolvedAt)
+            >= Self.prolongedLocationUnavailableInterval
     }
 
     private func initialMapDataLoadEffect() -> Effect<Action> {
@@ -784,14 +830,30 @@ extension HomeReducer {
         let mapService = mapService
         return .run { send in
             await send(.bottomSheet(.recommendList(.prepareInitialSearch(origin: origin))))
+            await send(.map(.periodicLocationRefreshSchedulingRequested))
 
-            let updates = await mapService.userHeadingUpdates()
+            let updates = mapService.userHeadingUpdates()
             for await degrees in updates {
                 guard !Task.isCancelled else { return }
                 await send(.map(.serviceOutput(.userHeadingUpdated(degrees))))
             }
         }
         .cancelTask(id: CancellationID.userHeadingUpdates)
+    }
+
+    private func periodicLocationRefreshEffect() -> Effect<Action> {
+        let delay = Self.periodicLocationRefreshNanoseconds
+        return .run { send in
+            do {
+                try await Task.sleep(nanoseconds: delay)
+            } catch {
+                return
+            }
+
+            guard !Task.isCancelled else { return }
+            await send(.map(.periodicLocationRefreshTimerFired))
+        }
+        .cancelTask(id: CancellationID.periodicLocationRefresh)
     }
 
     private func markerRenderingEffect(

@@ -9,7 +9,7 @@ struct RecommendListBottomSheetView: View {
     let state: RecommendListBottomSheetReducer.State
     let send: (RecommendListBottomSheetReducer.Action) -> Void
     let debugReviewTestAction: () -> Void
-    let debugHardWithdrawAction: @MainActor () async throws -> Void
+    let debugHardWithdrawAction: @MainActor @Sendable () async throws -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -49,7 +49,7 @@ struct RecommendListBottomSheetView: View {
             filterButton
         }
         .padding(.horizontal, 16)
-        .padding(.bottom, 20)
+        .frame(height: 56)
     }
 
     private var expandedHeader: some View {
@@ -72,7 +72,6 @@ struct RecommendListBottomSheetView: View {
         }
         .frame(height: 56)
         .padding(.horizontal, 16)
-        .padding(.bottom, 20)
     }
 
     private var filterButton: some View {

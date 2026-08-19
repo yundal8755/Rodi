@@ -11,4 +11,5 @@ enum LocationRequestSource {
     case initial
     case userInitiated
     case foregroundRefresh
+    case periodicRefresh
 }

@@ -16,7 +16,7 @@ struct DebugFeatureTestPage: View {
     @State private var hardWithdrawalErrorMessage: String?
 
     let reviewPromptAction: () -> Void
-    let hardWithdrawAction: @MainActor () async throws -> Void
+    let hardWithdrawAction: @MainActor @Sendable () async throws -> Void
 
     var body: some View {
         VStack(spacing: 0) {

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct CourseReviewAllContent: View {
     let summary: PlaceReviewSummary?
-    let page: CourseDetailBottomSheetReducer.ReviewPageState?
+    let page: CourseReviewReducer.PageState?
     let isSummaryLoading: Bool
     let summaryErrorMessage: String?
     let selectedLevel: ReviewLevelFilter

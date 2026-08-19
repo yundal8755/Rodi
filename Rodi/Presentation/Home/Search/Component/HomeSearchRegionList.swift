@@ -35,6 +35,9 @@ struct HomeSearchRegionList: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(region) 검색")
+
+                Divider()
+                    .overlay(RodiColor.primaryMinus100)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
