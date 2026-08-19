@@ -101,6 +101,12 @@ MUST NOT create ad-hoc handoff files, nested `AGENTS.md`, temporary TODO documen
 - A skill instruction or non-Markdown resource MAY remain a compact plain-text path when it cannot be linked reliably in the final response.
 - The final response SHOULD keep this list compact and separate it from build, static-check, and manual-verification results.
 
+## Long-running Work Progress
+
+- MUST report the current work-batch progress and the overall backlog completion rate whenever a long-running implementation, refactoring, QA, or migration batch reaches a verified milestone.
+- MUST base the overall completion rate on the active items recorded in the task's authoritative backlog document, and MUST distinguish completed, in-progress, deferred, and blocked items.
+- SHOULD keep progress reporting concise and include the next planned batch so the user can assess scope and remaining risk.
+
 ## Project Shape
 
 ```text
@@ -156,6 +162,12 @@ Figma work uses `Docs/Guides/UI_FIGMA.md`; generated React/Tailwind MUST NOT be 
 - MUST use `refactor` for behavior-preserving structural changes and `chore` for documentation, tooling, or repository maintenance.
 - MUST NOT mix unrelated feature, refactoring, and documentation changes in the same commit.
 - MUST inspect the staged diff for each commit and verify its scope before committing or pushing.
+
+## Fastlane Deployment
+
+- MUST use `bundle exec fastlane ios dev_beta` to upload a Dev TestFlight build.
+- MUST use `bundle exec fastlane ios prod_beta` to upload a Prod TestFlight build.
+- MUST verify the selected scheme, local secrets, and version/build number before either upload command.
 
 ## Verification
 

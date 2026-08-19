@@ -32,6 +32,9 @@ cp Config/Secrets.example.xcconfig Config/Secrets.prod.local.xcconfig
 
 - Kakao 키와 App Store Connect key ID·issuer ID·`.p8` 경로·App Store app ID는
   해당 `Secrets.*.local.xcconfig`에만 둔다.
+- `fastlane/Appfile`의 Apple 계정·App Store Connect 팀·Developer Portal 팀 식별자는
+  `fastlane/.env` 또는 CI secret 환경 변수로만 제공한다. `fastlane/.env.example`은 키 이름만
+  제공하며 실제 식별자를 포함하지 않는다.
 - `.p8`, `Secrets.*.local.xcconfig`, 실제 `GoogleService-Info.plist`는 커밋하지 않는다.
 - Firebase plist는 Dev가 `Config/Firebase/Dev/GoogleService-Info.plist`, Prod가
   `Config/Firebase/Prod/GoogleService-Info.plist`를 사용하며 `BUNDLE_ID`가 일치해야 한다.
