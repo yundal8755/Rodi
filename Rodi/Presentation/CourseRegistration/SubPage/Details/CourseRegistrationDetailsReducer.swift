@@ -12,6 +12,8 @@ struct CourseRegistrationDetailsReducer: Reducer {
         var isCompletionPresented = false
         var alertToast: CourseRegistrationAlertToastState?
         var alertToastRevision = 0
+        var activeRequestID: UUID?
+        let sessionID = UUID()
 
         var isSubmitEnabled: Bool {
             guard case let .loaded(form) = loadState,
@@ -39,7 +41,7 @@ struct CourseRegistrationDetailsReducer: Reducer {
 
     enum Action {
         case start(CourseRegistrationDetailsContext)
-        case formLoaded(Int, Result<CourseRegistrationForm, NetworkError>)
+        case formLoaded(UUID, Result<CourseRegistrationForm, NetworkError>)
         case retryTapped
         case categoryTapped(String)
         case practiceTypeTapped(String)
@@ -49,9 +51,10 @@ struct CourseRegistrationDetailsReducer: Reducer {
         case discardConfirmed
         case discardCancelled
         case submitTapped
-        case submissionFinished(Result<CourseRegistrationResult, NetworkError>)
+        case submissionFinished(UUID, Result<CourseRegistrationResult, NetworkError>)
         case completionConfirmed
-        case alertToastDismissed(Int)
+        case alertToastDismissed(UUID, Int)
+        case deactivated
         case delegate(Delegate)
     }
 
@@ -61,6 +64,11 @@ struct CourseRegistrationDetailsReducer: Reducer {
     }
 
     private let courseRepository: CourseRepository
+
+    private enum EffectID: Hashable {
+        case network
+        case alertDismissal
+    }
 
     init(courseRepository: CourseRepository) {
         self.courseRepository = courseRepository
@@ -72,8 +80,9 @@ struct CourseRegistrationDetailsReducer: Reducer {
             state = .init(context: context)
             return loadRegistrationForm(state: &state)
 
-        case .formLoaded(let revision, let result):
-            guard state.loadRevision == revision else { return .none }
+        case .formLoaded(let requestID, let result):
+            guard state.activeRequestID == requestID else { return .none }
+            state.activeRequestID = nil
             switch result {
             case .success(let form):
                 state.loadState = .loaded(form)
@@ -122,6 +131,7 @@ struct CourseRegistrationDetailsReducer: Reducer {
                 state.draft.selectedPracticeTypeCodes.append(practiceTypeCode)
             } else {
                 showAlert(form.practiceType.maxSelectExceededMessage, state: &state)
+                return scheduleAlertDismissal(state: state)
             }
 
         case .cautionChanged(let value):
@@ -150,14 +160,19 @@ struct CourseRegistrationDetailsReducer: Reducer {
             guard !state.isSubmitting,
                   case let .loaded(form) = state.loadState,
                   state.isSubmitEnabled,
-                  validateInputLengths(form: form, state: &state),
                   let context = state.context,
                   let submission = courseSubmission(context: context, draft: state.draft)
             else {
                 return .none
             }
 
+            guard validateInputLengths(form: form, state: &state) else {
+                return scheduleAlertDismissal(state: state)
+            }
+
             state.isSubmitting = true
+            let requestID = UUID()
+            state.activeRequestID = requestID
             RodiAnalytics.track(
                 .courseRegistrationSubmitted(
                     waypointCount: context.waypoints.count,
@@ -168,17 +183,21 @@ struct CourseRegistrationDetailsReducer: Reducer {
             return .run { send in
                 do {
                     let result = try await courseRepository.register(submission)
-                    await send(.submissionFinished(.success(result)))
+                    await send(.submissionFinished(requestID, .success(result)))
+                } catch is CancellationError {
+                    return
                 } catch let error as NetworkError {
-                    await send(.submissionFinished(.failure(error)))
+                    await send(.submissionFinished(requestID, .failure(error)))
                 } catch {
-                    await send(.submissionFinished(.failure(.unknown(errorCode: "unknown"))))
+                    await send(.submissionFinished(requestID, .failure(.unknown(errorCode: "unknown"))))
                 }
             }
+            .cancelTask(id: EffectID.network)
 
-        case .submissionFinished(let result):
-            guard state.isSubmitting else { return .none }
+        case .submissionFinished(let requestID, let result):
+            guard state.isSubmitting, state.activeRequestID == requestID else { return .none }
             state.isSubmitting = false
+            state.activeRequestID = nil
             switch result {
             case .success:
                 state.isCompletionPresented = true
@@ -186,6 +205,7 @@ struct CourseRegistrationDetailsReducer: Reducer {
             case .failure:
                 RodiAnalytics.track(.courseRegistrationFailed(stage: "submission"))
                 showAlert("코스를 등록하지 못했어요. 잠시 후 다시 시도해주세요.", state: &state)
+                return scheduleAlertDismissal(state: state)
             }
 
         case .completionConfirmed:
@@ -193,9 +213,17 @@ struct CourseRegistrationDetailsReducer: Reducer {
             state.isCompletionPresented = false
             return .send(.delegate(.completionConfirmed))
 
-        case .alertToastDismissed(let revision):
-            guard state.alertToastRevision == revision else { return .none }
+        case .alertToastDismissed(let sessionID, let revision):
+            guard state.sessionID == sessionID,
+                  state.alertToastRevision == revision
+            else { return .none }
             state.alertToast = nil
+
+        case .deactivated:
+            state.activeRequestID = nil
+            state.isSubmitting = false
+            state.alertToast = nil
+            return .cancel(id: EffectID.network)
 
         case .delegate:
             return .none
@@ -206,18 +234,22 @@ struct CourseRegistrationDetailsReducer: Reducer {
 
     private func loadRegistrationForm(state: inout State) -> Effect<Action> {
         state.loadRevision += 1
-        let revision = state.loadRevision
+        let requestID = UUID()
+        state.activeRequestID = requestID
         state.loadState = .loading
         return .run { send in
             do {
                 let form = try await courseRepository.fetchRegistrationForm()
-                await send(.formLoaded(revision, .success(form)))
+                await send(.formLoaded(requestID, .success(form)))
+            } catch is CancellationError {
+                return
             } catch let error as NetworkError {
-                await send(.formLoaded(revision, .failure(error)))
+                await send(.formLoaded(requestID, .failure(error)))
             } catch {
-                await send(.formLoaded(revision, .failure(.unknown(errorCode: "unknown"))))
+                await send(.formLoaded(requestID, .failure(.unknown(errorCode: "unknown"))))
             }
         }
+        .cancelTask(id: EffectID.network)
     }
 
     private func finishBack(state: inout State) -> Effect<Action> {
@@ -314,6 +346,23 @@ struct CourseRegistrationDetailsReducer: Reducer {
     private func showAlert(_ message: String, state: inout State) {
         state.alertToastRevision += 1
         state.alertToast = .init(message: message, revision: state.alertToastRevision)
+    }
+
+    private func scheduleAlertDismissal(state: State) -> Effect<Action> {
+        guard let alertToast = state.alertToast else { return .none }
+        let revision = alertToast.revision
+        return .run { send in
+            do {
+                try await Task.sleep(for: .seconds(3))
+                guard !Task.isCancelled else { return }
+                await send(.alertToastDismissed(state.sessionID, revision))
+            } catch is CancellationError {
+                return
+            } catch {
+                return
+            }
+        }
+        .cancelTask(id: EffectID.alertDismissal)
     }
 
     private func trimmed(_ value: String) -> String {

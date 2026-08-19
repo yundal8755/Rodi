@@ -59,6 +59,7 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
     enum Action {
         case prepareStartSelection
         case appeared
+        case deactivated
         case closeTapped
         case reset
         case waypointAddTapped
@@ -84,6 +85,10 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
         case openDetails(CourseRegistrationDetailsContext)
         case closeRequested(hasInput: Bool)
         case showError(String)
+    }
+
+    private enum EffectID: Hashable {
+        case work
     }
 
     struct LocationRequest: Equatable {
@@ -130,6 +135,15 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
                 revision: state.map.locationRequestRevision,
                 source: .initial
             ))
+
+        case .deactivated:
+            state.map.locationRequestRevision += 1
+            state.map.addressRequestRevision += 1
+            state.routeRequestRevision += 1
+            state.map.isCurrentLocationActive = false
+            state.map.isAddressResolving = false
+            state.isRouteLoading = false
+            return .cancel(id: EffectID.work)
 
         case .closeTapped:
             return .send(.delegate(.closeRequested(hasInput: state.hasInput)))
@@ -350,6 +364,7 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
         .run { send in
             await send(.currentLocationResolved(request, await mapService.requestCurrentLocation()))
         }
+        .cancelTask(id: EffectID.work)
     }
 
     private func currentLocationFailureMessage(
@@ -369,12 +384,15 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
         .run { send in
             do {
                 await send(.reverseGeocodingFinished(request, .success(try await mapService.reverseGeocode(request.coordinate))))
+            } catch is CancellationError {
+                return
             } catch let error as CourseRegistrationAddressLookupError {
                 await send(.reverseGeocodingFinished(request, .failure(error)))
             } catch {
                 await send(.reverseGeocodingFinished(request, .failure(.networkFailed)))
             }
         }
+        .cancelTask(id: EffectID.work)
     }
 
     private func requestInitialRoute(
@@ -384,12 +402,15 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
         .run { send in
             do {
                 await send(.initialRouteFinished(revision, .success(try await directionsService.fetchRoute(points: points))))
+            } catch is CancellationError {
+                return
             } catch let error as KakaoDirectionsError {
                 await send(.initialRouteFinished(revision, .failure(error)))
             } catch {
                 await send(.initialRouteFinished(revision, .failure(.networkFailed("unknown"))))
             }
         }
+        .cancelTask(id: EffectID.work)
     }
 }
 

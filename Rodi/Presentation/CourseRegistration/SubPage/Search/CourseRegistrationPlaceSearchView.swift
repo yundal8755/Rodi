@@ -2,16 +2,12 @@ import SwiftUI
 
 /// 코스 등록의 출발지·도착지·경유지 입력을 위한 검색 화면이다.
 struct CourseRegistrationPlaceSearchView: View {
-    @StateObject private var store = Store(
-        state: CourseRegistrationPlaceSearchReducer.State(initialQuery: ""),
-        reducer: CourseRegistrationPlaceSearchReducer()
-    )
     @FocusState private var isSearchFieldFocused: Bool
     @State private var recentSearches: [CourseRegistrationRecentSearch] = []
     @State private var isClosing = false
 
-    let closeAction: () -> Void
-    let resultSelectedAction: (CourseRegistrationPlaceSearchItem) -> Void
+    let state: CourseRegistrationPlaceSearchReducer.State
+    let send: (CourseRegistrationPlaceSearchReducer.Action) -> Void
     private let recentSearchStore = CourseRegistrationRecentSearchStore()
 
     var body: some View {
@@ -22,11 +18,12 @@ struct CourseRegistrationPlaceSearchView: View {
         .background(RodiColor.white.ignoresSafeArea())
         .onAppear {
             recentSearches = recentSearchStore.load()
-            store.send(.appeared)
+            send(.appeared)
             DispatchQueue.main.async {
                 isSearchFieldFocused = true
             }
         }
+        .onDisappear { send(.deactivated) }
     }
 }
 
@@ -34,15 +31,15 @@ private extension CourseRegistrationPlaceSearchView {
     var searchField: some View {
         HomeSearchTextField(
             text: Binding(
-                get: { store.state.query },
-                set: { store.send(.queryChanged($0)) }
+                get: { state.query },
+                set: { send(.queryChanged($0)) }
             ),
             isFocused: $isSearchFieldFocused,
             placeholder: "장소 · 도로명 검색",
             backAction: dismissKeyboardThenClose,
             submitAction: {
                 isSearchFieldFocused = false
-                store.send(.searchTapped)
+                send(.searchTapped)
             }
         )
         .padding(.horizontal, 16)
@@ -53,12 +50,12 @@ private extension CourseRegistrationPlaceSearchView {
     var searchResults: some View {
         ScrollView {
             LazyVStack(spacing: 0) {
-                if store.state.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if state.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     recentSearchSection
                 } else {
                     regionResults
 
-                    if !store.state.regions.isEmpty, showsPlaceSection {
+                    if !state.regions.isEmpty, showsPlaceSection {
                         RodiColor.primaryMinus100
                             .frame(height: 4)
                     }
@@ -75,7 +72,7 @@ private extension CourseRegistrationPlaceSearchView {
     }
 
     var regionResults: some View {
-        ForEach(store.state.regions) { region in
+        ForEach(state.regions) { region in
             Button {
                 isSearchFieldFocused = false
                 recentSearches = recentSearchStore.save(.init(
@@ -84,7 +81,7 @@ private extension CourseRegistrationPlaceSearchView {
                     kind: .region,
                     coordinate: nil
                 ))
-                store.send(.regionTapped(region))
+                send(.regionTapped(region))
             } label: {
                     resultRow(
                         title: region.displayName,
@@ -95,7 +92,7 @@ private extension CourseRegistrationPlaceSearchView {
             }
             .buttonStyle(.plain)
 
-            if region.id != store.state.regions.last?.id {
+            if region.id != state.regions.last?.id {
                 Divider().overlay(RodiColor.primaryMinus100)
             }
         }
@@ -103,18 +100,18 @@ private extension CourseRegistrationPlaceSearchView {
 
     @ViewBuilder
     var placeResults: some View {
-        if store.state.query.trimmingCharacters(in: .whitespacesAndNewlines).count < 2 {
+        if state.query.trimmingCharacters(in: .whitespacesAndNewlines).count < 2 {
             EmptyView()
-        } else if store.state.isPlaceLoading {
+        } else if state.isPlaceLoading {
             ProgressView()
                 .tint(RodiColor.primary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 20)
-        } else if let errorMessage = store.state.placeErrorMessage {
+        } else if let errorMessage = state.placeErrorMessage {
             VStack(spacing: 12) {
                 messageState(errorMessage)
                 Button {
-                    store.send(.searchTapped)
+                    send(.searchTapped)
                 } label: {
                     Text("다시 시도")
                         .rodiTypography(.buttonMedium)
@@ -123,10 +120,10 @@ private extension CourseRegistrationPlaceSearchView {
                     .buttonStyle(.plain)
             }
             .padding(.vertical, 24)
-        } else if store.state.hasSearchedPlaces, store.state.places.isEmpty, store.state.regions.isEmpty {
+        } else if state.hasSearchedPlaces, state.places.isEmpty, state.regions.isEmpty {
             messageState("검색 결과가 없어요.")
         } else {
-            ForEach(store.state.places) { place in
+            ForEach(state.places) { place in
                 Button {
                     isSearchFieldFocused = false
                     recentSearches = recentSearchStore.save(.init(
@@ -135,7 +132,7 @@ private extension CourseRegistrationPlaceSearchView {
                         kind: .place,
                         coordinate: place.coordinate
                     ))
-                    resultSelectedAction(place)
+                    send(.resultTapped(place))
                 } label: {
                     resultRow(
                         title: place.title,
@@ -147,13 +144,13 @@ private extension CourseRegistrationPlaceSearchView {
                 .buttonStyle(.plain)
                 .accessibilityHint("지도에서 핀 위치를 조정할 수 있어요.")
                 .onAppear {
-                    guard place.id == store.state.places.last?.id else { return }
-                    store.send(.loadNextPage)
+                    guard place.id == state.places.last?.id else { return }
+                    send(.loadNextPage)
                 }
                 Divider().overlay(RodiColor.primaryMinus100)
             }
 
-            if store.state.isLoadingNextPage {
+            if state.isLoadingNextPage {
                 ProgressView()
                     .tint(RodiColor.primary)
                     .frame(maxWidth: .infinity)
@@ -163,9 +160,9 @@ private extension CourseRegistrationPlaceSearchView {
     }
 
     var showsPlaceSection: Bool {
-        store.state.isPlaceLoading
-            || store.state.placeErrorMessage != nil
-            || !store.state.places.isEmpty
+        state.isPlaceLoading
+            || state.placeErrorMessage != nil
+            || !state.places.isEmpty
     }
 
     @ViewBuilder
@@ -293,20 +290,20 @@ private extension CourseRegistrationPlaceSearchView {
         isSearchFieldFocused = false
         switch search.kind {
         case .region:
-            store.send(.sampleSearchTapped(search.title))
+            send(.sampleSearchTapped(search.title))
         case .place:
             guard let coordinate = search.coordinate else {
-                store.send(.sampleSearchTapped(search.title))
+                send(.sampleSearchTapped(search.title))
                 return
             }
-            resultSelectedAction(.init(
+            send(.resultTapped(.init(
                 id: "recent-\(search.id.uuidString)",
                 title: search.title,
                 address: search.title,
                 coordinate: coordinate,
                 category: nil,
                 phone: nil
-            ))
+            )))
         }
     }
 
@@ -316,7 +313,7 @@ private extension CourseRegistrationPlaceSearchView {
         isSearchFieldFocused = false
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-            closeAction()
+            send(.closeTapped)
         }
     }
 }

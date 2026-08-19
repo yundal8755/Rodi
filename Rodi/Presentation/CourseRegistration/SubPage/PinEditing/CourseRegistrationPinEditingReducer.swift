@@ -25,6 +25,7 @@ struct CourseRegistrationPinEditingReducer: Reducer {
 
     enum Action {
         case currentLocationTapped
+        case deactivated
         case currentLocationResolved(Int, CourseRegistrationMapService.CurrentLocationResult)
         case viewportChanged(RodiCoordinate, isUserInitiated: Bool)
         case addressTapped
@@ -45,6 +46,10 @@ struct CourseRegistrationPinEditingReducer: Reducer {
         case showError(String)
     }
 
+    private enum EffectID: Hashable {
+        case work
+    }
+
     struct AddressRequest: Equatable {
         let revision: Int
         let coordinate: RodiCoordinate
@@ -63,6 +68,15 @@ struct CourseRegistrationPinEditingReducer: Reducer {
 
     func reduce(_ state: inout State, with action: Action) -> Effect<Action> {
         switch action {
+        case .deactivated:
+            state.locationRequestRevision += 1
+            state.addressRequestRevision += 1
+            state.completionRevision += 1
+            state.isCurrentLocationActive = false
+            state.isAddressResolving = false
+            state.isSaving = false
+            return .cancel(id: EffectID.work)
+
         case .currentLocationTapped:
             guard state.temporaryPlace == nil else { return .none }
             state.locationRequestRevision += 1
@@ -171,6 +185,7 @@ struct CourseRegistrationPinEditingReducer: Reducer {
         .run { send in
             await send(.currentLocationResolved(revision, await mapService.requestCurrentLocation()))
         }
+        .cancelTask(id: EffectID.work)
     }
 
     private func requestCandidateAddress(
@@ -183,12 +198,15 @@ struct CourseRegistrationPinEditingReducer: Reducer {
         return .run { send in
             do {
                 await send(.candidateAddressFinished(request, .success(try await mapService.reverseGeocode(coordinate))))
+            } catch is CancellationError {
+                return
             } catch let error as CourseRegistrationAddressLookupError {
                 await send(.candidateAddressFinished(request, .failure(error)))
             } catch {
                 await send(.candidateAddressFinished(request, .failure(.networkFailed)))
             }
         }
+        .cancelTask(id: EffectID.work)
     }
 
     private func requestRoute(
@@ -198,12 +216,15 @@ struct CourseRegistrationPinEditingReducer: Reducer {
         .run { send in
             do {
                 await send(.routeFinished(revision, .success(try await directionsService.fetchRoute(points: points))))
+            } catch is CancellationError {
+                return
             } catch let error as KakaoDirectionsError {
                 await send(.routeFinished(revision, .failure(error)))
             } catch {
                 await send(.routeFinished(revision, .failure(.networkFailed("unknown"))))
             }
         }
+        .cancelTask(id: EffectID.work)
     }
 
     private func currentLocationFailureMessage(

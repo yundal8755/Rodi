@@ -15,7 +15,9 @@ struct CourseRegistrationReducer: Reducer {
         var route: Route
         var tutorial = CourseRegistrationTutorialReducer.State()
         var mapSelection: CourseRegistrationMapSelectionReducer.State
+        var placeSearch = CourseRegistrationPlaceSearchReducer.State()
         var errorMessage: String?
+        var errorRevision = 0
         var tutorialCompletionRevision = 0
         var pinEditing: CourseRegistrationPinEditingReducer.State?
         var details = CourseRegistrationDetailsReducer.State()
@@ -32,36 +34,40 @@ struct CourseRegistrationReducer: Reducer {
     enum Action {
         case tutorial(CourseRegistrationTutorialReducer.Action)
         case mapSelection(CourseRegistrationMapSelectionReducer.Action)
-        case errorDismissed
+        case placeSearch(CourseRegistrationPlaceSearchReducer.Action)
+        case errorDismissed(Int)
+        case deactivated
 
-        case registrationCloseTapped
         case registrationDiscardConfirmed
         case registrationDiscardCancelled
 
         case details(CourseRegistrationDetailsReducer.Action)
-        case registrationSearchDismissed
-        case registrationSearchResultSelected(CourseRegistrationPlaceSearchItem)
         case pinEditing(CourseRegistrationPinEditingReducer.Action)
-        case pinEditSearchDismissed
-        case pinEditSearchResultSelected(CourseRegistrationPlaceSearchItem)
     }
 
     private let tutorialReducer: CourseRegistrationTutorialReducer
     private let mapSelectionReducer: CourseRegistrationMapSelectionReducer
     private let pinEditingReducer: CourseRegistrationPinEditingReducer
     private let detailsReducer: CourseRegistrationDetailsReducer
+    private let placeSearchReducer: CourseRegistrationPlaceSearchReducer
+
+    private enum EffectID: Hashable {
+        case errorDismissal
+    }
 
     init(
         memberRepository: MemberRepository,
         courseRepository: CourseRepository,
         mapService: CourseRegistrationMapService? = nil,
-        directionsService: KakaoDirectionsService = .init()
+        directionsService: KakaoDirectionsService? = nil
     ) {
         tutorialReducer = .init(memberRepository: memberRepository)
         let resolvedMapService = mapService ?? CourseRegistrationMapService()
-        mapSelectionReducer = .init(mapService: resolvedMapService, directionsService: directionsService)
-        pinEditingReducer = .init(mapService: resolvedMapService, directionsService: directionsService)
+        let resolvedDirectionsService = directionsService ?? KakaoDirectionsService()
+        mapSelectionReducer = .init(mapService: resolvedMapService, directionsService: resolvedDirectionsService)
+        pinEditingReducer = .init(mapService: resolvedMapService, directionsService: resolvedDirectionsService)
         detailsReducer = .init(courseRepository: courseRepository)
+        placeSearchReducer = .init()
     }
 
     func reduce(_ state: inout State, with action: Action) -> Effect<Action> {
@@ -70,27 +76,36 @@ struct CourseRegistrationReducer: Reducer {
             if case .delegate(let delegate) = childAction {
                 return reduceTutorialDelegate(delegate, state: &state)
             }
+            if case .deactivated = childAction {
+                return tutorialReducer
+                    .reduce(&state.tutorial, with: childAction)
+                    .map(Action.tutorial)
+            }
             guard state.route == .tutorial else { return .none }
             return tutorialReducer
                 .reduce(&state.tutorial, with: childAction)
                 .map(Action.tutorial)
 
-        case .errorDismissed:
+        case .errorDismissed(let revision):
+            guard state.errorRevision == revision else { return .none }
             state.errorMessage = nil
+
+        case .deactivated:
+            state.errorMessage = nil
+            return .cancel(id: EffectID.errorDismissal)
 
         case .mapSelection(let childAction):
             if case .delegate(let delegate) = childAction {
                 return reduceMapSelectionDelegate(delegate, state: &state)
             }
+            if case .deactivated = childAction {
+                return mapSelectionReducer
+                    .reduce(&state.mapSelection, with: childAction)
+                    .map(Action.mapSelection)
+            }
             guard state.route == .registration else { return .none }
             return mapSelectionReducer
                 .reduce(&state.mapSelection, with: childAction)
-                .map(Action.mapSelection)
-
-        case .registrationCloseTapped:
-            guard state.route == .registration else { return .none }
-            return mapSelectionReducer
-                .reduce(&state.mapSelection, with: .closeTapped)
                 .map(Action.mapSelection)
 
         case .registrationDiscardConfirmed:
@@ -110,25 +125,38 @@ struct CourseRegistrationReducer: Reducer {
             if case .delegate(let delegate) = childAction {
                 return reduceDetailsDelegate(delegate, state: &state)
             }
+            if case .deactivated = childAction {
+                return detailsReducer
+                    .reduce(&state.details, with: childAction)
+                    .map(Action.details)
+            }
             guard state.route == .details else { return .none }
             return detailsReducer
                 .reduce(&state.details, with: childAction)
                 .map(Action.details)
 
-        case .registrationSearchDismissed:
-            guard case .registrationSearch = state.route else { return .none }
-            state.route = .registration
-
-        case .registrationSearchResultSelected(let result):
-            guard case let .registrationSearch(target) = state.route else { return .none }
-            state.route = .registration
-            return mapSelectionReducer
-                .reduce(&state.mapSelection, with: .searchResultSelected(target, result))
-                .map(Action.mapSelection)
+        case .placeSearch(let childAction):
+            if case .delegate(let delegate) = childAction {
+                return reducePlaceSearchDelegate(delegate, state: &state)
+            }
+            if case .deactivated = childAction {
+                return placeSearchReducer
+                    .reduce(&state.placeSearch, with: childAction)
+                    .map(Action.placeSearch)
+            }
+            guard state.route.isPlaceSearch else { return .none }
+            return placeSearchReducer
+                .reduce(&state.placeSearch, with: childAction)
+                .map(Action.placeSearch)
 
         case .pinEditing(let childAction):
             if case .delegate(let delegate) = childAction {
                 return reducePinEditingDelegate(delegate, state: &state)
+            }
+            if case .deactivated = childAction, state.pinEditing != nil {
+                return pinEditingReducer
+                    .reduce(&state.pinEditing!, with: childAction)
+                    .map(Action.pinEditing)
             }
             guard state.route == .pinEditing || state.route == .pinEditSearch,
                   state.pinEditing != nil
@@ -139,16 +167,6 @@ struct CourseRegistrationReducer: Reducer {
                 .reduce(&state.pinEditing!, with: childAction)
                 .map(Action.pinEditing)
 
-        case .pinEditSearchDismissed:
-            guard state.route == .pinEditSearch, state.pinEditing != nil else { return .none }
-            state.route = .pinEditing
-
-        case .pinEditSearchResultSelected(let result):
-            guard state.route == .pinEditSearch, state.pinEditing != nil else { return .none }
-            state.route = .pinEditing
-            return pinEditingReducer
-                .reduce(&state.pinEditing!, with: .searchResultSelected(result))
-                .map(Action.pinEditing)
         }
         return .none
     }
@@ -182,6 +200,10 @@ struct CourseRegistrationReducer: Reducer {
             return mapSelectionReducer
                 .reduce(&state.mapSelection, with: .prepareStartSelection)
                 .map(Action.mapSelection)
+        case .closeRequested:
+            guard state.route == .tutorial else { return .none }
+            state.courseRegistrationExitRevision += 1
+            return .none
         }
     }
 
@@ -192,6 +214,7 @@ struct CourseRegistrationReducer: Reducer {
         switch delegate {
         case .openSearch(let target):
             guard state.route == .registration else { return .none }
+            state.placeSearch = .init()
             state.route = .registrationSearch(target)
             return .none
 
@@ -218,8 +241,7 @@ struct CourseRegistrationReducer: Reducer {
             return .none
 
         case .showError(let message):
-            state.errorMessage = message
-            return .none
+            return presentError(message, state: &state)
         }
     }
 
@@ -230,6 +252,7 @@ struct CourseRegistrationReducer: Reducer {
         switch delegate {
         case .openSearch:
             guard state.route == .pinEditing else { return .none }
+            state.placeSearch = .init()
             state.route = .pinEditSearch
             return .none
 
@@ -248,8 +271,71 @@ struct CourseRegistrationReducer: Reducer {
                 .map(Action.mapSelection)
 
         case .showError(let message):
-            state.errorMessage = message
+            return presentError(message, state: &state)
+        }
+    }
+
+    private func reducePlaceSearchDelegate(
+        _ delegate: CourseRegistrationPlaceSearchReducer.Delegate,
+        state: inout State
+    ) -> Effect<Action> {
+        switch delegate {
+        case .closeRequested:
+            switch state.route {
+            case .registrationSearch:
+                state.route = .registration
+            case .pinEditSearch:
+                state.route = .pinEditing
+            default:
+                return .none
+            }
             return .none
+
+        case .resultSelected(let result):
+            switch state.route {
+            case .registrationSearch(let target):
+                state.route = .registration
+                return mapSelectionReducer
+                    .reduce(&state.mapSelection, with: .searchResultSelected(target, result))
+                    .map(Action.mapSelection)
+            case .pinEditSearch:
+                guard state.pinEditing != nil else { return .none }
+                state.route = .pinEditing
+                return pinEditingReducer
+                    .reduce(&state.pinEditing!, with: .searchResultSelected(result))
+                    .map(Action.pinEditing)
+            default:
+                return .none
+            }
+        }
+    }
+
+    private func presentError(_ message: String, state: inout State) -> Effect<Action> {
+        state.errorRevision += 1
+        state.errorMessage = message
+        let revision = state.errorRevision
+        return .run { send in
+            do {
+                try await Task.sleep(for: .seconds(3))
+                guard !Task.isCancelled else { return }
+                await send(.errorDismissed(revision))
+            } catch is CancellationError {
+                return
+            } catch {
+                return
+            }
+        }
+        .cancelTask(id: EffectID.errorDismissal)
+    }
+}
+
+private extension CourseRegistrationReducer.State.Route {
+    var isPlaceSearch: Bool {
+        switch self {
+        case .registrationSearch, .pinEditSearch:
+            true
+        default:
+            false
         }
     }
 }

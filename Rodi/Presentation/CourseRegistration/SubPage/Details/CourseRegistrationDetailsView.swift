@@ -25,6 +25,7 @@ struct CourseRegistrationDetailsView: View {
         .padding(.bottom, isTextFieldFocused ? 0 : screenSafeAreaInsets.bottom)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(RodiColor.white)
+        .onDisappear { send(.deactivated) }
         .ignoresSafeArea(.container)
         .ignoresSafeArea([], edges: .bottom)
         .overlay(alignment: .bottom) {
@@ -34,11 +35,6 @@ struct CourseRegistrationDetailsView: View {
                     .padding(.bottom, isTextFieldFocused ? 24 : 96)
                     .transition(.opacity)
                     .allowsHitTesting(false)
-                    .task(id: alertToast.revision) {
-                        try? await Task.sleep(for: .seconds(3))
-                        guard !Task.isCancelled else { return }
-                        send(.alertToastDismissed(alertToast.revision))
-                    }
             }
         }
         .overlay {

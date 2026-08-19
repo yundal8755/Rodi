@@ -7,7 +7,7 @@ import Foundation
 
 @MainActor
 struct CourseRegistrationPlaceSearchReducer: Reducer {
-    struct State {
+    struct State: Equatable {
         var query: String
         var regions: [CourseRegistrationRegionSuggestion] = []
         var places: [CourseRegistrationPlaceSearchItem] = []
@@ -17,9 +17,11 @@ struct CourseRegistrationPlaceSearchReducer: Reducer {
         var hasSearchedPlaces = false
         var placeErrorMessage: String?
         var requestID = 0
+        let sessionID: UUID
 
         init(initialQuery: String = "서울") {
             query = initialQuery
+            sessionID = UUID()
         }
     }
 
@@ -30,7 +32,16 @@ struct CourseRegistrationPlaceSearchReducer: Reducer {
         case sampleSearchTapped(String)
         case searchTapped
         case loadNextPage
-        case placeSearchCompleted(SearchResult, requestID: Int, isNextPage: Bool)
+        case resultTapped(CourseRegistrationPlaceSearchItem)
+        case closeTapped
+        case deactivated
+        case placeSearchCompleted(SearchResult, sessionID: UUID, requestID: Int, isNextPage: Bool)
+        case delegate(Delegate)
+    }
+
+    enum Delegate {
+        case resultSelected(CourseRegistrationPlaceSearchItem)
+        case closeRequested
     }
 
     enum SearchResult {
@@ -103,8 +114,20 @@ extension CourseRegistrationPlaceSearchReducer {
                 debounce: false
             )
 
-        case let .placeSearchCompleted(result, requestID, isNextPage):
-            guard requestID == state.requestID else { return .none }
+        case .resultTapped(let result):
+            return .send(.delegate(.resultSelected(result)))
+
+        case .closeTapped:
+            return .send(.delegate(.closeRequested))
+
+        case .deactivated:
+            state.requestID += 1
+            state.isPlaceLoading = false
+            state.isLoadingNextPage = false
+            return .cancel(id: EffectID.placeSearch)
+
+        case let .placeSearchCompleted(result, sessionID, requestID, isNextPage):
+            guard sessionID == state.sessionID, requestID == state.requestID else { return .none }
             state.isPlaceLoading = false
             state.isLoadingNextPage = false
             state.hasSearchedPlaces = true
@@ -122,6 +145,9 @@ extension CourseRegistrationPlaceSearchReducer {
                     state.placeErrorMessage = message
                 }
             }
+
+        case .delegate:
+            return .none
         }
 
         return .none
@@ -168,6 +194,7 @@ private extension CourseRegistrationPlaceSearchReducer {
         state.placeErrorMessage = nil
 
         let requestID = state.requestID
+        let sessionID = state.sessionID
         let searchService = searchService
 
         return .run { send in
@@ -181,12 +208,18 @@ private extension CourseRegistrationPlaceSearchReducer {
 
             do {
                 let page = try await searchService.searchPlaces(query: query, offset: offset)
-                await send(.placeSearchCompleted(.success(page), requestID: requestID, isNextPage: isNextPage))
+                await send(.placeSearchCompleted(
+                    .success(page),
+                    sessionID: sessionID,
+                    requestID: requestID,
+                    isNextPage: isNextPage
+                ))
             } catch is CancellationError {
                 return
             } catch let error as KakaoLocalPlaceSearchError {
                 await send(.placeSearchCompleted(
                     .failure(error.userMessage),
+                    sessionID: sessionID,
                     requestID: requestID,
                     isNextPage: isNextPage
                 ))
@@ -194,6 +227,7 @@ private extension CourseRegistrationPlaceSearchReducer {
                 await send(
                     .placeSearchCompleted(
                         .failure("검색 중 알 수 없는 오류가 발생했어요."),
+                        sessionID: sessionID,
                         requestID: requestID,
                         isNextPage: isNextPage
                     )

@@ -2,12 +2,11 @@ import SwiftUI
 
 struct CourseRegistrationTutorialView: View {
     let state: CourseRegistrationTutorialReducer.State
-    let closeAction: () -> Void
     let send: (CourseRegistrationTutorialReducer.Action) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            CourseRegistrationHeader(title: "코스 등록 방법", closeAction: closeAction)
+            CourseRegistrationHeader(title: "코스 등록 방법", closeAction: { send(.closeTapped) })
             StepProgressView(activeCount: state.page + 1, totalCount: 3)
             TabView(
                 selection: Binding(
@@ -40,12 +39,7 @@ struct CourseRegistrationTutorialView: View {
         }
         .background(RodiColor.white)
         .rodiSnackbar(message: state.errorMessage)
-        .task(id: state.errorMessage) {
-            guard state.errorMessage != nil else { return }
-            try? await Task.sleep(for: .seconds(3))
-            guard !Task.isCancelled else { return }
-            send(.errorDismissed)
-        }
+        .onDisappear { send(.deactivated) }
     }
 }
 
