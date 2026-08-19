@@ -26,14 +26,11 @@ final class LevelUpPresentationStore: LevelUpPresentationStoring {
     }
 
     private let tokenStore: TokenStoring
-    private let userDefaults: UserDefaults
 
     init(
-        tokenStore: TokenStoring,
-        userDefaults: UserDefaults = .standard
+        tokenStore: TokenStoring
     ) {
         self.tokenStore = tokenStore
-        self.userDefaults = userDefaults
     }
 
     func check(level: MemberProfile.Level) -> LevelUpPresentationCheckResult {
@@ -96,13 +93,11 @@ private extension LevelUpPresentationStore {
     }
 
     private func snapshot(forKey key: String) -> Snapshot? {
-        guard let data = userDefaults.data(forKey: key) else { return nil }
-        return try? JSONDecoder().decode(Snapshot.self, from: data)
+        UserDefaultsCodableStore<Snapshot>(key: key).load()
     }
 
     private func save(_ snapshot: Snapshot, forKey key: String) {
-        guard let data = try? JSONEncoder().encode(snapshot) else { return }
-        userDefaults.set(data, forKey: key)
+        UserDefaultsCodableStore<Snapshot>(key: key).save(snapshot)
     }
 
     private func base64URLDecodedData(from value: String) -> Data? {
