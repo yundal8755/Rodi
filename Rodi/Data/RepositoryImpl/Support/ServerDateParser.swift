@@ -6,20 +6,22 @@ nonisolated enum ServerDateParser {
             return nil
         }
 
-        return fractionalISO8601DateFormatter.date(from: value)
-            ?? iso8601DateFormatter.date(from: value)
+        return fractionalISO8601DateFormatter().date(from: value)
+            ?? iso8601DateFormatter().date(from: value)
             ?? dateWithoutTimeZone(from: value)
     }
 }
 
 private extension ServerDateParser {
-    static let iso8601DateFormatter = ISO8601DateFormatter()
+    static func iso8601DateFormatter() -> ISO8601DateFormatter {
+        ISO8601DateFormatter()
+    }
 
-    static let fractionalISO8601DateFormatter: ISO8601DateFormatter = {
+    static func fractionalISO8601DateFormatter() -> ISO8601DateFormatter {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
-    }()
+    }
 
     static func dateWithoutTimeZone(from value: String) -> Date? {
         let formatter = DateFormatter()
