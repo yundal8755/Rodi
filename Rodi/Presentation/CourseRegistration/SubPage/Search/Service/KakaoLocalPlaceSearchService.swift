@@ -38,15 +38,17 @@ enum KakaoLocalPlaceSearchError: Error {
 }
 
 struct KakaoLocalPlaceSearchService {
+    private let kakaoRESTClient: KakaoRESTClient
+
+    init(kakaoRESTClient: KakaoRESTClient = .init()) {
+        self.kakaoRESTClient = kakaoRESTClient
+    }
+
     func searchPlaces(
         query: String,
         offset: Int = 0,
         limit: Int = 20
     ) async throws -> CourseRegistrationPlaceSearchPage {
-        guard !KakaoConfiguration.restAPIKey.isEmpty else {
-            throw KakaoLocalPlaceSearchError.missingAPIKey
-        }
-
         let firstPage = offset / 15 + 1
         let lastPage = (offset + limit - 1) / 15 + 1
         var documents: [KakaoKeywordSearchResponseDTO.Document] = []
@@ -84,33 +86,23 @@ struct KakaoLocalPlaceSearchService {
             throw KakaoLocalPlaceSearchError.invalidRequest
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue(
-            "KakaoAK \(KakaoConfiguration.restAPIKey)",
-            forHTTPHeaderField: "Authorization"
-        )
-
-        let data: Data
-        let response: URLResponse
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
-        } catch {
-            if error is CancellationError {
-                throw error
+            let response = try await kakaoRESTClient.get(url: url)
+            guard (200..<300).contains(response.statusCode) else {
+                throw KakaoLocalPlaceSearchError.httpStatus(response.statusCode)
             }
-            throw KakaoLocalPlaceSearchError.networkFailed
-        }
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw KakaoLocalPlaceSearchError.networkFailed
-        }
-        guard (200..<300).contains(httpResponse.statusCode) else {
-            throw KakaoLocalPlaceSearchError.httpStatus(httpResponse.statusCode)
-        }
-
-        do {
-            return try JSONDecoder().decode(KakaoKeywordSearchResponseDTO.self, from: data)
+            return try JSONDecoder().decode(KakaoKeywordSearchResponseDTO.self, from: response.data)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as KakaoLocalPlaceSearchError {
+            throw error
+        } catch let error as KakaoRESTClient.TransportError {
+            switch error {
+            case .missingAPIKey:
+                throw KakaoLocalPlaceSearchError.missingAPIKey
+            case .invalidHTTPResponse, .networkFailed:
+                throw KakaoLocalPlaceSearchError.networkFailed
+            }
         } catch {
             throw KakaoLocalPlaceSearchError.decodingFailed
         }
