@@ -22,10 +22,7 @@ struct MainTabView: View {
     let myPostsReviewFlowFinishedRequestID: Int
     let onReviewTestRequested: () -> Void
     let onReviewRequested: (ReviewFlowRequest) -> Void
-    let reviewState: ReviewReducer.State
-    let reviewSnackbarMessage: String?
-    let isCourseDetailReviewPresented: Bool
-    let sendReview: (ReviewReducer.Action) -> Void
+    let courseDetailReviewPresentation: CourseDetailReviewPresentation
     let isCourseTutorialCompleted: Bool
     let onCourseTutorialCompleted: () -> Void
     private let dependencies: AppDependencies
@@ -40,10 +37,7 @@ struct MainTabView: View {
         myPostsReviewFlowFinishedRequestID: Int,
         onReviewTestRequested: @escaping () -> Void,
         onReviewRequested: @escaping (ReviewFlowRequest) -> Void,
-        reviewState: ReviewReducer.State,
-        reviewSnackbarMessage: String?,
-        isCourseDetailReviewPresented: Bool,
-        sendReview: @escaping (ReviewReducer.Action) -> Void,
+        courseDetailReviewPresentation: CourseDetailReviewPresentation,
         isCourseTutorialCompleted: Bool,
         onCourseTutorialCompleted: @escaping () -> Void,
         dependencies: AppDependencies
@@ -57,10 +51,7 @@ struct MainTabView: View {
         self.myPostsReviewFlowFinishedRequestID = myPostsReviewFlowFinishedRequestID
         self.onReviewTestRequested = onReviewTestRequested
         self.onReviewRequested = onReviewRequested
-        self.reviewState = reviewState
-        self.reviewSnackbarMessage = reviewSnackbarMessage
-        self.isCourseDetailReviewPresented = isCourseDetailReviewPresented
-        self.sendReview = sendReview
+        self.courseDetailReviewPresentation = courseDetailReviewPresentation
         self.isCourseTutorialCompleted = isCourseTutorialCompleted
         self.onCourseTutorialCompleted = onCourseTutorialCompleted
         self.dependencies = dependencies
@@ -94,10 +85,7 @@ struct MainTabView: View {
                 onReviewEditRequested: {
                     onReviewRequested(.init(editingReviewID: $0, entrySource: .courseDetail))
                 },
-                courseDetailReviewState: reviewState,
-                courseDetailReviewSnackbarMessage: reviewSnackbarMessage,
-                isCourseDetailReviewPresented: isCourseDetailReviewPresented,
-                sendCourseDetailReview: sendReview,
+                courseDetailReviewPresentation: courseDetailReviewPresentation,
                 bottomTabBarHeight: RodiBottomTabBar.totalHeight(
                     safeAreaBottom: screenSafeAreaInsets.bottom
                 ),

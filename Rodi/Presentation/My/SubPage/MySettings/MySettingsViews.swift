@@ -182,7 +182,6 @@ struct MyOpenSourceLicenseView: View {
 
 struct MyPermissionSettingsView: View {
     let backAction: () -> Void
-    @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
     @State private var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @State private var areLiveActivitiesEnabled = false
@@ -258,7 +257,6 @@ struct MyPermissionSettingsView: View {
     }
 
     private func openSystemAppSettings() {
-        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-        openURL(url)
+        AppSettings.openSetting()
     }
 }

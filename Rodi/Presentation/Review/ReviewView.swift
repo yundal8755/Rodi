@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct ReviewFlowView: View {
+struct ReviewView: View {
     let state: ReviewReducer.State
     let send: (ReviewReducer.Action) -> Void
 
@@ -22,7 +22,7 @@ struct ReviewFlowView: View {
 }
 
 // MARK: - Section
-private extension ReviewFlowView {
+private extension ReviewView {
 
     @ViewBuilder
     var promptContent: some View {

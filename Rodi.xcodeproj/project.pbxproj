@@ -28,7 +28,7 @@
 		F1B000000000000000001002 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = F1B000000000000000003002 /* FirebaseAnalytics */; };
 		F1B000000000000000001003 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = F1B000000000000000003003 /* FirebaseCrashlytics */; };
 		F1B000000000000000001004 /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = F1B000000000000000003004 /* FirebasePerformance */; };
-		FADD9B8005F6E08C3F9AA73C /* Rodi/Presentation/PracticeTracking/PracticeLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1FE2CD9DB7945D248FBEA3 /* Rodi/Presentation/PracticeTracking/PracticeLiveActivityAttributes.swift */; };
+		FADD9B8005F6E08C3F9AA73C /* Rodi/Presentation/PracticeTracking/LiveActivity/Model/PracticeLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1FE2CD9DB7945D248FBEA3 /* Rodi/Presentation/PracticeTracking/LiveActivity/Model/PracticeLiveActivityAttributes.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,7 +69,7 @@
 		045DE9792FEFA1000060C89A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		05E100012F00000100E00001 /* Dev.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Dev.xcconfig; sourceTree = "<group>"; };
 		05E100022F00000100E00001 /* Prod.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Prod.xcconfig; sourceTree = "<group>"; };
-		8F1FE2CD9DB7945D248FBEA3 /* Rodi/Presentation/PracticeTracking/PracticeLiveActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Rodi/Presentation/PracticeTracking/PracticeLiveActivityAttributes.swift; sourceTree = SOURCE_ROOT; };
+		8F1FE2CD9DB7945D248FBEA3 /* Rodi/Presentation/PracticeTracking/LiveActivity/Model/PracticeLiveActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Rodi/Presentation/PracticeTracking/LiveActivity/Model/PracticeLiveActivityAttributes.swift; sourceTree = SOURCE_ROOT; };
 		903D4E98060C54B79A4FF5EB /* PracticeLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PracticeLiveActivity.swift; sourceTree = "<group>"; };
 		A1B200000000000000000002 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
 		A1B200000000000000000003 /* RodiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RodiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -197,7 +197,7 @@
 			children = (
 				903D4E98060C54B79A4FF5EB /* PracticeLiveActivity.swift */,
 				E73E620BAD2C71AB84067D43 /* Info.plist */,
-				8F1FE2CD9DB7945D248FBEA3 /* Rodi/Presentation/PracticeTracking/PracticeLiveActivityAttributes.swift */,
+				8F1FE2CD9DB7945D248FBEA3 /* Rodi/Presentation/PracticeTracking/LiveActivity/Model/PracticeLiveActivityAttributes.swift */,
 				03B2997E7F254438E20F793B /* Assets.xcassets */,
 			);
 			path = RodiPracticeLiveActivity;
@@ -419,7 +419,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7863573BB827CEC2F5056C50 /* PracticeLiveActivity.swift in Sources */,
-				FADD9B8005F6E08C3F9AA73C /* Rodi/Presentation/PracticeTracking/PracticeLiveActivityAttributes.swift in Sources */,
+				FADD9B8005F6E08C3F9AA73C /* Rodi/Presentation/PracticeTracking/LiveActivity/Model/PracticeLiveActivityAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
