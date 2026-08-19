@@ -28,6 +28,7 @@ struct HomeBottomSheetReducer: Reducer {
         let reviewRepository: ReviewRepository
         let memberRepository: MemberRepository
         let practiceMeasurementStore: PracticeMeasurementStoring
+        let practiceTrackingService: PracticeTrackingService
     }
 
     enum Action {
@@ -95,11 +96,13 @@ struct HomeBottomSheetReducer: Reducer {
             practiceRepository: dependencies.practiceRepository,
             reviewRepository: dependencies.reviewRepository,
             practiceMeasurementStore: dependencies.practiceMeasurementStore,
+            practiceTrackingService: dependencies.practiceTrackingService,
             hasActiveSession: hasActiveSession
         )
         parkingDetailReducer = ParkingDetailBottomSheetReducer(
             placeRepository: dependencies.placeRepository,
             practiceMeasurementStore: dependencies.practiceMeasurementStore,
+            practiceTrackingService: dependencies.practiceTrackingService,
             hasActiveSession: hasActiveSession
         )
     }

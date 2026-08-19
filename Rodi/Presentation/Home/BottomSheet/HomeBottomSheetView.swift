@@ -24,6 +24,7 @@ struct HomeBottomSheetView: View {
     let userLocation: RodiCoordinate?
     let hasLocationPermission: Bool
     let memberRepository: MemberRepository
+    let practiceTrackingService: PracticeTrackingService
     let bottomTabBarHeight: CGFloat
     let onCourseDetailHeightChanged: (CGFloat) -> Void
     let onParkingDetailHeightChanged: (CGFloat) -> Void
@@ -41,6 +42,7 @@ struct HomeBottomSheetView: View {
         userLocation: RodiCoordinate?,
         hasLocationPermission: Bool,
         memberRepository: MemberRepository,
+        practiceTrackingService: PracticeTrackingService,
         bottomTabBarHeight: CGFloat,
         onCourseDetailHeightChanged: @escaping (CGFloat) -> Void = { _ in },
         onParkingDetailHeightChanged: @escaping (CGFloat) -> Void = { _ in },
@@ -57,6 +59,7 @@ struct HomeBottomSheetView: View {
         self.userLocation = userLocation
         self.hasLocationPermission = hasLocationPermission
         self.memberRepository = memberRepository
+        self.practiceTrackingService = practiceTrackingService
         self.bottomTabBarHeight = bottomTabBarHeight
         self.onCourseDetailHeightChanged = onCourseDetailHeightChanged
         self.onParkingDetailHeightChanged = onParkingDetailHeightChanged
@@ -256,6 +259,7 @@ extension HomeBottomSheetView {
                         userLocation: userLocation,
                         hasLocationPermission: hasLocationPermission,
                         memberRepository: memberRepository,
+                        practiceTrackingService: practiceTrackingService,
                         requestLocationPermission: requestLocationPermission,
                         presentActiveMeasurementDialog: { configuration in
                             activeCourseMeasurementDialog = configuration
@@ -338,6 +342,7 @@ extension HomeBottomSheetView {
                         userLocation: userLocation,
                         hasLocationPermission: hasLocationPermission,
                         memberRepository: memberRepository,
+                        practiceTrackingService: practiceTrackingService,
                         requestLocationPermission: requestLocationPermission,
                         presentActiveMeasurementDialog: { configuration in
                             activeCourseMeasurementDialog = configuration

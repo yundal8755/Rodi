@@ -43,6 +43,7 @@ struct CourseDetailBottomSheetView: View {
     let userLocation: RodiCoordinate?
     let hasLocationPermission: Bool
     let memberRepository: MemberRepository
+    let practiceTrackingService: PracticeTrackingService
     let requestLocationPermission: () -> Void
     let renderingMode: RenderingMode
     let expandedBackAction: () -> Void
@@ -58,6 +59,7 @@ struct CourseDetailBottomSheetView: View {
         userLocation: RodiCoordinate?,
         hasLocationPermission: Bool,
         memberRepository: MemberRepository,
+        practiceTrackingService: PracticeTrackingService,
         requestLocationPermission: @escaping () -> Void,
         renderingMode: RenderingMode = .sheet,
         expandedBackAction: @escaping () -> Void = {},
@@ -70,6 +72,7 @@ struct CourseDetailBottomSheetView: View {
         self.userLocation = userLocation
         self.hasLocationPermission = hasLocationPermission
         self.memberRepository = memberRepository
+        self.practiceTrackingService = practiceTrackingService
         self.requestLocationPermission = requestLocationPermission
         self.renderingMode = renderingMode
         self.expandedBackAction = expandedBackAction
@@ -151,13 +154,13 @@ extension CourseDetailBottomSheetView {
     }
 
     private func startRouteGuidance(_ request: RouteGuidanceRequest) {
-        guard !PracticeTrackingService.shared.hasActiveMeasurement else {
+        guard !practiceTrackingService.hasActiveMeasurement else {
             presentActiveMeasurementDialog(
                 .init(
-                    courseName: PracticeTrackingService.shared.session?.courseName ?? "현재 코스",
+                    courseName: practiceTrackingService.session?.courseName ?? "현재 코스",
                     continueAction: {},
                     endAction: {
-                        PracticeTrackingService.shared.cancel()
+                        practiceTrackingService.cancel()
                         self.send(.activeMeasurementEnded)
                         self.startRouteGuidance(request)
                     }
@@ -190,7 +193,7 @@ extension CourseDetailBottomSheetView {
             async let profile = try? memberRepository.fetchMyProfile()
             let rabbitAssetName = await profile.map { PracticeLiveActivityRabbitAsset.name(for: $0.level) }
                 ?? PracticeLiveActivityRabbitAsset.navigation
-            let startResult = PracticeTrackingService.shared.start(
+            let startResult = practiceTrackingService.start(
                 course: course,
                 routePath: await routePath,
                 rabbitAssetName: rabbitAssetName
@@ -202,7 +205,7 @@ extension CourseDetailBottomSheetView {
                     request.app,
                     detail: request.detail,
                     mode: .gpsTracking,
-                    sessionID: PracticeTrackingService.shared.session?.id,
+                    sessionID: practiceTrackingService.session?.id,
                     cancelTrackingOnFailure: true
                 )
 
@@ -250,7 +253,7 @@ extension CourseDetailBottomSheetView {
         if cancelTrackingOnFailure, case .openedApp = result {
             // The tracking session belongs to the successfully opened external guidance flow.
         } else if cancelTrackingOnFailure {
-            PracticeTrackingService.shared.cancel()
+            practiceTrackingService.cancel()
         }
         if case .openedApp = result {
             // 외부 앱 전환 전에 측정 후보를 저장해, 앱이 바로 suspend되어도 체류 시간을 보존한다.

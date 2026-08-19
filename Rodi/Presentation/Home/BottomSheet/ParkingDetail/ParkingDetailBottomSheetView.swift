@@ -21,6 +21,7 @@ struct ParkingDetailBottomSheetView: View {
     let userLocation: RodiCoordinate?
     let hasLocationPermission: Bool
     let memberRepository: MemberRepository
+    let practiceTrackingService: PracticeTrackingService
     let requestLocationPermission: () -> Void
     let presentActiveMeasurementDialog: (ActiveCourseMeasurementDialogConfiguration) -> Void
     let presentLiveActivityPermissionDialog: (LiveActivityPermissionDialogConfiguration) -> Void
@@ -79,12 +80,12 @@ struct ParkingDetailBottomSheetView: View {
     }
 
     private func startRouteGuidance(_ request: RouteGuidanceRequest) {
-        guard !PracticeTrackingService.shared.hasActiveMeasurement else {
+        guard !practiceTrackingService.hasActiveMeasurement else {
             presentActiveMeasurementDialog(.init(
-                courseName: PracticeTrackingService.shared.session?.courseName ?? "현재 연습 장소",
+                courseName: practiceTrackingService.session?.courseName ?? "현재 연습 장소",
                 continueAction: {},
                 endAction: {
-                    PracticeTrackingService.shared.cancel()
+                    practiceTrackingService.cancel()
                     send(.activeMeasurementEnded)
                     startRouteGuidance(request)
                 }
@@ -113,7 +114,7 @@ struct ParkingDetailBottomSheetView: View {
             let rabbitAssetName = await (try? memberRepository.fetchMyProfile())
                 .map { PracticeLiveActivityRabbitAsset.name(for: $0.level) }
                 ?? PracticeLiveActivityRabbitAsset.navigation
-            let startResult = PracticeTrackingService.shared.start(
+            let startResult = practiceTrackingService.start(
                 course: parking,
                 routePath: parkingTrackingPath(for: request.detail),
                 rabbitAssetName: rabbitAssetName
@@ -125,7 +126,7 @@ struct ParkingDetailBottomSheetView: View {
                     request.app,
                     detail: request.detail,
                     mode: .gpsTracking,
-                    sessionID: PracticeTrackingService.shared.session?.id,
+                    sessionID: practiceTrackingService.session?.id,
                     cancelTrackingOnFailure: true
                 )
 
@@ -172,7 +173,7 @@ struct ParkingDetailBottomSheetView: View {
         if cancelTrackingOnFailure, case .openedApp = result {
             // 측정 세션은 외부 길안내가 열린 경우에만 유지한다.
         } else if cancelTrackingOnFailure {
-            PracticeTrackingService.shared.cancel()
+            practiceTrackingService.cancel()
         }
         if case .openedApp = result {
             // 외부 앱 전환 전에 측정 후보를 저장해, 앱이 바로 suspend되어도 체류 시간을 보존한다.

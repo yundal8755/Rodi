@@ -130,7 +130,7 @@ struct RouteGuidanceService {
                     RodiLogger.info("External route guidance opened urlScheme=\(url.scheme ?? "unknown")")
                     continuation.resume(returning: success)
                 } else {
-                    RodiLogger.warning("External route guidance failed url=\(url.absoluteString)")
+                    RodiLogger.warning("External route guidance failed urlScheme=\(url.scheme ?? "unknown")")
                     continuation.resume(returning: .failed(failureMessage))
                 }
             }

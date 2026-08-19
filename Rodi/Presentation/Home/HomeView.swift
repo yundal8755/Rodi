@@ -33,10 +33,7 @@ struct HomeView: View {
     private let reviewFlowFinishedRequestID: Int
     private let onReviewRequested: (ReviewWriteRequest) -> Void
     private let onReviewEditRequested: (Int) -> Void
-    private let courseDetailReviewState: ReviewReducer.State
-    private let courseDetailReviewSnackbarMessage: String?
-    private let isCourseDetailReviewPresented: Bool
-    private let sendCourseDetailReview: (ReviewReducer.Action) -> Void
+    private let courseDetailReviewPresentation: CourseDetailReviewPresentation
     private let bottomTabBarHeight: CGFloat
     private let dependencies: AppDependencies
 
@@ -51,10 +48,7 @@ struct HomeView: View {
         reviewFlowFinishedRequestID: Int = 0,
         onReviewRequested: @escaping (ReviewWriteRequest) -> Void = { _ in },
         onReviewEditRequested: @escaping (Int) -> Void = { _ in },
-        courseDetailReviewState: ReviewReducer.State = .init(),
-        courseDetailReviewSnackbarMessage: String? = nil,
-        isCourseDetailReviewPresented: Bool = false,
-        sendCourseDetailReview: @escaping (ReviewReducer.Action) -> Void = { _ in },
+        courseDetailReviewPresentation: CourseDetailReviewPresentation,
         bottomTabBarHeight: CGFloat,
         dependencies: AppDependencies
     ) {
@@ -68,10 +62,7 @@ struct HomeView: View {
         self.reviewFlowFinishedRequestID = reviewFlowFinishedRequestID
         self.onReviewRequested = onReviewRequested
         self.onReviewEditRequested = onReviewEditRequested
-        self.courseDetailReviewState = courseDetailReviewState
-        self.courseDetailReviewSnackbarMessage = courseDetailReviewSnackbarMessage
-        self.isCourseDetailReviewPresented = isCourseDetailReviewPresented
-        self.sendCourseDetailReview = sendCourseDetailReview
+        self.courseDetailReviewPresentation = courseDetailReviewPresentation
         self.bottomTabBarHeight = bottomTabBarHeight
         self.dependencies = dependencies
 
@@ -86,7 +77,8 @@ struct HomeView: View {
                     recentSearchRepository: dependencies.recentSearchRepository,
                     reviewRepository: dependencies.reviewRepository,
                     memberRepository: dependencies.memberRepository,
-                    practiceMeasurementStore: dependencies.practiceMeasurementStore
+                    practiceMeasurementStore: dependencies.practiceMeasurementStore,
+                    practiceTrackingService: dependencies.practiceTrackingService
                 ),
                 authenticationRequired: onAuthenticationRequired,
                 reviewWritingRequested: onReviewRequested,
@@ -151,6 +143,7 @@ struct HomeView: View {
                         userLocation: store.state.map.userLocation,
                         hasLocationPermission: store.state.map.locationAuthorizationState == .authorized,
                         memberRepository: dependencies.memberRepository,
+                        practiceTrackingService: dependencies.practiceTrackingService,
                         requestLocationPermission: {
                             store.send(.presentation(.setLocationSettingsAlertPresented(true)))
                         },
@@ -167,11 +160,11 @@ struct HomeView: View {
                     )
                     .interactiveDismissDisabled()
                     .fullScreenCover(isPresented: courseDetailReviewPresentationBinding) {
-                        ReviewFlowView(
-                            state: courseDetailReviewState,
-                            send: sendCourseDetailReview
+                        ReviewView(
+                            state: courseDetailReviewPresentation.state,
+                            send: courseDetailReviewPresentation.send
                         )
-                        .rodiSnackbar(message: courseDetailReviewSnackbarMessage)
+                        .rodiSnackbar(message: courseDetailReviewPresentation.snackbarMessage)
                         .interactiveDismissDisabled()
                     }
 
@@ -298,6 +291,7 @@ extension HomeView {
                     userLocation: store.state.map.userLocation,
                     hasLocationPermission: store.state.map.locationAuthorizationState == .authorized,
                     memberRepository: dependencies.memberRepository,
+                    practiceTrackingService: dependencies.practiceTrackingService,
                     bottomTabBarHeight: bottomTabBarHeight,
                     onCourseDetailHeightChanged: { height in
                         guard abs(courseBottomSheetHeight - height) > 0.5 else { return }
@@ -725,7 +719,7 @@ extension HomeView {
 
     private var courseDetailReviewPresentationBinding: Binding<Bool> {
         Binding(
-            get: { isCourseDetailReviewPresented },
+            get: { courseDetailReviewPresentation.isPresented },
             set: { _ in }
         )
     }

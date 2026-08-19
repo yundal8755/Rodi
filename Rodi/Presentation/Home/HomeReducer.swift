@@ -24,6 +24,7 @@ struct HomeReducer: Reducer {
         let reviewRepository: ReviewRepository
         let memberRepository: MemberRepository
         let practiceMeasurementStore: PracticeMeasurementStoring
+        let practiceTrackingService: PracticeTrackingService
     }
 
     struct MapState {
@@ -151,7 +152,8 @@ struct HomeReducer: Reducer {
                 practiceRepository: dependencies.practiceRepository,
                 reviewRepository: dependencies.reviewRepository,
                 memberRepository: dependencies.memberRepository,
-                practiceMeasurementStore: dependencies.practiceMeasurementStore
+                practiceMeasurementStore: dependencies.practiceMeasurementStore,
+                practiceTrackingService: dependencies.practiceTrackingService
             )
         )
         searchReducer = HomeSearchReducer(

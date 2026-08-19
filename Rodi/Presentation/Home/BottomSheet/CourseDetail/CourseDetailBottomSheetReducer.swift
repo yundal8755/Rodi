@@ -42,6 +42,7 @@ struct CourseDetailBottomSheetReducer: Reducer {
     enum Delegate { case dismissed, routeOverlayChanged(RodiRouteOverlay?), requestAuthentication, showSnackbar(String), reviewWritingRequested(ReviewWriteRequest), reviewEditingRequested(Int) }
     private let placeRepository: PlaceRepository
     private let practiceMeasurementStore: PracticeMeasurementStoring
+    private let practiceTrackingService: PracticeTrackingService
     private let hasActiveSession: () -> Bool
     private let directionsService: KakaoDirectionsService
     private let reviewsReducer: CourseReviewReducer
@@ -53,12 +54,14 @@ struct CourseDetailBottomSheetReducer: Reducer {
         practiceRepository: PracticeRepository,
         reviewRepository: ReviewRepository,
         practiceMeasurementStore: PracticeMeasurementStoring,
+        practiceTrackingService: PracticeTrackingService,
         hasActiveSession: @escaping () -> Bool,
         directionsService: KakaoDirectionsService = .init(),
         onDelegate: @escaping (Delegate) -> Void = { _ in }
     ) {
         self.placeRepository = placeRepository
         self.practiceMeasurementStore = practiceMeasurementStore
+        self.practiceTrackingService = practiceTrackingService
         self.hasActiveSession = hasActiveSession
         self.directionsService = directionsService
         self.onDelegate = onDelegate
@@ -118,7 +121,7 @@ extension CourseDetailBottomSheetReducer {
                 status: mode == .gpsTracking ? .tracking : .awaitingReturn
             )
             practiceMeasurementStore.save(measurement)
-            PracticeTrackingService.shared.synchronizeCompletedSessionCertificationIfNeeded()
+            practiceTrackingService.synchronizeCompletedSessionCertificationIfNeeded()
 
         case let .externalRouteGuidanceFailed(measurementID):
             guard practiceMeasurementStore.load()?.id == measurementID else { return .none }

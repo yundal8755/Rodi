@@ -37,15 +37,18 @@ struct ParkingDetailBottomSheetReducer: Reducer {
 
     private let placeRepository: PlaceRepository
     private let practiceMeasurementStore: PracticeMeasurementStoring
+    private let practiceTrackingService: PracticeTrackingService
     private let hasActiveSession: () -> Bool
     private let onDelegate: (Delegate) -> Void
 
     init(placeRepository: PlaceRepository,
          practiceMeasurementStore: PracticeMeasurementStoring,
+         practiceTrackingService: PracticeTrackingService,
          hasActiveSession: @escaping () -> Bool,
          onDelegate: @escaping (Delegate) -> Void = { _ in }) {
         self.placeRepository = placeRepository
         self.practiceMeasurementStore = practiceMeasurementStore
+        self.practiceTrackingService = practiceTrackingService
         self.hasActiveSession = hasActiveSession
         self.onDelegate = onDelegate
     }
@@ -102,7 +105,7 @@ extension ParkingDetailBottomSheetReducer {
                 externalHandoffAt: externalHandoffAt,
                 status: mode == .gpsTracking ? .tracking : .awaitingReturn
             ))
-            PracticeTrackingService.shared.synchronizeCompletedSessionCertificationIfNeeded()
+            practiceTrackingService.synchronizeCompletedSessionCertificationIfNeeded()
 
         case let .externalRouteGuidanceFailed(measurementID):
             guard practiceMeasurementStore.load()?.id == measurementID else { return .none }
