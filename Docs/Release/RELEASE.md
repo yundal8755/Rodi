@@ -3,8 +3,8 @@
 이 문서는 Dev/Prod 환경, TestFlight, 관측 SDK, 개인정보 및 App Store 출시 게이트를 다루며, 변동값은 아래 live source에서 확인한다.
 
 빌드 설정은 `Config/Dev.xcconfig`·`Config/Prod.xcconfig`, 배포 명령은 `fastlane/Fastfile`,
-관측·개인정보·공개 URL은 `Rodi/Core/Analytics`, `Rodi/Core/Service/ClarityConfiguration.swift`,
-`Rodi/Resources/PrivacyInfo.xcprivacy`, `Rodi/Core/Service/LegalDocument.swift`가 원본이다.
+관측·개인정보·공개 URL은 `Rodi/Core/Analytics`, `Rodi/App/Configuration/ClarityConfiguration.swift`,
+`Rodi/Resources/PrivacyInfo.xcprivacy`, `Rodi/Presentation/Shared/Model/LegalDocument.swift`가 원본이다.
 
 ## Environment Contract
 

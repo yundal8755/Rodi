@@ -47,13 +47,17 @@ Swagger resource
 ### RemoteDataSource
 
 - RemoteDataSource만 `NetworkManager`로 API target을 실행하고 DTO를 반환한다.
+- RemoteDataSource와 API Target은 Request DTO·query DTO·원시 path 식별자만 받고, Domain query·submission을 직접 받지 않는다.
+- 공통 `ServerResponse`의 payload·빈 응답 검증은 `Data/Remote/Support/ServerResponseHandler`를 사용한다. endpoint별 wrapper가 다르면 이 helper를 강제 적용하지 않는다.
 - public endpoint는 unauthenticated manager, JWT endpoint는 authenticated manager를 사용한다.
 - HTTP/decoding/transport 오류는 공통 `NetworkError` 흐름을 유지한다.
 
 ### Repository And Mapper
 
 - `RepositoryImpl`은 RemoteDataSource를 호출하고 Mapper로 DTO를 Domain 값으로 변환한다.
+- RepositoryImpl 또는 리소스 Mapper는 Domain 입력을 Request DTO·query DTO로 변환한 뒤 RemoteDataSource에 전달한다.
 - Mapper는 서버 enum 검증, nullable 값의 제품 의미, DTO-to-Domain 변환을 한곳에 모은다.
+- 서버 문자열 날짜를 Domain `Date`로 바꾸는 Mapper는 `Data/RepositoryImpl/Support/ServerDateParser`의 지원 포맷만 사용하고, 해석 실패를 임의 기본값으로 바꾸지 않는다.
 - 기본값이 제품 정책이면 Mapper에서 명시하고, Swagger의 누락을 무조건 정상값으로 만들지 않는다.
 
 ### Domain

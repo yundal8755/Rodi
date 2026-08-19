@@ -53,16 +53,16 @@ Rodi는 운전 연습이 막막한 초보 운전자에게 주변 연습 코스�
 
 ```bash
 |-- Rodi
-    |-- App                         # 앱 진입점, RootView, AppRouter, 의존성 조합
+    |-- App                         # 앱 진입점, RootView·RootReducer·RootRoute, 의존성 조합
     |
     |-- Core                        # 공통 인프라 및 기반 코드
     |   |-- Analytics               # Firebase Analytics 이벤트 경계
-    |   |-- Architecture            # AppDependencies, MVICore
+    |   |-- Architecture            # MVICore
     |   |-- Components              # 공통 UI 컴포넌트
     |   |-- Coordinator             # typed NavigationStack 경로 관리
     |   |-- Extension               # Swift / SwiftUI 공통 Extension
     |   |-- Network                 # 네트워크 매니저, 인터셉터, Keychain 토큰 저장
-    |   |-- Service                 # Logger, 위치·네트워크·버전 확인 등 공통 서비스
+    |   |-- Service                 # Logger, 네트워크·앱 설정 등 공통 서비스
     |
     |-- Data                        # 외부/로컬 데이터 구현 레이어
     |   |-- Local                   # UserDefaults 기반 온보딩 초안, 최근 로그인 제공자 저장
@@ -93,7 +93,7 @@ Rodi는 운전 연습이 막막한 초보 운전자에게 주변 연습 코스�
 
 Rodi는 SwiftUI를 기반으로 하되, 지도 SDK가 UIKit 중심이라는 점을 분리해 다룹니다.
 
-- `AppRouter`는 온보딩과 메인 탭의 전역 전환, 로그인 필요 화면을 관리합니다.
+- `RootReducer`와 `RootRoute`는 세션·온보딩·메인 탭의 최상위 전환과 로그인 필요 화면을 관리합니다.
 - `MainTabReducer`는 탭 선택과 Feature 간 intent만 소유하며 Home/My 화면은 탭 전환 뒤에도 유지됩니다.
 - Home은 Map, BottomSheet, Search 영역을 합성하며, 지도 SDK adapter와 화면 상태·API Effect의 책임을 분리합니다.
 - Onboarding은 `NavigationStack` 기반 RouterView 위에서 Login, Terms, Profile, Permission Feature가 각자 입력·검증·비동기 처리를 담당합니다.

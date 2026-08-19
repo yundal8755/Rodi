@@ -3,55 +3,45 @@
 이 문서는 RODI의 레이어, MVI, feature 배치와 책임 경계를 설명하며, 구체적인 화면 수치나 일시적인 구현 상태는 현재 코드에서 확인한다.
 문서와 코드가 다르면 현재 코드를 기준으로 판단하고 같은 작업에서 문서를 바로잡는다.
 
-현재 Presentation 구조의 파일 수·개선 우선순위·리팩토링 판단 근거는 [PRESENTATION_ARCHITECTURE_AUDIT.md](PRESENTATION_ARCHITECTURE_AUDIT.md)에서 관리한다.
-
 ## Layer Structure
 
 현재 top-level은 `App`, `Core`, `Presentation`, `Data`, `Domain`, `Resources`이며 세부 경로는 live filesystem에서 확인한다.
 
-### App
+각 레이어의 상세 MUST/MUST NOT과 감사 기준은 아래 Layer 문서를 원본으로 사용한다. 이 문서는 전체 의존성 방향과 공통 원칙만 유지하며, 같은 규칙을 Layer 문서에 반복하지 않는다.
 
-- 앱 시작, scene lifecycle, 최상위 route와 feature root 조합을 담당한다.
-- `RodiApp`은 로깅, 폰트, 외부 SDK처럼 프로세스 시작 시 필요한 설정만 수행한다.
-- `RootView`는 `AppDependencies`를 한 번 만들고 하위 feature root에 전달한다.
-- 제품 기능의 세부 상태 전이나 서버 DTO 변환을 두지 않는다.
+| Layer | 목적 | 상세 규칙 |
+| --- | --- | --- |
+| App | 앱 조립과 시작 수명 관리 | [Layers/APP.md](Layers/APP.md) |
+| Core | 여러 feature가 공유하는 기술 기반 | [Layers/CORE.md](Layers/CORE.md) |
+| Data | 외부·로컬 데이터를 Domain 계약으로 변환 | [Layers/DATA.md](Layers/DATA.md) |
+| Domain | 제품 언어와 비즈니스 계약 유지 | [Layers/DOMAIN.md](Layers/DOMAIN.md) |
+| Presentation | 화면 렌더링·사용자 상호작용·상태 전이 | [Layers/PRESENTATION.md](Layers/PRESENTATION.md) |
+| Resources | 실행 리소스 관리 | [Layers/RESOURCES.md](Layers/RESOURCES.md) |
 
-### Core
+### Global Dependency Direction
 
-- 여러 feature가 사용하는 설계 토큰, 공통 UI, 네트워크 기반 요소, 로깅, 환경 설정을 둔다.
-- `Core/Architecture/MVICore`는 `Reducer`, `Effect`, `Store` 실행 기반을 제공한다.
-- `Core/Architecture/Dependency/AppDependencies`는 앱의 composition root이다.
-- 특정 feature의 화면 정책이나 비즈니스 규칙을 공통 코드라는 이유만으로 올리지 않는다.
+```text
+App ────────────────┐
+                    ├── Presentation ──> Domain
+                    └── Data ─────────> Domain
+Core <──────────── Presentation, Data, App
+Resources <──────── App and feature rendering
+```
 
-### Presentation
-
-- SwiftUI View, 화면 상태와 Action, Reducer, feature 전용 Model·Service·Adapter를 둔다.
-- View는 Domain 계약을 통해 데이터를 요청하며 DTO나 `NetworkManager`를 직접 사용하지 않는다.
-- UIKit 또는 Kakao SDK가 필요한 구현은 이를 소유한 feature의 경계 안에 둘 수 있다.
-- 두 개 이상의 top-level feature에서 실제로 재사용될 때만 공통 구현을 Core로 이동한다.
-
-### Data
-
-- `Remote`는 서버 API, Request·Response DTO와 RemoteDataSource를 담당한다.
-- `RepositoryImpl`은 DTO를 Domain 모델로 변환하는 Mapper와 repository 구현을 담당한다.
-- `Local`은 명시적으로 승인된 로컬 저장 구현만 담당한다.
-- Presentation에 DTO, data source 또는 repository 구현 타입을 노출하지 않는다.
-- 세부 Swagger 계약과 구현 순서는 `Docs/API/API_SWAGGER.md`를 따른다.
-
-### Domain
-
-- 제품 entity, repository protocol, 순수 policy를 담당한다.
-- UI 표시 형식, SDK runtime, 저장소 구현, DTO를 알지 않는다.
-- SwiftUI, UIKit, KakaoMapsSDK와 구체 네트워크·영속성 구현을 import하지 않는다.
-- Data는 Domain 계약을 구현하고 Presentation은 그 계약에 의존한다.
+- MUST keep `Domain` independent of `Data`, `Presentation`, `App`, SDK runtime, DTO, and storage implementation.
+- MUST let `Data` implement Domain repository protocols and convert external models before returning them.
+- MUST let `Presentation` depend on Domain contracts instead of Data implementation types.
+- MUST keep `AppDependencies` as the one composition point that knows both Data implementations and Domain contracts.
+- MUST NOT create a dependency cycle between top-level layers.
+- SHOULD move cross-feature code to Core only after at least two top-level features have a real shared need.
 
 ## Composition Root
 
 `AppDependencies`는 token store, 인증·비인증 네트워크, remote data source와 repository를 조립한다. `RootView`가 만든 동일한 graph를 내려보내고 Reducer는 생성자로 의존성을 받는다.
 
-- View나 Reducer에서 repository 구현 또는 `NetworkManager`를 새로 만들지 않는다.
-- feature 전용 Service는 주입된 계약을 사용해 해당 feature 안에서 조합할 수 있다.
-- 전역 service locator나 숨은 singleton lookup을 의존성 전달 수단으로 추가하지 않는다.
+- MUST NOT View나 Reducer에서 repository 구현 또는 `NetworkManager`를 새로 만든다.
+- SHOULD feature 전용 Service가 주입된 계약을 사용해 해당 feature 안에서 조합하게 한다.
+- MUST NOT 전역 service locator나 숨은 singleton lookup을 의존성 전달 수단으로 추가한다.
 
 ## MVICore Flow
 
@@ -60,16 +50,33 @@ View -> Action -> Reducer(State mutation) -> Effect
      <- Store publishes State <- Action
 ```
 
-- `State`는 화면이 렌더링하는 제품 상태의 단일 원본이다.
-- `Action`은 사용자 의도, lifecycle·SDK event, Effect 결과를 표현한다.
-- `Reducer`는 상태 전이, 의도 해석, Effect 시작·취소를 담당한다.
-- `Effect`는 `.none`, `.send`, `.run`, `.cancel`을 제공하고 child Action으로 `map`할 수 있다.
-- `Store`는 `@MainActor`에서 Reducer를 실행하고 state를 publish하며 Effect task를 관리한다.
-- 취소 ID, request revision과 최신 응답 판단은 Reducer가 소유한다.
-- View lifecycle에 비동기 제품 로직을 숨기지 않고 Action과 Effect로 표현한다.
+- MUST `State`를 화면이 렌더링하는 제품 상태의 단일 원본으로 유지한다.
+- MUST `Action`이 사용자 의도, lifecycle·SDK event, Effect 결과를 표현하게 한다.
+- MUST `Reducer`가 상태 전이, 의도 해석, Effect 시작·취소를 담당하게 한다.
+- MUST `Effect`가 `.none`, `.send`, `.run`, `.cancel`을 제공하고 child Action으로 `map`할 수 있게 유지한다.
+- MUST `Store`가 `@MainActor`에서 Reducer를 실행하고 state를 publish하며 Effect task를 관리하게 한다.
+- MUST Reducer가 취소 ID, request revision과 최신 응답 판단을 소유하게 한다.
+- MUST NOT View lifecycle에 비동기 제품 로직을 숨긴다. Action과 Effect로 표현한다.
 
 독립 feature root는 하나의 Store를 소유할 수 있다. 부모 Reducer에 합성된 child는 별도 Store를 만들지 않고 부모 State의 child State와 명시적인 `send(Action)`을 전달받는다.
 View 전용 animation·gesture 진행값은 로컬 상태일 수 있지만 제품 상태를 복제하지 않는다.
+
+## Concurrency · Actor Isolation
+
+- MUST use `@MainActor` only for UI state, Store·Reducer coordination, main-thread-only SDK APIs, 또는 실제로 main actor가 필요한 코드에 적용한다.
+- MUST NOT `@MainActor`를 isolation compiler error를 없애는 수단으로 추가한다. 적용 전 해당 상태·SDK·API가 실제로 main actor를 요구하는지 확인한다.
+- MUST NOT `async` 또는 `Task`가 자동으로 background execution을 보장한다고 가정한다.
+- MUST NOT `Task.detached`로 actor isolation 오류를 우회한다. detached 작업은 독립 lifetime, cancellation, priority, `Sendable` 경계를 명확히 설명할 수 있을 때만 사용한다.
+- MUST keep UI state mutation on the main actor. CPU-heavy pure work는 main actor 밖에서 수행할 수 있으나, UI state와 main-thread SDK 접근을 임의로 밖으로 옮기면 안 된다.
+- MUST every `await` 뒤 route, request revision, cancellation, 또는 필요한 State가 여전히 유효한지 확인한 뒤에만 비동기 결과를 반영한다.
+- SHOULD treat `@MainActor`가 이미 선언된 protocol·Store·Reducer 안의 중복 annotation을 자동 제거 대상이 아니라 의도와 public isolation contract를 검토할 신호로 본다.
+
+## Async Work Ownership
+
+- MUST give user-initiated or lifecycle-bound asynchronous work an explicit owner, cancellation ID 또는 stale-result guard를 둔다.
+- MUST let Reducer Effect 또는 lifetime이 명확한 Service가 제품 비동기 작업을 시작하게 한다. View `body`는 비동기 제품 작업을 시작하면 안 된다.
+- MUST NOT swallow cancellation with a broad `catch`. cancellation 뒤에도 결과가 도착할 수 있는 legacy callback·SDK·network 작업은 revision 검증으로 화면 재등장을 막는다.
+- SHOULD use structured concurrency when the parent owns the work lifetime. unstructured `Task`는 부모와 독립된 lifetime이 제품 요구사항으로 명확할 때만 사용한다.
 
 ## Parent And Child Reducers
 
@@ -81,22 +88,22 @@ case child(ChildReducer.Action)
 return childReducer.reduce(&state.child, with: action).map(Action.child)
 ```
 
-- child는 sibling State를 읽거나 sibling Action을 직접 보내지 않는다.
-- child 밖으로 필요한 결과만 `Action.delegate(Delegate)`로 내보낸다.
-- 바로 위 부모가 child Delegate를 해석해 자신의 State를 바꾸거나 다른 child Action을 만든다.
-- 중첩 부모는 내부 Delegate를 소비하고 상위에 필요한 최소한의 최종 Delegate만 다시 보낸다.
-- 상위 View가 child 내부 State를 검사해 feature 간 정책을 결정하지 않는다.
-- Delegate에는 화면 전체 State 대신 경계에 필요한 typed value와 사용자 의도만 담는다.
+- MUST NOT child가 sibling State를 읽거나 sibling Action을 직접 보낸다.
+- MUST child 밖으로 필요한 결과만 `Action.delegate(Delegate)`로 내보낸다.
+- MUST 바로 위 부모가 child Delegate를 해석해 자신의 State를 바꾸거나 다른 child Action을 만든다.
+- MUST 중첩 부모가 내부 Delegate를 소비하고 상위에 필요한 최소한의 최종 Delegate만 다시 보낸다.
+- MUST NOT 상위 View가 child 내부 State를 검사해 feature 간 정책을 결정한다.
+- MUST Delegate에 화면 전체 State 대신 경계에 필요한 typed value와 사용자 의도만 담는다.
 
 ## Responsibility Boundaries
 
-- **View**: State를 렌더링하고 사용자·runtime event를 Action으로 전달한다.
-- **Reducer**: 상태 전이, Effect orchestration, 취소와 최신 응답 여부를 결정한다.
-- **Service**: 외부 I/O·SDK·UIKit delegate 또는 State를 모르는 순수 계산을 수행한다.
-- **Domain**: 제품 개념, repository contract와 순수 policy를 표현한다.
-- **Data**: API DTO, data source, mapper와 repository implementation을 구현한다.
+- **View**: MUST State를 렌더링하고 사용자·runtime event를 Action으로 전달한다.
+- **Reducer**: MUST 상태 전이, Effect orchestration, 취소와 최신 응답 여부를 결정한다.
+- **Service**: MUST 외부 I/O·SDK·UIKit delegate 또는 State를 모르는 순수 계산을 수행한다.
+- **Domain**: MUST 제품 개념, repository contract와 순수 policy를 표현한다.
+- **Data**: MUST API DTO, data source, mapper와 repository implementation을 구현한다.
 
-Service를 만들 가능성만으로 Reducer 로직을 옮기지 않는다. Service는 Store나 UI State를 소유하지 않으며 결과를 typed value 또는 event로 Reducer에 돌려준다.
+MUST NOT Service를 만들 가능성만으로 Reducer 로직을 옮긴다. Service는 Store나 UI State를 소유하지 않으며 결과를 typed value 또는 event로 Reducer에 돌려준다.
 
 ## Feature Foldering
 
@@ -108,25 +115,25 @@ Presentation/<Feature>/
   <Feature>Reducer.swift
 ```
 
-Feature root는 진입 View·Reducer와 화면 조립만 담당한다. 여러 단계의 flow나 큰 화면을 만들 때 root View 하나에 화면·공통 UI·I/O·표시 모델을 함께 쌓지 않는다. 필요가 생긴 폴더만 단수형으로 추가한다.
+Feature root는 진입 View·Reducer와 화면 조립만 담당한다. MUST NOT 여러 단계의 flow나 큰 화면에서 root View 하나에 화면·공통 UI·I/O·표시 모델을 함께 쌓는다. 필요가 생긴 폴더만 단수형으로 추가한다.
 
-- `Component`: feature 안의 여러 화면이 실제로 재사용하는 UI. Button, header, dialog, selector처럼 독립 화면이 아닌 단위에 사용한다.
-- `SubView`: 특정 상위 View를 시각적으로만 분해한 하위 View. 다른 화면에서도 쓰이면 `Component`로 올린다.
+- `Component`: feature 안의 여러 화면에서 재사용되거나 독립 interaction 계약을 가진 UI. Button, header, dialog, selector처럼 독립 화면이 아닌 단위에 사용한다.
+- `Model`: Presentation 전용 표시 단계, payload, 선택값, route와 feature enum을 둔다. 제품 entity·repository protocol은 Domain에 둔다. 별도 `Enum` 폴더는 만들지 않는다.
+- `Service`: 외부 I/O, SDK 호출 또는 State를 모르는 순수 계산을 둔다. Store·Reducer State·SwiftUI View를 소유하지 않는다.
 - `SubPage`: Navigation destination뿐 아니라 full-screen 단계, 독립 modal, flow의 한 화면처럼 독립적으로 렌더링되는 화면.
-- `Section`: 자체 State·Action·Reducer 또는 독립 행동 계약을 가진 큰 영역
-- `Model`: Presentation 전용 표시 단계, payload, 선택값, service 결과처럼 Domain entity와 구분되는 feature 전용 값 모델. 제품 entity·repository protocol은 Domain에 둔다.
-- `Service`: 외부 I/O, SDK runtime, UIKit delegate 또는 State를 모르는 순수 계산. Store·Reducer State·SwiftUI View를 소유하지 않는다.
-- `Adapter`: SwiftUI와 UIKit·외부 SDK 사이의 변환 및 lifecycle 연결
+- `Adapter`: SwiftUI와 UIKit·외부 SDK 사이의 변환, delegate와 lifecycle 연결을 둔다. `Service`에 흡수하지 않는다.
+- `SubView`: 단일 상위 View의 시각 분해가 필요할 때만 가장 가까운 화면 아래에 둔다. feature 최상위 분류로 사용하지 않으며, 작은 분해는 같은 파일의 `private extension`과 `// MARK: -`를 우선한다.
+- 독립 State·Action·Reducer 또는 행동 계약을 가진 영역은 `Section` 같은 범용 폴더 대신 `Review`, `Search`, `Map`처럼 실제 기능 이름의 직접 폴더로 둔다.
 
-다단계 Review flow는 루트 `ReviewReducer`가 진입·Section 전환·최종 Delegate만 중재하고, `Prompt`·`Writing`·`SkipReason` Section reducer가 각 화면 State와 Effect를 소유한다. `ReviewFlowView`는 현재 route의 child State만 전달해 조립한다. 각 단계 화면은 Section의 `SubPage`, 공통 dialog·header·scaffold는 Review `Component`, 표시 모델은 `Model`, repository를 사용하는 요청은 `Service`에 둔다. 빈 폴더를 미리 만들지 않는다. 한 feature 내부 공유는 가장 가까운 공통 부모의 `Shared`에 두고, 최소 두 top-level feature에서 재사용되는 것이 확인된 뒤 Core로 올린다.
+다단계 Review flow는 `Flow/ReviewFlowFactory`가 Review 전용 reducer·service를 조립하고, `Flow/ReviewFlowCoordinatorReducer`가 전역 진입 출처·완료 갱신·Snackbar를 중재한다. `ReviewReducer`는 `Prompt`·`Writing`·`SkipReason` named child feature 전환과 최종 Delegate를 중재하고, `ReviewView`는 현재 child State만 전달해 조립한다. 앱 복귀 뒤 측정 continuation·방문 기록·후기 권유는 `PracticeTrackingReducer`의 child인 `PracticeReturnReducer`가 소유한다. Review와 PracticeTracking은 서로의 State를 읽지 않고 typed Delegate를 Root가 중계한다. Review root에는 `ReviewView`와 `ReviewReducer`만 둔다. 각 단계 화면은 named child feature의 `SubPage`, 공통 dialog·header·scaffold는 Review 또는 PracticeTracking `Component`, 표시 모델은 해당 named feature의 `Model`, repository를 사용하는 요청은 해당 named feature의 `Service`에 둔다. 빈 폴더를 미리 만들지 않는다. 한 feature 내부 공유는 가장 가까운 공통 부모의 `Shared`에 두고, 최소 두 top-level feature에서 재사용되는 것이 확인된 뒤 Core로 올린다.
 
 ## UIKit And Kakao Boundary
 
-- SwiftUI로 직접 표현할 수 없는 SDK view와 delegate lifecycle은 adapter 사용을 허용한다.
-- feature 전용 Kakao Map·Directions 구현은 해당 feature의 `Adapter` 또는 `Service`에 둔다.
-- adapter는 Reducer State를 렌더링하고 SDK event를 typed Action으로 돌려준다.
-- bridge용 transient runtime state는 가질 수 있지만 제품 정책의 원본은 아니다.
-- 앱 전역에서 재사용되는 UIKit bridge만 Core 후보이며 Domain에는 SDK 타입을 노출하지 않는다.
+- SHOULD SwiftUI로 직접 표현할 수 없는 SDK view와 delegate lifecycle에서만 adapter 사용을 검토한다.
+- MUST feature 전용 Kakao Map·Directions 구현을 해당 feature의 `Adapter` 또는 `Service`에 둔다.
+- MUST adapter가 Reducer State를 렌더링하고 SDK event를 typed Action으로 돌려준다.
+- MUST NOT bridge용 transient runtime state를 제품 정책의 원본으로 사용한다.
+- MUST NOT Domain에 SDK 타입을 노출한다. 앱 전역에서 재사용되는 UIKit bridge만 Core 후보로 검토한다.
 
 ## View And Reducer File Style
 

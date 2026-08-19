@@ -1,6 +1,6 @@
 # RODI API 연결 현황
 
-> 기준일: 2026-08-18
+> 기준일: 2026-08-19
 > Swagger: `https://api.stillstar.store/v3/api-docs`
 > 기준 환경: 현재 Swagger가 가리키는 API 환경 / 앱 구현: `Rodi/Data/Remote`
 > 이번 점검: Swagger endpoint 45개와 iOS API Target·DataSource·Repository·DTO 파일 인벤토리를 대조했다. endpoint별 field schema는 해당 API 변경 작업에서 다시 확인한다.
@@ -32,21 +32,21 @@
 | RemoteDataSource | 7 | API Target과 리소스별 1:1 |
 | RepositoryImpl | 7 | 도메인 Repository와 리소스별 1:1 |
 | Domain Repository protocol | 7 | Presentation은 이 계약만 사용 |
-| DTO Swift 파일 | 40 | Request 13개 + Response 27개 |
-| 전체 Swift 파일 | 348 | `Rodi/` 하위 기준 |
+| DTO Swift 파일 | 44 | Request 17개 + Response 27개 |
+| 전체 Swift 파일 | 393 | `Rodi/` 하위 기준 |
 
 ### 리소스별 DTO 수
 
 | 리소스 | Request | Response | 합계 |
 | --- | ---: | ---: | ---: |
-| Auth | 2 | 3 | 5 |
+| Auth | 3 | 3 | 6 |
 | Course | 2 | 3 | 5 |
-| Member | 3 | 3 | 6 |
+| Member | 4 | 3 | 7 |
 | Place | 1 | 9 | 10 |
-| Practice | 2 | 4 | 6 |
+| Practice | 3 | 4 | 7 |
 | RecentSearch | 1 | 1 | 2 |
-| Review | 2 | 4 | 6 |
-| **합계** | **13** | **27** | **40** |
+| Review | 3 | 4 | 7 |
+| **합계** | **17** | **27** | **44** |
 
 ## DTO 리팩토링 판단 기준
 
@@ -143,6 +143,10 @@
 
 ## 이번 DTO 점검 반영 사항
 
+- RemoteDataSource와 API Target이 Domain query·submission을 직접 받던 혼재를 제거했다. RepositoryImpl/Mapper에서 Domain 입력을 Request·query DTO로 변환하고, RemoteDataSource는 DTO·원시 path 식별자만 실행한다.
+- 공통 `ServerResponse`의 payload·빈 응답 검증을 `Data/Remote/Support/ServerResponseHandler`로 통일했다. API Target별 인증·path·DTO·response wrapper 계약은 각 리소스에 그대로 둔다.
+- Member·Practice·Review·Auth의 Domain `Date` 변환은 `Data/RepositoryImpl/Support/ServerDateParser`로 통일했다. ISO-8601, fractional seconds, timezone 없는 서버 날짜 형식을 처리하며, 실제 서버 응답 수동 검증은 별도 QA에서 수행한다.
+- `MemberRemoteDataSource`와 `MemberRepositoryImpl`의 프로필 원문 Debug 로그를 제거했다. 회원 닉네임·운전 목표 등 개인정보는 Data 로그에 기록하지 않는다.
 - `PracticeRegisterResponseDTO`: `status`, `visitCount`, `requiredDistanceMeters` 전달 추가
 - `MyPracticeItemResponseDTO`, `PlaceListItemResponseDTO`: `isDeleted` 추가 및 목록 노출 제외
 - `PracticeSkipReasonFormResponseDTO`: 질문 ID·유형·제목·설명·필수 여부 전달 추가

@@ -23,23 +23,32 @@
 | 문서 | 성격·다루는 내용 | 읽는 시점 | 갱신 시점 |
 | --- | --- | --- | --- |
 | [ARCHITECTURE.md](../Architecture/ARCHITECTURE.md) | 레이어, MVI, DI, child reducer, feature 폴더 책임 | 폴더 이동, reducer 합성, 책임 분리, 리팩토링 | 구조·책임 경계 변경 시 |
-| [PRESENTATION_ARCHITECTURE_AUDIT.md](../Architecture/PRESENTATION_ARCHITECTURE_AUDIT.md) | Presentation 파일 현황, 리팩토링 우선순위와 판단 근거 | 큰 화면/flow 수정 전, 구조 개선 계획 시 | 새 top-level feature·대형 분리·감사 결과 변경 시 |
+| [Layers/](../Architecture/Layers) | App·Core·Data·Domain·Presentation·Resources별 상세 MUST/MUST NOT | 특정 Layer 리팩터링·감사 | 해당 Layer의 지속 규칙 변경 시 |
 | [UI_FIGMA.md](UI_FIGMA.md) | Figma→SwiftUI, token·asset, 레이아웃·접근성·iOS 16.1 UI 기준 | SwiftUI, UIKit bridge, Figma, asset, 화면 리뷰 | 공통 UI 구현 규칙이 변할 때 |
 | [CODE_DOCUMENTATION_GUIDE.md](CODE_DOCUMENTATION_GUIDE.md) | 리팩터링 시 한국어 코드 주석·문서화 기준 | 구조 분리·public 경계·예외 처리의 의도 기록이 필요한 경우 | 공통 문서화 원칙이 변할 때 |
 | [API_SWAGGER.md](../API/API_SWAGGER.md) | Swagger 확인 순서와 API→DTO→Repository→Domain 계약 | endpoint, DTO, repository, 인증, cursor 작업 | Data 계층의 공통 규칙 변경 시 |
 | [API_CONNECTION_STATUS.md](../API/API_CONNECTION_STATUS.md) | 전체 endpoint의 API Target·DTO·연결 여부, DTO 수와 정리 기준 | API 누락 점검, Swagger 변경 확인 | API 추가·변경·제거, DTO 연결 변경 시 같은 커밋에서 |
 | [RELEASE.md](../Release/RELEASE.md) | Dev/Prod 환경, signing, TestFlight, privacy, analytics, 배포 검증 | Release archive, 배포, 개인정보, 환경 이슈 | 배포·환경·심사 절차 변경 시 |
-| [SECOND_UPDATE.md](../Product/SECOND_UPDATE.md) | GPS 측정, Live Activity, 외부 앱 재진입, 후기 팝업 정책 | 연습 측정·방문 인증·Live Activity 동작 변경 시 | 해당 정책·테스트 기준 변경 시 |
 | [VERSION_HISTORY.md](../Release/VERSION_HISTORY.md) | 배포 버전별 변경 내역과 패치노트 | 배포 준비, 버전 기능 확인 | 새 버전의 사용자 노출 변경이 확정될 때 |
 | `Docs/Archive/*` | 과거 결정·사고·마이그레이션의 증거 | 사용자가 과거 사건/결정을 물을 때만 | MUST NOT 현재 정책·구현 규칙으로 사용. 기본 작업에서는 읽거나 수정하지 않음 |
 
 ## Project Skill
 
-저장소가 직접 소유하는 active skill은 하나다.
+저장소는 UI 구현과 성능 조사에 필요한 project-local skill을 소유한다. skill은 프로젝트 구조 규칙의 원본이 아니며, `AGENTS.md`·활성 Docs·live code가 우선한다.
 
 | Skill | 적용할 작업 | 먼저 읽을 것 | 적용하지 않는 작업 |
 | --- | --- | --- | --- |
 | `.agents/skills/rodi-swiftui` | SwiftUI View 구현·수정·리뷰, Figma UI 반영, UIKit bridge 화면 검토 | `AGENTS.md` → `Docs/Guides/UI_FIGMA.md`; 폴더/상태 변경이면 `Docs/Architecture/ARCHITECTURE.md`도 추가 | DTO/API만 변경, release, git, 문서만 작성, reducer-only 변경 |
+| `.agents/skills/swiftui-expert-skill` | SwiftUI state·list·accessibility·navigation·performance 또는 Instruments trace 리뷰 | `AGENTS.md` → 관련 project Docs → 필요한 upstream reference | 일반 UI 구현, DTO/API, Git, 문서 작업 |
+| `.agents/skills/ios-*-performance`, `.agents/skills/swift-*-performance` | launch, profiling, perceived latency, SwiftUI·concurrency·runtime 성능 조사 | `AGENTS.md` → 재현 증거·trace·관련 source → 필요한 skill reference | 측정 근거 없는 선제 최적화, 일반 기능 구현 |
+
+외부 SwiftUI skill은 iOS 17+ `@Observable`, MVVM, generic system UI를 기본 권고할 수 있다. RODI에서는 iOS 16.1, ObservableObject, MVICore, Figma·design-system 계약을 MUST 우선한다.
+
+### 외부 Skill 출처와 갱신
+
+- `ios-*-performance`, `swift-*-performance` skill은 [Livsy90/iOS-Performance-Agent-Skills](https://github.com/Livsy90/iOS-Performance-Agent-Skills)의 commit `c259885045dd50f3a27b4df0eeab537b58799777`에서 project-local로 설치했다.
+- `swiftui-expert-skill`은 [AvdLee/SwiftUI-Agent-Skill](https://github.com/AvdLee/SwiftUI-Agent-Skill)의 commit `4c6a97d15aa5e023538c3cb06b5192f241dd451d`에서 project-local로 설치했다.
+- MUST 외부 skill을 자동 갱신하지 않는다. 갱신 전 upstream diff, 라이선스, iOS 16.1·MVICore·Figma 규칙과의 충돌을 검토한다.
 
 Codex runtime에서 제공하는 browser, Figma, 문서 등 외부 skill은 저장소의 영구 설계 규칙이 아니다. 해당 도구가 필요한 요청에서만 현재 세션의 지침을 읽어 적용하며, 이 문서에 변동 가능한 전체 목록을 복제하지 않는다.
 
@@ -65,9 +74,9 @@ Codex runtime에서 제공하는 browser, Figma, 문서 등 외부 skill은 저�
 
 ### 구조·폴더링·리팩토링
 
-1. `AGENTS.md`, `Docs/Architecture/ARCHITECTURE.md`, `Docs/Architecture/PRESENTATION_ARCHITECTURE_AUDIT.md`, 대상 feature 파일·route·의존성 조립 지점을 확인한다.
+1. `AGENTS.md`, `Docs/Architecture/ARCHITECTURE.md`, 대상 Layer 문서, 대상 feature 파일·route·의존성 조립 지점을 확인한다.
 2. 사용자 기능 변경과 구조 변경을 분리한다. 한 번에 Presentation 전체를 이동하지 않는다.
-3. 먼저 P1 레이어 위반·과도한 flow 책임·전체 AppDependencies 주입을 해결하고, 이후 P2 큰 파일·중복 생성 지점을 다룬다.
+3. `PRESENTATION.md`의 리팩터링 트리거를 기준으로 경계 위반·과도한 flow 책임·중복 조립을 우선 해결한다.
 4. 새 폴더는 실제 책임이 생길 때만 만든다. `Component`, `SubPage`, `Section`, `Model`, `Service`, `Adapter`의 의미를 섞지 않는다.
 5. 파일 이동 뒤 filesystem-synchronized group, route, delegate, build를 확인한다.
 
@@ -78,14 +87,6 @@ Codex runtime에서 제공하는 browser, Figma, 문서 등 외부 skill은 저�
 3. 원인을 확인하기 전에는 동작을 넓게 바꾸지 않는다. 최소 수정 후 실패·빈 상태·재시도 경로를 함께 점검한다.
 4. 민감정보·정확 좌표·토큰은 로그나 보고에 남기지 않는다.
 
-### GPS·Live Activity·재진입
-
-1. `Docs/Product/SECOND_UPDATE.md`와 관련 tracking service/state를 먼저 읽는다.
-2. 위치 측정 시작은 사용자 행동 이후에만, 완료·취소·프로세스 종료 시 수집 중단을 유지한다.
-3. Live Activity **UI**를 바꾸기 전에는 반드시 사용자에게 변경안을 설명하고 명시적 승인을 받는다.
-4. UI를 바꾸지 않는 인증·측정·수명주기 로직은 정책과 Release/Dev 차이를 문서와 함께 대조한다.
-5. 최종 GPS·Live Activity 검증은 실기기 기준이며 시뮬레이터로 최종 통과를 주장하지 않는다.
-
 ### Release·심사·개인정보
 
 1. `Docs/Release/RELEASE.md`를 기준으로 Dev/Prod base URL, bundle ID, signing, Firebase 설정, Debug code 제외를 점검한다.
@@ -95,7 +96,7 @@ Codex runtime에서 제공하는 browser, Figma, 문서 등 외부 skill은 저�
 ### 문서만 변경
 
 1. 해당 주제의 live code와 기존 문서가 일치하는지 확인한다.
-2. 일시적 handoff/TODO 문서는 만들지 않고, 반복 판단을 줄이는 durable 문서만 추가한다.
+2. 일시적 handoff/TODO 문서는 만들지 않는다. 단, `AGENTS.md`의 `Handoff Rules`가 명시한 루트 `Handoff/` 개인 작업 기록은 durable 운영 문서로 유지한다.
 3. 문서 전용 변경은 Xcode build가 필요 없지만 `git diff --check`, 링크·경로·민감정보를 점검한다.
 
 ## 모든 작업의 공통 마무리
