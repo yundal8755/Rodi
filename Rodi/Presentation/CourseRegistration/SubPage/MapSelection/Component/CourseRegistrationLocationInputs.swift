@@ -5,8 +5,8 @@ struct CourseRegistrationLocationInputs: View {
     let selectedPlaces: [CourseRegistrationInputTarget: CourseRegistrationSelectedPlace]
     let candidateTarget: CourseRegistrationInputTarget?
     let candidateAddress: String?
-    let isEditable: Bool
-    let isStartSearchEnabled: Bool
+    let isSearchEnabled: (CourseRegistrationInputTarget) -> Bool
+    let isWaypointAdditionEnabled: Bool
     let send: (CourseRegistrationMapSelectionReducer.Action) -> Void
 
     var body: some View {
@@ -16,13 +16,11 @@ struct CourseRegistrationLocationInputs: View {
                     VStack(spacing: 10) {
                         row(
                             for: .start,
-                            title: "출발지 입력",
-                            isInteractive: isStartSearchEnabled
+                            title: "출발지 입력"
                         )
                         row(
                             for: .destination,
-                            title: "도착지 입력",
-                            isInteractive: isEditable
+                            title: "도착지 입력"
                         )
                     }
 
@@ -32,15 +30,14 @@ struct CourseRegistrationLocationInputs: View {
                     .buttonStyle(.plain)
                     .frame(width: 44, height: 44)
                     .padding(.trailing, 10)
-                    .disabled(!isEditable)
+                    .disabled(!isWaypointAdditionEnabled)
                     .accessibilityLabel("경유지 추가")
                 }
             } else {
                 VStack(spacing: 10) {
                     row(
                         for: .start,
-                        title: "출발지 입력",
-                        isInteractive: isStartSearchEnabled
+                        title: "출발지 입력"
                     )
 
                     ForEach(waypoints) { waypoint in
@@ -49,7 +46,7 @@ struct CourseRegistrationLocationInputs: View {
                             text: displayText(for: .waypoint(waypoint.id), placeholder: "경유지 입력"),
                             isPlaceholder: isPlaceholder(for: .waypoint(waypoint.id)),
                             trailingControl: .minus { send(.waypointRemoveTapped(waypoint.id)) },
-                            isInteractive: isEditable,
+                            isInteractive: isSearchEnabled(.waypoint(waypoint.id)),
                             isTrailingControlEnabled: true,
                             tapAction: { send(.inputTargetTapped(.waypoint(waypoint.id))) }
                         )
@@ -62,7 +59,7 @@ struct CourseRegistrationLocationInputs: View {
                         trailingControl: waypoints.count < 3
                             ? .plus { send(.waypointAddTapped) }
                             : nil,
-                        isInteractive: isEditable,
+                        isInteractive: isSearchEnabled(.destination),
                         tapAction: { send(.inputTargetTapped(.destination)) }
                     )
                 }
@@ -74,14 +71,13 @@ struct CourseRegistrationLocationInputs: View {
 
     private func row(
         for target: CourseRegistrationInputTarget,
-        title: String,
-        isInteractive: Bool
+        title: String
     ) -> some View {
         CourseRegistrationLocationRow(
             iconName: target.inputIconName,
             text: displayText(for: target, placeholder: title),
             isPlaceholder: isPlaceholder(for: target),
-            isInteractive: isInteractive,
+            isInteractive: isSearchEnabled(target),
             tapAction: { send(.inputTargetTapped(target)) }
         )
     }

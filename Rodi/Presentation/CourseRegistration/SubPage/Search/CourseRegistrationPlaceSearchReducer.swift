@@ -19,7 +19,7 @@ struct CourseRegistrationPlaceSearchReducer: Reducer {
         var requestID = 0
         let sessionID: UUID
 
-        init(initialQuery: String = "서울") {
+        init(initialQuery: String = "") {
             query = initialQuery
             sessionID = UUID()
         }

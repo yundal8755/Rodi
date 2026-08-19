@@ -223,7 +223,11 @@ struct CourseRegistrationReducer: Reducer {
     ) -> Effect<Action> {
         switch delegate {
         case .openSearch(let target):
-            guard state.route == .registration else { return .none }
+            guard state.route == .registration,
+                  state.mapSelection.canSearch(for: target)
+            else {
+                return .none
+            }
             state.placeSearch = .init()
             state.route = .registrationSearch(target)
             return .none

@@ -20,6 +20,26 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
             !waypoints.isEmpty || !selectedPlaces.isEmpty || !routePath.isEmpty
         }
 
+        /// 코스는 출발지 → 도착지 → 경유지 순으로만 장소 검색을 시작한다.
+        func canSearch(for target: CourseRegistrationInputTarget) -> Bool {
+            switch target {
+            case .start:
+                selectedPlaces[.start] == nil
+            case .destination:
+                selectedPlaces[.start] != nil && selectedPlaces[.destination] == nil
+            case .waypoint(let id):
+                selectedPlaces[.destination] != nil
+                    && selectedPlaces[.waypoint(id)] == nil
+                    && waypoints.contains(where: { $0.id == id })
+            }
+        }
+
+        var canAddWaypoint: Bool {
+            selectedPlaces[.destination] != nil
+                && map.selectionTarget == nil
+                && waypoints.count < 3
+        }
+
         func routePoints(
             replacing replacement: (CourseRegistrationInputTarget, CourseRegistrationSelectedPlace)? = nil
         ) -> [RodiRouteOverlayPoint] {
@@ -161,7 +181,7 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
             return cancelAllTasks()
 
         case .waypointAddTapped:
-            guard state.map.selectionTarget == nil, state.waypoints.count < 3 else { return .none }
+            guard state.canAddWaypoint else { return .none }
             let waypoint = CourseRegistrationWaypoint()
             state.waypoints.append(waypoint)
             state.routePath = []
@@ -303,7 +323,7 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
             ))))
 
         case .inputTargetTapped(let target):
-            guard !state.map.isAddressResolving else { return .none }
+            guard state.canSearch(for: target) else { return .none }
             return .send(.delegate(.openSearch(target)))
 
         case .searchResultSelected(let target, let result):

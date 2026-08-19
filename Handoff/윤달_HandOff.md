@@ -7,6 +7,8 @@
 
 ## Recent Work
 
+- 코스 등록 상세 입력에서 연습유형 카테고리·연습유형·한줄 소개에 primary 필수 표기를 추가했다. 카테고리를 실제로 선택한 뒤에만 해당 카테고리의 연습유형을 표시·선택하도록 기본 카테고리 암묵 선택 규칙을 제거했다.
+- 코스 등록 장소 검색의 초기 query를 비우고, 출발지 → 도착지 → 경유지 순서에 따른 검색·경유지 추가 가능 조건을 `MapSelection` State로 단일화했다. 수동 QA가 남아 있다.
 - `release/1.4.1`에서 배포 설정·Live Activity target 분리·로컬 저장소 공통화·Kakao 지도 transport·코스 등록·Home·Login/Onboarding·My/Review/PracticeTracking을 책임 단위로 분리 커밋했다. 최종 빌드 및 push 확인이 남아 있다.
 - Fastlane 추적 파일에서 숫자형 App Store ID와 팀 ID를 제거하고, 로컬 `fastlane/.env` 또는 CI 환경 변수·local secrets로만 제공하도록 정리했다. bundle identifier는 앱 번들에 포함되는 공개 식별자로 유지한다.
 - 1.4.1 App Store 패치노트를 배포 전 초안으로 추가했다.

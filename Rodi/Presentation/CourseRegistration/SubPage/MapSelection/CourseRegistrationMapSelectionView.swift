@@ -24,9 +24,8 @@ struct CourseRegistrationMapSelectionView: View {
                         selectedPlaces: state.selectedPlaces,
                         candidateTarget: state.map.selectionTarget,
                         candidateAddress: state.map.candidateAddress,
-                        isEditable: state.map.selectionTarget == nil,
-                        isStartSearchEnabled: state.selectedPlaces[.start] == nil
-                            && !state.map.isAddressResolving,
+                        isSearchEnabled: state.canSearch(for:),
+                        isWaypointAdditionEnabled: state.canAddWaypoint,
                         send: send
                     )
                 }

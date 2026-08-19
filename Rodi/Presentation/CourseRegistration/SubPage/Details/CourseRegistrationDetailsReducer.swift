@@ -103,10 +103,8 @@ struct CourseRegistrationDetailsReducer: Reducer {
 
             if state.draft.selectedCategoryCodes.contains(category.code) {
                 state.draft.selectedCategoryCodes.remove(category.code)
-                if form.practiceType.categories.first?.code != category.code {
-                    let categoryTypeCodes = Set(category.practiceTypes.map(\.code))
-                    state.draft.selectedPracticeTypeCodes.removeAll { categoryTypeCodes.contains($0) }
-                }
+                let categoryTypeCodes = Set(category.practiceTypes.map(\.code))
+                state.draft.selectedPracticeTypeCodes.removeAll { categoryTypeCodes.contains($0) }
             } else {
                 state.draft.selectedCategoryCodes.insert(category.code)
             }
@@ -120,8 +118,7 @@ struct CourseRegistrationDetailsReducer: Reducer {
                 return .none
             }
 
-            let isDefaultCategory = form.practiceType.categories.first?.code == category.code
-            guard isDefaultCategory || state.draft.selectedCategoryCodes.contains(category.code) else {
+            guard state.draft.selectedCategoryCodes.contains(category.code) else {
                 return .none
             }
 

@@ -89,7 +89,9 @@ struct CourseRegistrationDetailsView: View {
                             .padding(.top, 28)
 
                         categorySection(form)
-                        practiceTypeSection(form)
+                        if !state.draft.selectedCategoryCodes.isEmpty {
+                            practiceTypeSection(form)
+                        }
                         textInputSection(
                             title: form.sections.caution,
                             text: Binding(
@@ -111,7 +113,8 @@ struct CourseRegistrationDetailsView: View {
                             isFocused: $isDescriptionFocused,
                             anchor: .descriptionKeyboardAnchor,
                             proxy: proxy,
-                            showsCounter: true
+                            showsCounter: true,
+                            isRequired: true
                         )
                     }
                     .padding(.horizontal, 16)
@@ -142,9 +145,7 @@ struct CourseRegistrationDetailsView: View {
 
     private func categorySection(_ form: CourseRegistrationForm) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(form.sections.practiceCategory)
-                .rodiTypography(.body1SemiBold)
-                .foregroundStyle(RodiColor.black)
+            requiredSectionTitle(form.sections.practiceCategory)
 
             RodiChipFlow {
                 ForEach(form.practiceType.categories) { category in
@@ -160,9 +161,7 @@ struct CourseRegistrationDetailsView: View {
 
     private func practiceTypeSection(_ form: CourseRegistrationForm) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(form.sections.practiceType)
-                .rodiTypography(.body1SemiBold)
-                .foregroundStyle(RodiColor.black)
+            requiredSectionTitle(form.sections.practiceType)
 
             RodiChipFlow {
                 ForEach(selectedPracticeTypes(in: form)) { type in
@@ -183,13 +182,18 @@ struct CourseRegistrationDetailsView: View {
         isFocused: FocusState<Bool>.Binding,
         anchor: ScrollTarget,
         proxy: ScrollViewProxy,
-        showsCounter: Bool = false
+        showsCounter: Bool = false,
+        isRequired: Bool = false
     ) -> some View {
         let focused = isFocused.wrappedValue
         return VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .rodiTypography(.body1SemiBold)
-                .foregroundStyle(RodiColor.black)
+            if isRequired {
+                requiredSectionTitle(title)
+            } else {
+                Text(title)
+                    .rodiTypography(.body1SemiBold)
+                    .foregroundStyle(RodiColor.black)
+            }
 
             VStack(alignment: .trailing, spacing: 8) {
                 RodiTextField(
@@ -226,12 +230,20 @@ struct CourseRegistrationDetailsView: View {
     }
 
     private func selectedPracticeTypes(in form: CourseRegistrationForm) -> [CourseRegistrationPracticeType] {
-        guard let defaultCategory = form.practiceType.categories.first else { return [] }
-        let additionallySelectedCategories = form.practiceType.categories.filter {
-            $0.code != defaultCategory.code && state.draft.selectedCategoryCodes.contains($0.code)
-        }
-        return ([defaultCategory] + additionallySelectedCategories)
+        form.practiceType.categories
+            .filter { state.draft.selectedCategoryCodes.contains($0.code) }
             .flatMap(\.practiceTypes)
+    }
+
+    private func requiredSectionTitle(_ title: String) -> some View {
+        HStack(spacing: 2) {
+            Text(title)
+                .rodiTypography(.body1SemiBold)
+                .foregroundStyle(RodiColor.black)
+            Text("*")
+                .rodiTypography(.body1SemiBold)
+                .foregroundStyle(RodiColor.primary)
+        }
     }
 
     private var isTextFieldFocused: Bool {
