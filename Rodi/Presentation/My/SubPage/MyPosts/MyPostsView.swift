@@ -19,9 +19,7 @@ struct MyPostsView: View {
     let editRequested: (Int) -> Void
 
     init(
-        reviewRepository: ReviewRepository,
-        practiceRepository: PracticeRepository,
-        courseRepository: CourseRepository,
+        dependencies: MyPostsFeatureDependencies,
         backAction: @escaping () -> Void,
         openPracticeRecords: @escaping () -> Void,
         openCourseRegistration: @escaping () -> Void,
@@ -33,9 +31,9 @@ struct MyPostsView: View {
             wrappedValue: Store(
                 state: MyPostsReducer.State(),
                 reducer: MyPostsReducer(
-                    reviewRepository: reviewRepository,
-                    practiceRepository: practiceRepository,
-                    courseRepository: courseRepository
+                    reviewRepository: dependencies.reviewRepository,
+                    practiceRepository: dependencies.practiceRepository,
+                    courseRepository: dependencies.courseRepository
                 )
             )
         )
@@ -55,12 +53,12 @@ struct MyPostsView: View {
                 content
             }
 
-            if store.state.deleteTargetReviewID != nil {
+            if store.state.reviews.deleteTargetReviewID != nil {
                 reviewDeleteConfirmationDialog
                     .zIndex(20)
             }
 
-            if store.state.deleteTargetCourseID != nil {
+            if store.state.courses.deleteTargetCourseID != nil {
                 courseDeleteConfirmationDialog
                     .zIndex(20)
             }
@@ -85,7 +83,7 @@ struct MyPostsView: View {
         .onChange(of: store.state.pendingEditReviewID) { reviewID in
             guard let reviewID else { return }
             editRequested(reviewID)
-            store.send(.editRequestHandled(reviewID: reviewID))
+            store.send(.editRequestHandled(reviewID))
         }
     }
 }
@@ -149,21 +147,21 @@ private extension MyPostsView {
             .padding(.top, 8)
             .padding(.bottom, 12)
 
-            if store.state.isCourseInitialLoading, store.state.courseItems.isEmpty {
+            if store.state.courses.isInitialLoading, store.state.courses.items.isEmpty {
                 ProgressView()
                     .tint(RodiColor.primary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if store.state.courseItems.isEmpty {
+            } else if store.state.courses.items.isEmpty {
                 MyCoursesEmptyState(
-                    filter: store.state.selectedCourseFilter,
-                    errorMessage: store.state.courseErrorMessage,
+                    filter: store.state.courses.selectedFilter,
+                    errorMessage: store.state.courses.errorMessage,
                     retry: { store.send(.retryTapped) },
                     openCourseRegistration: openCourseRegistration
                 )
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 24) {
-                        ForEach(store.state.courseItems) { course in
+                        ForEach(store.state.courses.items) { course in
                             VStack(alignment: .leading, spacing: 24) {
                                 MyCourseRow(
                                     course: course,
@@ -183,6 +181,10 @@ private extension MyPostsView {
                     .padding(.bottom, 24)
                 }
                 .scrollIndicators(.hidden)
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 1)
+                        .onChanged { _ in closeDropdowns() }
+                )
             }
         }
     }
@@ -194,7 +196,7 @@ private extension MyPostsView {
             isCourseFilterExpanded.toggle()
         } label: {
             HStack(spacing: 2) {
-                Text(isCourseFilterExpanded ? "접기" : store.state.selectedCourseFilter.title)
+                Text(isCourseFilterExpanded ? "접기" : store.state.courses.selectedFilter.title)
                     .rodiTypography(.body3Medium)
 
                 Image("ic_chevron_down")
@@ -216,43 +218,43 @@ private extension MyPostsView {
 
     @ViewBuilder
     var coursePaginationFooter: some View {
-        if store.state.isCourseNextPageLoading {
+        if store.state.courses.isNextPageLoading {
             ProgressView()
                 .tint(RodiColor.primary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 20)
-        } else if let lastItem = store.state.courseItems.last,
-                  store.state.hasNextCoursePage,
-                  store.state.courseErrorMessage == nil {
+        } else if let lastItem = store.state.courses.items.last,
+                  store.state.courses.hasNextPage,
+                  store.state.courses.errorMessage == nil {
             Color.clear
                 .frame(height: 1)
                 .onAppear {
-                    store.send(.courseLastItemAppeared(lastItem))
+                    store.send(.courses(.lastItemAppeared(lastItem)))
                 }
         }
 
-        if let errorMessage = store.state.courseErrorMessage, !store.state.courseItems.isEmpty {
+        if let errorMessage = store.state.courses.errorMessage, !store.state.courses.items.isEmpty {
             MyPostsRetryFooter(message: errorMessage, retry: { store.send(.retryTapped) })
         }
     }
 
     @ViewBuilder
     var reviewContent: some View {
-        if store.state.isInitialLoading, store.state.items.isEmpty {
+        if store.state.reviews.isInitialLoading, store.state.reviews.items.isEmpty {
             ProgressView()
                 .tint(RodiColor.primary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if store.state.items.isEmpty {
+        } else if store.state.reviews.items.isEmpty {
             MyPostsEmptyState(
-                errorMessage: store.state.errorMessage,
+                errorMessage: store.state.reviews.errorMessage,
                 retry: { store.send(.retryTapped) },
                 openPracticeRecords: openPracticeRecords,
-                hasPracticeRecords: store.state.hasPracticeRecords
+                hasPracticeRecords: store.state.reviews.hasPracticeRecords
             )
         } else {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 24) {
-                    ForEach(store.state.items) { review in
+                    ForEach(store.state.reviews.items) { review in
                         VStack(alignment: .leading, spacing: 24) {
                             MyPostReviewRow(
                                 review: review,
@@ -273,27 +275,31 @@ private extension MyPostsView {
                 .padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { _ in closeDropdowns() }
+            )
         }
     }
 
     @ViewBuilder
     var reviewPaginationFooter: some View {
-        if store.state.isNextPageLoading {
+        if store.state.reviews.isNextPageLoading {
             ProgressView()
                 .tint(RodiColor.primary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 20)
-        } else if let lastItem = store.state.items.last,
-                  store.state.hasNextPage,
-                  store.state.errorMessage == nil {
+        } else if let lastItem = store.state.reviews.items.last,
+                  store.state.reviews.hasNextPage,
+                  store.state.reviews.errorMessage == nil {
             Color.clear
                 .frame(height: 1)
                 .onAppear {
-                    store.send(.lastItemAppeared(lastItem))
+                    store.send(.reviews(.lastItemAppeared(lastItem)))
                 }
         }
 
-        if let errorMessage = store.state.errorMessage, !store.state.items.isEmpty {
+        if let errorMessage = store.state.reviews.errorMessage, !store.state.reviews.items.isEmpty {
             MyPostsRetryFooter(message: errorMessage, retry: { store.send(.retryTapped) })
         }
     }
@@ -306,17 +312,17 @@ private extension MyPostsView {
            let anchor = anchors[AnyHashable("course-filter")] {
             menuOverlay(anchor: anchor) {
                 RodiDropdownMenu(
-                    options: MyPostsReducer.CourseFilter.allCases
-                        .filter { $0 != store.state.selectedCourseFilter }
+                    options: MyPostsCourseFilter.allCases
+                        .filter { $0 != store.state.courses.selectedFilter }
                         .map {
                         .init(id: $0.title, title: $0.title)
                         },
                     onSelect: { option in
-                        guard let filter = MyPostsReducer.CourseFilter.allCases.first(where: { $0.title == option.id }) else {
+                        guard let filter = MyPostsCourseFilter.allCases.first(where: { $0.title == option.id }) else {
                             return
                         }
                         isCourseFilterExpanded = false
-                        store.send(.courseFilterSelected(filter))
+                        store.send(.courses(.filterSelected(filter)))
                     }
                 )
             }
@@ -327,7 +333,7 @@ private extension MyPostsView {
                     options: [.init(id: "delete", title: "삭제하기")],
                     onSelect: { _ in
                         activeMenuCourseID = nil
-                        store.send(.deleteCourseRequested(courseID: courseID))
+                        store.send(.courses(.deleteRequested(courseID)))
                     }
                 )
             }
@@ -342,9 +348,9 @@ private extension MyPostsView {
                     onSelect: { option in
                         activeMenuReviewID = nil
                         if option.id == "edit" {
-                            store.send(.editRequested(reviewID: reviewID))
+                            store.send(.reviews(.editRequested(reviewID)))
                         } else {
-                            store.send(.deleteRequested(reviewID: reviewID))
+                            store.send(.reviews(.deleteRequested(reviewID)))
                         }
                     }
                 )
@@ -373,6 +379,10 @@ private extension MyPostsView {
                     }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { _ in closeDropdowns() }
+            )
         }
         .ignoresSafeArea()
         .zIndex(10)
@@ -398,19 +408,19 @@ private extension MyPostsView {
 
     var reviewDeleteConfirmationDialog: some View {
         ReviewDeleteConfirmationDialog(
-            isDeleting: store.state.isDeleting,
-            errorMessage: store.state.deleteErrorMessage,
-            deleteAction: { store.send(.deleteConfirmed) },
-            cancelAction: { store.send(.deleteCancelled) }
+            isDeleting: store.state.reviews.isDeleting,
+            errorMessage: store.state.reviews.deleteErrorMessage,
+            deleteAction: { store.send(.reviews(.deleteConfirmed)) },
+            cancelAction: { store.send(.reviews(.deleteCancelled)) }
         )
     }
 
     var courseDeleteConfirmationDialog: some View {
         CourseDeleteConfirmationDialog(
-            isDeleting: store.state.isDeletingCourse,
-            errorMessage: store.state.courseDeleteErrorMessage,
-            deleteAction: { store.send(.deleteCourseConfirmed) },
-            cancelAction: { store.send(.deleteCourseCancelled) }
+            isDeleting: store.state.courses.isDeleting,
+            errorMessage: store.state.courses.deleteErrorMessage,
+            deleteAction: { store.send(.courses(.deleteConfirmed)) },
+            cancelAction: { store.send(.courses(.deleteCancelled)) }
         )
     }
 }

@@ -15,7 +15,6 @@ struct ReviewFlowCoordinatorReducer: Reducer {
         var homeFinishedRequestID = 0
         var myPracticeRecordsFinishedRequestID = 0
         var myPostsFinishedRequestID = 0
-        var completionRefreshFlowID: UUID?
     }
 
     enum Action {
@@ -27,7 +26,6 @@ struct ReviewFlowCoordinatorReducer: Reducer {
         case practiceReturnVisitSubmissionChanged(Bool)
         case practiceReturnFinishedWithoutReview(String)
         case externalSnackbarRequested(String)
-        case completionRefreshCompleted(flowID: UUID)
         case snackbarDismissed(String)
         case delegate(Delegate)
     }
@@ -38,18 +36,14 @@ struct ReviewFlowCoordinatorReducer: Reducer {
 
     private enum EffectID {
         case snackbar
-        case completionRefresh
     }
 
     private let reviewReducer: ReviewReducer
-    private let refreshService: ReviewFlowRefreshServicing
 
     init(
-        reviewReducer: ReviewReducer,
-        refreshService: ReviewFlowRefreshServicing
+        reviewReducer: ReviewReducer
     ) {
         self.reviewReducer = reviewReducer
-        self.refreshService = refreshService
     }
 }
 
@@ -104,18 +98,16 @@ extension ReviewFlowCoordinatorReducer {
             return reduceReview(&state, action: .prompt(.visitSubmissionChanged(isSubmitting)))
 
         case .practiceReturnFinishedWithoutReview(let message):
-            state.review = .init()
             state.entrySource = nil
             state.homeFinishedRequestID += 1
-            return presentSnackbar(message, state: &state)
+            state.snackbarMessage = message
+            return .run { send in
+                await send(.review(.reset))
+                await send(.externalSnackbarRequested(message))
+            }
 
         case .externalSnackbarRequested(let message):
             return presentSnackbar(message, state: &state)
-
-        case .completionRefreshCompleted(let flowID):
-            guard state.completionRefreshFlowID == flowID else { return .none }
-            state.completionRefreshFlowID = nil
-            return reduceReview(&state, action: .writing(.completionRefreshFinished(flowID: flowID)))
 
         case .snackbarDismissed(let message):
             guard state.snackbarMessage == message else { return .none }
@@ -148,27 +140,22 @@ private extension ReviewFlowCoordinatorReducer {
         switch delegate {
         case .finished:
             finishReviewFlow(state: &state)
-            return .none
+            return .send(.review(.reset))
 
         case .completionRefreshRequested(let target, let flowID):
-            guard state.completionRefreshFlowID == nil,
-                  let entrySource = state.entrySource
-            else { return .none }
-            state.completionRefreshFlowID = flowID
-            let refreshService = refreshService
-            return .run { send in
-                await refreshService.refresh(entrySource: entrySource, placeID: target.placeID)
-                await send(.completionRefreshCompleted(flowID: flowID))
-            }
-            .cancelTask(id: EffectID.completionRefresh)
+            _ = target
+            return reduceReview(&state, action: .writing(.completionRefreshFinished(flowID: flowID)))
 
         case .showSnackbar(let message), .visitedWithoutReview(let message):
             return presentSnackbar(message, state: &state)
 
         case .editingFailed(let message):
-            state.review = .init()
             state.entrySource = nil
-            return presentSnackbar(message, state: &state)
+            state.snackbarMessage = message
+            return .run { send in
+                await send(.review(.reset))
+                await send(.externalSnackbarRequested(message))
+            }
         }
     }
 
@@ -179,9 +166,7 @@ private extension ReviewFlowCoordinatorReducer {
 
     func finishReviewFlow(state: inout State) {
         let entrySource = state.entrySource
-        state.review = .init()
         state.entrySource = nil
-        state.completionRefreshFlowID = nil
 
         switch entrySource {
         case .home, .courseDetail:

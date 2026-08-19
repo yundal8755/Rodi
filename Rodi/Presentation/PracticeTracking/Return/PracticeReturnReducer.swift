@@ -178,8 +178,8 @@ private extension PracticeReturnReducer {
             return .none
         }
 
-        if interaction == .visited,
-           measurement.isParking,
+        if measurement.isParking,
+           interaction != .notVisited,
            measurement.status != .certified,
            !state.isParkingVisitSubmitting {
             state.isParkingVisitSubmitting = true

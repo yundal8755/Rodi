@@ -66,7 +66,7 @@ private extension MyCoursesEmptyState {
 
     var emptyTitle: String {
         switch filter {
-        case .all: "등록한 코스가 없어요!"
+        case .all: "아직 등록한 코스가 없어요!"
         case .approved: "승인된 코스가 없어요!"
         case .pending: "검토중인 코스가 없어요!"
         case .rejected: "반려된 코스가 없어요!"

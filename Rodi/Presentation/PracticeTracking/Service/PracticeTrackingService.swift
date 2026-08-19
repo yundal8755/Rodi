@@ -35,6 +35,8 @@ final class PracticeTrackingService: NSObject, ObservableObject {
     private var practiceRepository: PracticeRepository?
     private var lastInCourseLocation: CLLocation?
     private var isCertificationRequestInFlight = false
+    private var certificationTask: Task<Void, Never>?
+    private var certificationRequestID = 0
     private var backgroundActivitySession: AnyObject?
     private var didStartSessionInCurrentProcess = false
 
@@ -170,6 +172,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
         endBackgroundActivitySession()
         didStartSessionInCurrentProcess = false
         lastInCourseLocation = nil
+        cancelCertificationRequest()
         RodiAnalytics.track(.practiceTrackingCancelled(placeType: session.analyticsPlaceType))
         RodiLogger.info("Practice tracking cancelled sessionID=\(session.id.uuidString)")
     }
@@ -315,14 +318,23 @@ final class PracticeTrackingService: NSObject, ObservableObject {
                   || measurement.status == .certificationPendingVisit)
         else { return }
 
+        certificationTask?.cancel()
+        certificationRequestID += 1
+        let requestID = certificationRequestID
         isCertificationRequestInFlight = true
-        Task { [weak self] in
+        certificationTask = Task { [weak self] in
             guard let self else { return }
-            defer { self.isCertificationRequestInFlight = false }
+            defer {
+                if self.certificationRequestID == requestID {
+                    self.isCertificationRequestInFlight = false
+                    self.certificationTask = nil
+                }
+            }
             do {
                 var current = measurement
                 if current.status == .certificationPendingRegistration {
                     let registration = try await repository.register(placeID: current.placeID)
+                    guard !Task.isCancelled, self.certificationRequestID == requestID else { return }
                     current.practiceID = registration.practiceID
                     current.status = .certificationPendingVisit
                     self.measurementStore.save(current)
@@ -332,13 +344,24 @@ final class PracticeTrackingService: NSObject, ObservableObject {
                     practiceID: practiceID,
                     certifiedDistanceMeters: current.certifiedDistanceMeters
                 )
+                guard !Task.isCancelled, self.certificationRequestID == requestID else { return }
                 current.status = .certified
                 self.measurementStore.save(current)
                 self.certificationRevision += 1
+            } catch is CancellationError {
+                return
             } catch {
-                RodiLogger.warning("Practice certification pending: \(error.localizedDescription)")
+                guard self.certificationRequestID == requestID else { return }
+                RodiLogger.warning("Practice certification pending")
             }
         }
+    }
+
+    private func cancelCertificationRequest() {
+        certificationRequestID += 1
+        certificationTask?.cancel()
+        certificationTask = nil
+        isCertificationRequestInFlight = false
     }
 
     /// 외부 길안내가 열린 뒤에만 측정 후보를 저장하므로, 도착 지점에서 즉시 종료된 세션도 인증 대기 상태로 전환한다.

@@ -48,6 +48,8 @@ struct ReviewSkipReasonReducer: Reducer {
         case discardCancelled
         case completionConfirmed
         case reset
+        case cancelFormLoading
+        case cancelSubmission
         case delegate(Delegate)
     }
 
@@ -170,7 +172,16 @@ extension ReviewSkipReasonReducer {
 
         case .reset:
             state = .init()
+            return .run { send in
+                await send(.cancelFormLoading)
+                await send(.cancelSubmission)
+            }
+
+        case .cancelFormLoading:
             return .cancel(id: EffectID.formLoading)
+
+        case .cancelSubmission:
+            return .cancel(id: EffectID.submission)
 
         case .delegate:
             return .none

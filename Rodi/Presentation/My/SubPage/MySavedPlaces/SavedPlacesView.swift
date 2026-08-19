@@ -119,11 +119,11 @@ private struct SavedPlacesEmptyView: View {
             }
 
             VStack(spacing: 8) {
-                Text("저장한 코스가 없어요.")
+                Text("저장목록이 없어요.")
                     .rodiTypography(.headline2)
                     .foregroundStyle(RodiColor.gray600)
 
-                Text("홈에서 나에게 맞는 연습 코스를 찾아 저장해보세요.")
+                Text("홈에서 나에게 맞는 연습 코스를 찾아\n저장해보세요.")
                     .rodiTypography(.body3Medium)
                     .foregroundStyle(RodiColor.gray600)
                     .multilineTextAlignment(.center)

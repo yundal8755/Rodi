@@ -22,12 +22,6 @@ enum ReviewFlowFactory {
             skipReasonService: ReviewSkipReasonService(practiceRepository: practiceRepository)
         )
 
-        return ReviewFlowCoordinatorReducer(
-            reviewReducer: reviewReducer,
-            refreshService: ReviewFlowRefreshService(
-                practiceRepository: practiceRepository,
-                reviewRepository: reviewRepository
-            )
-        )
+        return ReviewFlowCoordinatorReducer(reviewReducer: reviewReducer)
     }
 }

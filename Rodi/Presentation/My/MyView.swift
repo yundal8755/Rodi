@@ -42,7 +42,7 @@ struct MyView: View {
         myPostsReviewFlowFinishedRequestID: Int,
         isCourseTutorialCompleted: Bool,
         onCourseTutorialCompleted: @escaping () -> Void,
-        dependencies: AppDependencies
+        dependencies: MyFeatureDependencies
     ) {
         self.coordinator = coordinator
         self.isMyTabSelected = isMyTabSelected
@@ -64,7 +64,8 @@ struct MyView: View {
                     memberRepository: dependencies.memberRepository,
                     practiceRepository: dependencies.practiceRepository,
                     recentLoginProviderStore: dependencies.recentLoginProviderStore,
-                    levelUpPresentationStore: dependencies.levelUpPresentationStore
+                    levelUpPresentationStore: dependencies.levelUpPresentationStore,
+                    socialSessionService: SocialSessionService()
                 )
             )
         )
@@ -139,7 +140,7 @@ private extension MyView {
             
         case .drivingGoal:
             MyDrivingGoalView(
-                initialDrivingGoal: "",
+                initialDrivingGoal: store.state.profile?.drivingGoal ?? "",
                 memberRepository: memberRepository,
                 onUpdated: { store.send(.drivingGoalUpdated($0)) },
                 backAction: { router.pop() }
@@ -166,9 +167,11 @@ private extension MyView {
 
         case .myPosts:
             MyPostsView(
-                reviewRepository: reviewRepository,
-                practiceRepository: practiceRepository,
-                courseRepository: courseRepository,
+                dependencies: .init(
+                    reviewRepository: reviewRepository,
+                    practiceRepository: practiceRepository,
+                    courseRepository: courseRepository
+                ),
                 backAction: { router.pop() },
                 openPracticeRecords: { router.push(.practiceRecords) },
                 openCourseRegistration: { router.push(.courseRegistration) },
@@ -194,6 +197,9 @@ private extension MyView {
             
         case .terms:
             MyTermsView(backAction: { router.pop() }, navigate: { router.push($0) })
+
+        case .dataSource:
+            MyDataSourceView(backAction: { router.pop() })
             
         case .licenses:
             MyOpenSourceLicenseView(backAction: { router.pop() })

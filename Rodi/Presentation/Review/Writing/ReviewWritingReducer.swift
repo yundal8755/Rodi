@@ -54,6 +54,8 @@ struct ReviewWritingReducer: Reducer {
         case completionConfirmed
         case completionRefreshFinished(flowID: UUID)
         case reset
+        case cancelDetailLoading
+        case cancelSubmission
         case delegate(Delegate)
     }
 
@@ -223,6 +225,15 @@ extension ReviewWritingReducer {
 
         case .reset:
             state = .init()
+            return .run { send in
+                await send(.cancelDetailLoading)
+                await send(.cancelSubmission)
+            }
+
+        case .cancelDetailLoading:
+            return .cancel(id: EffectID.detail)
+
+        case .cancelSubmission:
             return .cancel(id: EffectID.submission)
 
         case .delegate:

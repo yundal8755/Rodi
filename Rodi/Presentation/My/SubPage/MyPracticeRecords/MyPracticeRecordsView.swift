@@ -134,24 +134,14 @@ private struct MyPracticeRecordListRow: View {
             MyPracticeTypeChipRow(types: record.practiceTypes)
                 .padding(.top, 4)
 
-            if !record.isParkingPractice, !record.hasReview {
-                Button {
+            MyPracticeReviewStatus(
+                hasReview: record.hasReview,
+                isReviewWritable: !record.isParkingPractice,
+                reviewRequested: {
                     reviewRequested(.init(placeID: record.placeID, placeName: record.placeName))
-                } label: {
-                    Text("후기 작성")
-                        .rodiTypography(.body3Medium)
-                        .foregroundStyle(RodiColor.primary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 32)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(RodiColor.primary, lineWidth: 1)
-                        }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(record.placeName) 후기 작성")
-                .padding(.top, 16)
-            }
+            )
+            .padding(.top, 16)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(record.placeName), \(dateText)")

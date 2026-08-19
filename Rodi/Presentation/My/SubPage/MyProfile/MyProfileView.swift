@@ -78,7 +78,7 @@ struct MyProfileView: View {
 
     private var header: some View {
         ZStack {
-            Text("프로필")
+            Text("마이페이지")
                 .rodiTypography(.headline1)
                 .foregroundStyle(RodiColor.black)
 
@@ -279,18 +279,26 @@ private struct MyProfileCard: View {
         .padding(.horizontal, 11)
         .padding(.vertical, 15)
         .frame(maxWidth: .infinity, minHeight: 227, maxHeight: 227, alignment: .top)
-        .background(RadialGradient(colors: [RodiColor.white, RodiColor.primary20], center: .bottom, startRadius: 30, endRadius: 250))
-        .overlay(alignment: .topTrailing) {
-            Image("img_stamp")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 100, height: 100)
-                .opacity(stampOpacity)
-                .scaleEffect(stampScale)
-                .rotationEffect(.degrees(stampRotation))
-                .padding(.top, 15)
-                .padding(.trailing, 11)
-                .accessibilityHidden(true)
+        .background {
+            ZStack(alignment: .topTrailing) {
+                RadialGradient(
+                    colors: [RodiColor.white, RodiColor.primary20],
+                    center: .bottom,
+                    startRadius: 0,
+                    endRadius: 250
+                )
+
+                Image("img_stamp")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 100, height: 100)
+                    .opacity(stampOpacity)
+                    .scaleEffect(stampScale)
+                    .rotationEffect(.degrees(stampRotation))
+                    .padding(.top, 15)
+                    .padding(.trailing, 11)
+                    .accessibilityHidden(true)
+            }
         }
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay { RoundedRectangle(cornerRadius: 8).stroke(RodiColor.primary50, lineWidth: 1) }
@@ -305,7 +313,7 @@ private struct MyProfileCard: View {
     }
 
     private var drivingGoalText: String {
-        hasDrivingGoal ? profile.drivingGoal! : "나만의 운전 목표를 입력해보세요!"
+        hasDrivingGoal ? profile.drivingGoal! : "나만의 운전 목표를 입력해보세요 !"
     }
 
     private func playEntrance() {
