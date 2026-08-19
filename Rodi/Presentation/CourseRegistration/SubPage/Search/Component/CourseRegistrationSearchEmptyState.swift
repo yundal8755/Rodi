@@ -32,3 +32,13 @@ struct CourseRegistrationSearchEmptyState: View {
         query.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
+
+struct CourseRegistrationRecentSearchEmptyState: View {
+    var body: some View {
+        Text("최근 검색 내역이 없습니다")
+            .rodiTypography(.body1Medium)
+            .foregroundStyle(RodiColor.gray600)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .accessibilityLabel("최근 검색 내역이 없습니다")
+    }
+}

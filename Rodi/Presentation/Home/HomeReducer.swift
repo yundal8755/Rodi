@@ -493,6 +493,14 @@ extension HomeReducer {
         state.presentation.isBottomTabBarVisible = false
         selectResolvedPlaceMarker(detail, state: &state.map)
 
+    case .mapSearchSelectionRequested(let name):
+        // 추천 목록의 행을 탭한 즉시 검색창을 선택 상태로 바꿉니다.
+        // 상세 조회 성공 시에는 `mapPlaceResolved`가 active marker를 확정합니다.
+        state.presentation.isBottomTabBarVisible = false
+        state.map.selectedSearchResultName = name
+        state.map.routeOverlay = nil
+        state.map.isResearchButtonVisible = false
+
     case .mapRouteOverlayChanged(let overlay):
         state.map.routeOverlay = overlay
 

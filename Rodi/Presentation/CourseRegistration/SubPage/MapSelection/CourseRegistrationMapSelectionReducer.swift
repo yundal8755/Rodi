@@ -193,7 +193,7 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
         case .waypointRemoveTapped(let id):
             guard state.waypoints.contains(where: { $0.id == id }) else { return .none }
             state.waypoints.removeAll { $0.id == id }
-            state.selectedPlaces[.waypoint(id)] = nil
+            state.selectedPlaces.removeValue(forKey: .waypoint(id))
             state.routePath = []
             if state.map.routeFailureTarget == .waypoint(id) {
                 state.map.routeFailureTarget = nil
@@ -212,8 +212,9 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
                 state.map.hasSelectedCurrentTarget = false
                 state.map.isAddressResolving = false
                 state.map.addressRequestRevision += 1
-                return .cancel(id: EffectID.address)
             }
+
+            return refreshRouteAfterWaypointRemoval(state: &state)
 
         case .currentLocationTapped:
             state.map.locationRequestRevision += 1
@@ -485,6 +486,23 @@ struct CourseRegistrationMapSelectionReducer: Reducer {
             state.map.lastRouteRequestTarget = target
             return requestInitialRoute(points: points, revision: state.routeRequestRevision)
         }
+    }
+
+    private func refreshRouteAfterWaypointRemoval(
+        state: inout State
+    ) -> Effect<Action> {
+        let points = state.routePoints()
+        state.routeRequestRevision += 1
+        state.map.routeFailureTarget = nil
+        state.map.lastRouteRequestTarget = nil
+
+        guard points.count >= 2 else {
+            state.isRouteLoading = false
+            return .cancel(id: EffectID.route)
+        }
+
+        state.isRouteLoading = true
+        return requestInitialRoute(points: points, revision: state.routeRequestRevision)
     }
 
     private func cancelAllTasks() -> Effect<Action> {

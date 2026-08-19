@@ -74,8 +74,12 @@ private extension CourseRegistrationPlaceSearchView {
             if shouldShowEmptyResults {
                 CourseRegistrationSearchEmptyState(query: state.query)
                     .allowsHitTesting(false)
+            } else if shouldShowRecentSearchEmptyState {
+                CourseRegistrationRecentSearchEmptyState()
+                    .allowsHitTesting(false)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     var regionResults: some View {
@@ -172,6 +176,11 @@ private extension CourseRegistrationPlaceSearchView {
             && state.places.isEmpty
             && state.regions.isEmpty
             && state.placeErrorMessage == nil
+    }
+
+    var shouldShowRecentSearchEmptyState: Bool {
+        state.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && recentSearches.isEmpty
     }
 
     @ViewBuilder

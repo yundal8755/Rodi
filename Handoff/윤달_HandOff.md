@@ -7,6 +7,8 @@
 
 ## Recent Work
 
+- 코스 polyline 카메라의 기본 여백과 최소 span을 줄여, 코스 마커 선택 뒤 경로가 지도 영역을 더 크게 채우도록 조정했다. 추천 목록의 코스·주차장 행 선택은 상위 Home delegate를 통해 검색창 선택 상태를 즉시 갱신하도록 연결했다.
+- 코스 등록 검색에 최근 검색어가 없을 때 중앙 empty state를 추가했고, 경유지 삭제 뒤 남은 출발지·도착지 기준 route를 즉시 재조회하도록 보완했다.
 - 추천 목록·코스·주차장 바텀시트의 제목 비버튼 영역에도 기존 vertical pan을 연결했다. indicator의 기존 동작은 보존하고 filter·닫기·북마크 버튼은 drag overlay에서 제외했다.
 - 코스 등록 상세 입력의 카테고리 비선택 초기 상태, 카테고리 선택 뒤 연습유형 노출, 카테고리·연습유형·한줄 소개의 primary 필수 표기를 정적 확인했다.
 - 코스 등록 상세 입력에서 연습유형 카테고리·연습유형·한줄 소개에 primary 필수 표기를 추가했다. 카테고리를 실제로 선택한 뒤에만 해당 카테고리의 연습유형을 표시·선택하도록 기본 카테고리 암묵 선택 규칙을 제거했다.
@@ -72,6 +74,7 @@
 
 ## Next
 
+- iPhone 12 Pro에서 코스 마커 선택 후 polyline 카메라 범위와 추천 목록 장소 선택 뒤 검색창의 뒤로가기·장소명 표시를 수동 QA한다.
 - iPhone 12 Pro에서 최초 출발지 선택 전 검색 진입과 도로 경로 조회 실패 뒤 중앙 핀 유지 상태를 수동 QA한다.
 - 실제 Fastlane 배포 전에는 `fastlane/.env.example`을 참고해 로컬 또는 CI에 `FASTLANE_ITC_TEAM_ID`, `FASTLANE_TEAM_ID`를 제공하고, local secrets의 환경별 `APP_STORE_APP_ID`를 확인한다.
 - iPhone 12 Pro에서 경유지 삭제·주소 유지, My 프로필/설정/연습기록/드롭다운, 주차장 팝업 X 후 연습기록 저장을 수동 QA한다.
@@ -88,6 +91,8 @@
 
 ## Validation
 
+- 코스 polyline camera fit·추천 목록 검색창 선택 상태 변경 뒤 `Rodi Dev` Debug build 성공, `git diff --check` 통과. 수동 UI QA 대기.
+- 코스 등록 최근 검색 empty state·경유지 삭제 route 재조회 변경 뒤 `Rodi Dev` Debug build 성공, `git diff --check` 통과. 수동 QA 대기.
 - 바텀시트 제목 drag hit 영역 확장 뒤 `Rodi Dev` Debug build 성공. `git diff --check`와 실기기 drag·버튼 터치 수동 QA 대기.
 - 코스 등록 상세 입력 필수 표기·선택 상태 확인 뒤 `Rodi Dev` Debug build 성공, `git diff --check` 통과. 실기기 선택 전/후 노출 수동 QA 대기.
 - Fastlane `ios version` lane 성공. Dev는 `1.0.0 (1)`, 로컬 Prod 설정은 `1.4.1 (0)`으로 확인됐다.

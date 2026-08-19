@@ -63,6 +63,7 @@ struct HomeBottomSheetReducer: Reducer {
 
     enum Delegate {
         case mapPlaceResolved(PlaceDetail)
+        case mapSearchSelectionRequested(String)
         case mapRouteOverlayChanged(RodiRouteOverlay?)
         case mapFocusRequested(RodiCoordinate)
         case mapDetailDismissed
@@ -282,6 +283,7 @@ extension HomeBottomSheetReducer {
         case .resolvePlace(let item):
             state.recommendList.presentation = .medium
             return actions([
+                .delegate(.mapSearchSelectionRequested(item.name)),
                 .delegate(.mapFocusRequested(RodiCoordinate(
                     latitude: item.latitude,
                     longitude: item.longitude
