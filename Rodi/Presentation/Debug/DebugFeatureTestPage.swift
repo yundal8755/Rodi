@@ -16,7 +16,15 @@ struct DebugFeatureTestPage: View {
     @State private var hardWithdrawalErrorMessage: String?
 
     let reviewPromptAction: () -> Void
-    let hardWithdrawAction: @MainActor () async throws -> Void
+    let hardWithdrawAction: () async throws -> Void
+
+    init(
+        reviewPromptAction: @escaping () -> Void,
+        hardWithdrawAction: @escaping () async throws -> Void
+    ) {
+        self.reviewPromptAction = reviewPromptAction
+        self.hardWithdrawAction = hardWithdrawAction
+    }
 
     var body: some View {
         VStack(spacing: 0) {
