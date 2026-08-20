@@ -189,11 +189,7 @@ private extension CourseReviewSection {
             Text(message)
                 .rodiTypography(.caption1Regular)
                 .foregroundStyle(RodiColor.gray600)
-            Button(action: onRetry) {
-                Text("다시 시도")
-                    .rodiTypography(.body3Medium)
-                    .foregroundStyle(RodiColor.primary)
-            }
+            RodiRetryButton(action: onRetry)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 28)

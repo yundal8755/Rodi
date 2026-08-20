@@ -6,6 +6,34 @@
 import ActivityKit
 import Foundation
 
+enum PracticeLiveActivityDeepLink {
+    private static let scheme = "rodi"
+    private static let host = "live-activity"
+
+    static func url(sessionID: UUID) -> URL? {
+        var components = URLComponents()
+        components.scheme = scheme
+        components.host = host
+        components.queryItems = [URLQueryItem(name: "sessionID", value: sessionID.uuidString)]
+        return components.url
+    }
+
+    static func sessionID(from url: URL) -> UUID? {
+        guard
+            url.scheme == scheme,
+            url.host == host,
+            let value = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?
+                .first(where: { $0.name == "sessionID" })?
+                .value
+        else {
+            return nil
+        }
+
+        return UUID(uuidString: value)
+    }
+}
+
 @available(iOS 16.1, *)
 struct PracticeLiveActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
@@ -13,22 +41,6 @@ struct PracticeLiveActivityAttributes: ActivityAttributes {
         let approachProgress: Double
         let progress: Double
         let distanceToCourseStartMeters: Int?
-        /// 코스 방문 기록 저장 상태입니다. 이전 Activity와 주차장은 nil을 유지합니다.
-        let completionRecordStateRawValue: String?
-
-        init(
-            phaseRawValue: String,
-            approachProgress: Double,
-            progress: Double,
-            distanceToCourseStartMeters: Int?,
-            completionRecordStateRawValue: String? = nil
-        ) {
-            self.phaseRawValue = phaseRawValue
-            self.approachProgress = approachProgress
-            self.progress = progress
-            self.distanceToCourseStartMeters = distanceToCourseStartMeters
-            self.completionRecordStateRawValue = completionRecordStateRawValue
-        }
     }
 
     let sessionID: UUID

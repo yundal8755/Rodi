@@ -466,7 +466,7 @@ extension HomeBottomSheetReducer {
         state: State
     ) -> Effect<Action> {
         var followUpActions: [Action] = [
-            .recommendList(.regionViewportReloadStarted),
+            .recommendList(.regionViewportReloadStarted(origin: origin)),
             .recommendList(.present)
         ]
 

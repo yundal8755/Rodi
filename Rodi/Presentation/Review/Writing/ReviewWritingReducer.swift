@@ -303,14 +303,14 @@ private extension ReviewWritingReducer {
 
     static func detailMessage(for error: NetworkError) -> String {
         if case .networkUnavailable = error {
-            return "인터넷 연결을 확인한 뒤 다시 시도해 주세요."
+            return "네트워크 연결을 확인해주세요."
         }
         return "후기 상세를 불러오지 못했어요. 다시 시도해주세요."
     }
 
     static func submissionMessage(for error: NetworkError, mode: State.Mode) -> String {
         if case .networkUnavailable = error {
-            return "인터넷 연결을 확인한 뒤 다시 시도해 주세요."
+            return "네트워크 연결을 확인해주세요."
         }
 
         if case .apiError(_, let message, _) = error,

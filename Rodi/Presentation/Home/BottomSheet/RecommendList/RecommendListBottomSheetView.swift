@@ -9,7 +9,7 @@ struct RecommendListBottomSheetView: View {
     let state: RecommendListBottomSheetReducer.State
     let send: (RecommendListBottomSheetReducer.Action) -> Void
     let debugReviewTestAction: () -> Void
-    let debugHardWithdrawAction: @MainActor () async throws -> Void
+    let debugHardWithdrawAction: () async throws -> Void
     let titlePanEnabled: Bool
     let titlePanChanged: (CGFloat) -> Void
     let titlePanEnded: (CGFloat) -> Void
@@ -18,7 +18,7 @@ struct RecommendListBottomSheetView: View {
         state: RecommendListBottomSheetReducer.State,
         send: @escaping (RecommendListBottomSheetReducer.Action) -> Void,
         debugReviewTestAction: @escaping () -> Void,
-        debugHardWithdrawAction: @escaping @MainActor () async throws -> Void,
+        debugHardWithdrawAction: @escaping () async throws -> Void,
         titlePanEnabled: Bool = false,
         titlePanChanged: @escaping (CGFloat) -> Void = { _ in },
         titlePanEnded: @escaping (CGFloat) -> Void = { _ in }
@@ -44,6 +44,7 @@ struct RecommendListBottomSheetView: View {
                 items: state.items,
                 isInitialLoading: state.isInitialLoading,
                 isAwaitingRegionViewport: state.isAwaitingRegionViewport,
+                isRegionSearchResult: state.isRegionSearchResult,
                 isNextPageLoading: state.isNextPageLoading,
                 errorMessage: state.errorMessage,
                 hasNextPage: state.hasNext,
@@ -54,12 +55,40 @@ struct RecommendListBottomSheetView: View {
                 debugReviewTestAction: debugReviewTestAction,
                 debugHardWithdrawAction: debugHardWithdrawAction
             )
+            .overlay(alignment: .top) {
+                if showsEmptyResultDragRegion {
+                    emptyResultDragRegion
+                }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var headerVisible: Bool {
         state.presentation == .expanded || !state.items.isEmpty
+    }
+
+    private var showsEmptyResultDragRegion: Bool {
+        state.presentation != .expanded
+            && state.items.isEmpty
+            && !state.isInitialLoading
+            && !state.isAwaitingRegionViewport
+            && state.errorMessage == nil
+    }
+
+    private var emptyResultDragRegion: some View {
+        Color.clear
+            .frame(maxWidth: .infinity)
+            .frame(height: 48)
+            .contentShape(Rectangle())
+            .overlay {
+                BottomSheetPanGestureView(
+                    isEnabled: titlePanEnabled,
+                    onChanged: titlePanChanged,
+                    onEnded: titlePanEnded
+                )
+            }
+            .accessibilityLabel("바텀 시트 크기 조절")
     }
 
     private var standardHeader: some View {

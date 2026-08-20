@@ -1,8 +1,3 @@
-//
-//  PracticeMeasurementStore.swift
-//  Rodi
-//
-
 import Foundation
 
 enum PracticeMeasurementMode: String, Codable, Equatable {
@@ -76,38 +71,4 @@ protocol PracticeMeasurementStoring {
     func save(_ measurement: PracticeMeasurement)
     func remove(_ measurement: PracticeMeasurement)
     func clear()
-}
-
-struct PracticeMeasurementStore: PracticeMeasurementStoring {
-    private enum Key {
-        static let measurement = "rodi.practice-measurement"
-        static let legacyPrompt = "rodi.practice-return-prompt"
-    }
-
-    private let userDefaults: UserDefaults
-
-    init(userDefaults: UserDefaults = .standard) {
-        self.userDefaults = userDefaults
-        // 이전 버전의 즉시 후기 팝업 후보는 시간·인증 정보를 알 수 없어 승계하지 않는다.
-        userDefaults.removeObject(forKey: Key.legacyPrompt)
-    }
-
-    func load() -> PracticeMeasurement? {
-        guard let data = userDefaults.data(forKey: Key.measurement) else { return nil }
-        return try? JSONDecoder().decode(PracticeMeasurement.self, from: data)
-    }
-
-    func save(_ measurement: PracticeMeasurement) {
-        guard let data = try? JSONEncoder().encode(measurement) else { return }
-        userDefaults.set(data, forKey: Key.measurement)
-    }
-
-    func remove(_ measurement: PracticeMeasurement) {
-        guard load()?.id == measurement.id else { return }
-        clear()
-    }
-
-    func clear() {
-        userDefaults.removeObject(forKey: Key.measurement)
-    }
 }

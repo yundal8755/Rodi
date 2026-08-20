@@ -179,6 +179,6 @@ xcodebuild -project /Users/mac/Documents/iOS_projects/SwiftUI/Rodi/Rodi.xcodepro
 
 For release, signing, configuration, or environment changes, also verify the `Rodi` Release path described in `Docs/Release/RELEASE.md`. Documentation-only and project-skill-only changes do not require an Xcode build.
 
-The project currently has no test target. Do not claim tests passed. Report static checks, builds, and manual scenarios separately.
+The project has the `RodiTests` test target. MUST report the exact executed test command and pass/fail result; builds, automated tests, static checks, and manual scenarios MUST remain separate in the final report.
 
 Before handoff, run `git diff --check`, confirm no secret/local files entered the diff, and ensure changed active docs still point to real paths and symbols.

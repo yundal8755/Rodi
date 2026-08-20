@@ -11,11 +11,7 @@ struct LevelUpPresentationCheckResult {
     let levelToPresent: MemberProfile.Level?
 }
 
-protocol LevelUpPresentationStoring {
-    func check(level: MemberProfile.Level) -> LevelUpPresentationCheckResult
-}
-
-final class LevelUpPresentationStore: LevelUpPresentationStoring {
+final class LevelUpPresentationStore {
     private enum Key {
         static let prefix = "rodi.level-up-presentation"
     }

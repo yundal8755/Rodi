@@ -13,17 +13,17 @@ nonisolated enum ServerDateParser {
 }
 
 private extension ServerDateParser {
-    static func iso8601DateFormatter() -> ISO8601DateFormatter {
+    nonisolated static func iso8601DateFormatter() -> ISO8601DateFormatter {
         ISO8601DateFormatter()
     }
 
-    static func fractionalISO8601DateFormatter() -> ISO8601DateFormatter {
+    nonisolated static func fractionalISO8601DateFormatter() -> ISO8601DateFormatter {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
     }
 
-    static func dateWithoutTimeZone(from value: String) -> Date? {
+    nonisolated static func dateWithoutTimeZone(from value: String) -> Date? {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(secondsFromGMT: 0)

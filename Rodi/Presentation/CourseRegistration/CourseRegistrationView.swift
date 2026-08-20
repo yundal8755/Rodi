@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct CourseRegistrationView: View {
+    @EnvironmentObject private var networkConnectionMonitor: NetworkConnectionMonitor
     @StateObject private var store: StoreOf<CourseRegistrationReducer>
     @State private var handledCompletionRevision = 0
     @State private var handledCourseRegistrationCompletionRevision = 0
     @State private var handledCourseRegistrationExitRevision = 0
+    @State private var isMapNetworkUnavailableScreenPresented = false
 
     let closeAction: () -> Void
     let tutorialCompletedAction: () -> Void
@@ -28,6 +30,13 @@ struct CourseRegistrationView: View {
             .rodiSnackbar(message: store.state.errorMessage)
             .overlay { discardConfirmation }
             .overlay { submissionPresentation }
+            .overlay {
+                if isMapNetworkUnavailableScreenPresented {
+                    MapNetworkUnavailableView()
+                        .ignoresSafeArea()
+                        .transition(.opacity)
+                }
+            }
             .onChange(of: store.state.tutorialCompletionRevision) { revision in
                 guard revision > handledCompletionRevision else { return }
                 handledCompletionRevision = revision
@@ -44,6 +53,25 @@ struct CourseRegistrationView: View {
                 closeAction()
             }
             .onDisappear { store.send(.deactivated) }
+            .task(id: shouldDelayMapNetworkUnavailableScreen) {
+                guard shouldDelayMapNetworkUnavailableScreen else {
+                    isMapNetworkUnavailableScreenPresented = false
+                    return
+                }
+
+                do {
+                    try await Task.sleep(nanoseconds: 3_000_000_000)
+                } catch {
+                    return
+                }
+
+                guard !Task.isCancelled,
+                      shouldDelayMapNetworkUnavailableScreen
+                else {
+                    return
+                }
+                isMapNetworkUnavailableScreenPresented = true
+            }
     }
 
     @ViewBuilder
@@ -96,6 +124,19 @@ struct CourseRegistrationView: View {
                 confirmAction: RegistrationDiscardAction.discard,
                 cancelAction: RegistrationDiscardAction.keepWriting
             )
+        }
+    }
+
+    private var shouldDelayMapNetworkUnavailableScreen: Bool {
+        networkConnectionMonitor.status == .disconnected && isMapRoute
+    }
+
+    private var isMapRoute: Bool {
+        switch store.state.route {
+        case .registration, .pinEditing:
+            true
+        case .tutorial, .registrationSearch, .pinEditSearch, .details:
+            false
         }
     }
 

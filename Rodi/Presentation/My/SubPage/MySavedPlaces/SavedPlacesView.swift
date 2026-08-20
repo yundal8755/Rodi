@@ -144,12 +144,7 @@ private struct SavedPlacesErrorView: View {
                 .rodiTypography(.body3Medium)
                 .foregroundStyle(RodiColor.gray700)
 
-            Button(action: retry) {
-                Text("다시 시도")
-                    .rodiTypography(.body3Medium)
-                    .foregroundStyle(RodiColor.primary)
-            }
-            .buttonStyle(.plain)
+            RodiRetryButton(action: retry)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

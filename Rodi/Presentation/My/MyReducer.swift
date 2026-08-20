@@ -68,16 +68,16 @@ struct MyReducer: Reducer {
     private let memberRepository: MemberRepository
     private let practiceRepository: PracticeRepository
     private let recentLoginProviderStore: RecentLoginProviderStore
-    private let levelUpPresentationStore: LevelUpPresentationStoring
-    private let socialSessionService: SocialSessionManaging
+    private let levelUpPresentationStore: LevelUpPresentationStore
+    private let socialSessionService: SocialSessionService
 
     init(
         authRepository: AuthRepository,
         memberRepository: MemberRepository,
         practiceRepository: PracticeRepository,
         recentLoginProviderStore: RecentLoginProviderStore,
-        levelUpPresentationStore: LevelUpPresentationStoring,
-        socialSessionService: SocialSessionManaging
+        levelUpPresentationStore: LevelUpPresentationStore,
+        socialSessionService: SocialSessionService
     ) {
         self.authRepository = authRepository
         self.memberRepository = memberRepository
@@ -262,7 +262,7 @@ extension MyReducer {
 
     func practiceRecordMessage(for error: Error) -> String {
         if case NetworkError.networkUnavailable = error {
-            return "인터넷 연결을 확인한 뒤 다시 시도해 주세요."
+            return "네트워크 연결을 확인해주세요."
         }
         return "연습기록을 불러오지 못했어요."
     }

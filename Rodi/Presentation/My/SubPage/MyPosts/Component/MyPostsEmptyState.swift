@@ -13,12 +13,7 @@ struct MyPostsEmptyState: View {
                     .rodiTypography(.body3Medium)
                     .foregroundStyle(RodiColor.gray600)
 
-                Button(action: retry) {
-                    Text("다시 시도")
-                        .rodiTypography(.body3Medium)
-                        .foregroundStyle(RodiColor.primary)
-                }
-                .buttonStyle(.plain)
+                RodiRetryButton(action: retry)
             } else {
                 VStack(alignment: .center) {
                     Image("ic_review")

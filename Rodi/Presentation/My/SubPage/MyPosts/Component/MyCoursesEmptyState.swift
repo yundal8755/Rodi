@@ -13,12 +13,7 @@ struct MyCoursesEmptyState: View {
                     .rodiTypography(.body3Medium)
                     .foregroundStyle(RodiColor.gray600)
 
-                Button(action: retry) {
-                    Text("다시 시도")
-                        .rodiTypography(.body3Medium)
-                        .foregroundStyle(RodiColor.primary)
-                }
-                .buttonStyle(.plain)
+                RodiRetryButton(action: retry)
                 .padding(.top, 8)
             } else {
                 Image("img_my_courses_empty")

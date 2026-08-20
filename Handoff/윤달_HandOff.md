@@ -2,12 +2,39 @@
 
 ## Current
 
-- 브랜치: `release/1.4.1`
-- 작업 상태: Presentation 리팩터링 진행 중
+- 브랜치: `test/1.4.2-refactoring`
+- 작업 상태: Dev 외부 길안내 10초 종료·방문 기록 흐름 미해결 — 원인 추적 대기
 
 ## Recent Work
+- Dev 외부 길안내 10초 테스트는 세션·lifecycle guard를 완화했지만 실제 기기에서 `register → recordVisit`와 후기 권유가 실행되지 않아 미해결 과제로 전환했다. 다음 작업은 action 도달, 저장 측정 상태, Debug 조건, POST 결과를 비식별 로그로 추적하는 것이다.
+- Dev/Prod 코스 연습은 활성 측정이 남아 있으면 이탈 시간과 무관하게 연속 측정 dialog를 연다. Prod는 GPS 인증·방문 기록 성공 코스에만 후기 권유를 연다. Dev의 10초 이탈 뒤 `측정 종료 → register → recordVisit → 후기 권유` 테스트 경로는 실제 기기에서 실패해 원인 확인이 필요하다.
+- 추천 목록이 중간 높이의 빈 결과를 표시할 때만 indicator 아래에 레이아웃을 바꾸지 않는 48pt 투명 수직 drag 영역을 추가했다. 기존 제목·필터·빈 결과 콘텐츠의 터치 계약은 변경하지 않았다.
+- Live Activity만 `release/1.4.1` 동작으로 복구했다. 코스 완료는 서버 저장 완료를 기다리지 않고 즉시 기존 완료 카드로 전환하며, 저장 중 상태·완료/진행 딥링크·세션별 Activity 정리·6개 프리뷰는 제거했다. 연습 기록 저장·세션 복구·로그아웃 정리 로직은 유지했다.
+- 후기 작성·코스 상세 후기·저장 목록·차단 목록·등록 코스·내 후기·온보딩 프로필의 네트워크 오류 문구를 모두 `네트워크 연결을 확인해주세요.`로 통일했다. 기존 연습기록 적용분까지 활성 사용처를 정적 확인했다.
+- 행정구역 선택 뒤 추천 목록의 성공 응답이 빈 배열이면, 중간 높이 시트에서도 기존 `추천할 수 있는 연습 코스를 찾지 못했어요.` 빈 결과를 가용 영역 중앙에 표시하도록 했다. 일반 지도 재검색은 기존 상단 배치를 유지한다.
+- 저장목록의 코스·주차장 선택도 Home의 선택 마커·상세 시트와 함께 검색창 뒤로가기·장소명을 표시하도록 같은 선택 상태를 유지했다.
+- 내 활동의 후기 본문이 비었거나 공백뿐이면 본문 텍스트와 테두리 컨테이너를 함께 생략했다.
+- 코스 등록 지도 단계는 Root의 공통 네트워크 새로고침 스낵바를 그대로 받고, 단절이 3초 지속될 때만 공용 지도 대체 화면을 표시하도록 했다. 검색·상세 입력 단계에는 표시하지 않는다.
+- 홈 검색의 최근 검색 header 시작 여백을 검색 필드 하단 여백과 합쳐 8pt가 되도록 조정하고, `전체삭제` 표기와 특별시·광역시 생략 표기를 지역 결과·최근 검색에 적용했다. 서버 원문과 최근 검색 저장값은 유지한다.
+- 행정구역 선택의 지도 카메라 완료와 추천 목록 초기화가 엇갈려 목록 API가 생략될 수 있던 경합을 보완했다. 선택한 지역 중심을 시트에 먼저 보관해 이벤트 순서와 무관하게 목록 조회를 시작한다.
+- 마이 연습기록·저장목록·내 활동(등록한 코스/작성한 후기)·차단 목록을 포함한 오류 재시도 UI를 공통 `RodiRetryButton`으로 통일했다. 버튼은 8pt 내부 여백, 6pt radius, 흰색 body2 텍스트와 primary 채움을 사용한다.
+- 지역 선택 뒤 추천 목록은 성공한 `GET /api/v1/places`의 빈 `items` 배열일 때만 현재 빈 문구를 표시하며, 전용 서버 상태 코드·문구는 없음을 확인했다. 서울 viewport 표본 응답에는 항목이 존재했다.
+- Dev 빌드에서는 현재 프로세스에서 시작한 코스 연습이 외부 앱에 10초 이상 머문 뒤 복귀하면, GPS 완주와 무관하게 연습 생성·방문 기록 POST를 자동 수행하도록 테스트 경로를 추가했다. 강제 종료 뒤의 15분 재개 선택 정책과 Release 동작은 유지한다.
+- 앱 프로세스 재시작 뒤 Live Activity 캐시가 비어도 `rodi://live-activity?sessionID=...` 링크로 탭한 카드의 시스템 Activity만 찾아 즉시 종료하도록 정리했다. 탭은 앱 진입만 수행하며, 측정·방문 기록 상태는 바꾸지 않는다.
+- `test/1.4.2-refactoring` 브랜치에서 연습 측정 저장 경계, 공통 제품 책임, 홈 지도·길안내, 마이 의존성, 동시성 격리, 화면 레이아웃, 후기 테스트를 책임 단위 커밋으로 재구성했다.
+- 코드리뷰 권장 순서의 P0·P1·P2 정리를 마쳤다. 연습 측정 모델·저장 contract를 Domain/Data Local로 분리하고 schema v1 lazy migration, 손상 payload 정리, 로그아웃·탈퇴 시 측정 session·Live Activity 정리를 추가했다.
+- Core에 섞여 있던 제품 책임을 이동했다: rabbit 이미지와 nested Config·Analytics catalog는 Presentation Shared, LegalDocument는 Presentation Shared Model, KakaoConfiguration은 App Configuration으로 옮겼다. Firebase 전송 adapter와 URL·키 이름은 유지했다.
+- 미사용 launch loading View와 LicenseList 중복 project reference를 제거하고, 코드리뷰·Presentation·미해결·API 문서 및 테스트 target 안내를 현재 기준으로 갱신했다.
+- `RodiLevelProfileImageConfig`를 별도 전역 타입으로 유지하지 않고 `RodiLevelProfileImage.Config`로 통합했다. 기존 레벨 기반 initializer는 유지하고, config 기반 initializer를 추가했다.
+- 코스·주차장 상세의 중복 길안내 action/effect를 `Home/BottomSheet/RouteGuidance/RouteGuidanceReducer`로 통합했다. 공통 child는 앱 선택·Live Activity 권한·외부 앱 실행·취소·request ID를 소유하고, 각 상세 reducer는 장소별 측정 저장과 결과 delegate만 처리한다.
+- `RodiTests`의 Repository·Writing/SkipReason service stub을 현재 protocol에 맞췄고, 주의사항은 선택 입력이라는 후기 작성 정책에 맞게 기대값을 고쳤다. `PracticeMeasurementStore` migration·손상 payload·정리 테스트를 추가했고, iPhone 17 Pro simulator의 `xcodebuild test`에서 8건이 통과했다.
+- 전체 프로젝트 정적 코드리뷰 결과를 `Docs/CodeReview/PROJECT_CODE_REVIEW_2026-08-20.md`에 기록했다. 앱 타깃 빌드는 통과했지만 RodiTests는 최근 Repository·Service protocol 변경을 반영하지 못해 컴파일에 실패했다. 연습 측정 저장 경계(P0), Core 제품 책임 3건(P1), dead code·Xcode package 중복·문서 기준선·측정 전 성능 항목(P2)을 우선순위와 검증 조건으로 정리했다.
 - 1.4.2 개인정보처리방침과 위치기반서비스 이용약관에서 Keychain·UserDefaults·토큰·기기 저장소 등 개발 구현 표현을 제거하고, 이용자 관점의 로그인·연습 진행 정보 처리 문구로 정리했다.
 - 완료 Live Activity의 `기록하러 가기` 딥링크 소비 시 코스는 연습기록 이동, 주차장은 홈 이동 후 해당 완료 Activity만 즉시 종료하도록 처리했다.
+- `HomeMapReducer`를 추가해 Home root의 지도 카메라·권한·위치 갱신·마커·Kakao 결과 처리와 request revision·heading stream·progressive rendering Effect를 분리했다. Home root는 Map/Search/BottomSheet typed Delegate 중재만 담당한다.
+- Login tooltip과 Onboarding 분석 dialog의 직접 `UIScreen.main` 의존을 제거했고, 코스·주차장 길안내 부모의 쓰이지 않는 child-state proxy를 정리했다. Presentation 활성 백로그는 완료 표로 이동했다.
+- Presentation 잔여 P1·P2 5건을 모두 완료 처리했다. `HomeMapReducer` 분리, 길안내 child proxy 제거, Login·Onboarding 화면 크기 의존 제거, 장문 파일 재감사를 마쳤고 Dev Debug build·RodiTests 8건·`git diff --check`를 다시 통과했다. 실기기 지도·외부 길안내·SE/대형 기기 UI 검증만 남았다.
+- 코드리뷰 P2-CR-4에 2,001개 좌표 경로 매칭 XCTest metric과 1,000개 marker progressive snapshot 계약 테스트를 추가했다. marker batch의 사전 prefix 배열 생성을 제거해 peak allocation을 낮췄고, Simulator metric은 20회 매칭 평균 0.006초·추가 physical memory 평균 약 262KB였다. 연결된 iPhone은 secure connection 오류로 실기기 계측을 시작하지 못해 재측정이 남았다.
 
 - 1.4.2 공개 전 검토용 서비스 이용약관·개인정보처리방침·위치기반서비스 이용약관 최종 본문을 `Docs/temp`에 작성했다. Google Sites 현행 17·14·12개 조문을 보존하고 코스 등록·후기·신고·차단·활성 연습·Live Activity·Firebase·Clarity 변경만 해당 조항에 반영했다. 앱 코드·공개 Google Sites URL은 변경하지 않았다.
 - Home 인증·후기 작성·수정 상위 callback을 `HomeReducer.Delegate` 하나로 통합하고, MainTab이 기존 로그인·Review flow로 중계하게 정리했다. `HomePresentation`에서 개별 상위 callback을 제거했다.
@@ -90,6 +117,22 @@
 
 ## Next
 
+- Dev 외부 길안내 10초 이탈 뒤 측정 종료 action·저장 측정·POST 실패 지점을 비식별 로그로 추적해 미해결 항목을 해결한다.
+- iPhone 12 Pro에서 추천 목록의 빈 결과 상태로 indicator 아래 48pt 영역을 수직 drag했을 때 확장·축소·닫기가 되고, 이미지 3회 탭·필터·문구 터치가 기존대로인지 수동 QA한다.
+- iPhone 12 Pro에서 후기·저장 목록·차단 목록·내 활동의 네트워크 오류 문구가 통일됐는지 수동 QA한다.
+- iPhone 12 Pro에서 행정구역 선택 뒤 빈 추천 응답의 중앙 empty state와 일반 재검색 empty state를 수동 QA한다.
+- Dev에서 코스 외부 길안내로 10초 이상 이탈한 뒤 복귀하여 `측정 종료 → 방문 기록 POST → 후기 권유` 흐름을 수동 QA한다.
+- iPhone 12 Pro에서 저장목록 장소 선택 뒤 검색창 상태, 빈 후기 행 높이, 코스 등록 단절 3초 대체 화면과 새로고침을 수동 QA한다.
+- iPhone 12 Pro에서 홈 검색의 8pt header 간격·행정구역 생략 표기와 마이 연습기록·저장목록·내 활동·차단 목록을 포함한 오류 재시도 버튼을 수동 QA한다.
+
+- iPhone 12 Pro에서 외부 길안내 진입 뒤 앱 강제 종료, 15분 이내 Activity 탭의 재개·종료, 15분 경과 정리, 주행 중 강제 종료 안내를 수동 QA한다.
+- 코스·주차장 완료 Activity의 CTA 탭 직후 dismiss와 저장 중/인증 대기 재시작 흐름을 수동 QA한다.
+
+- iPhone 12 Pro 실기기에서 로그아웃·탈퇴 뒤 활성 측정·Live Activity가 즉시 사라지고, legacy 인증 대기 저장값이 복구되는지 확인한다.
+- 코스·주차장 길안내의 앱 선택, 미설치, Live Activity 권한 설정 복귀, 외부 앱 실패·연속 탭을 iPhone 12 Pro에서 수동 QA한다.
+- 긴 코스와 marker가 많은 viewport에서 Instruments를 측정해 코드리뷰 P2-CR-4의 실제 최적화 필요 여부를 판정한다.
+
+
 - Home Map child reducer와 길안내 action/effect child 분리는 현재 sibling 상태 결합을 typed delegate로 해소하는 별도 구조 리팩터링으로 계속 진행한다. 이번에는 코스·주차장 길안내의 공통 상태(`RouteGuidanceState`)만 먼저 통일했다.
 
 - 1.4.2 공개 전 운영·법무가 `Docs/temp` 약관 개정안의 시행일, Firebase·Clarity 국외 이전·보유 기간, 위치정보 사실확인자료 보관 정책, 위치기반서비스사업자 신고 정보를 확정한 뒤 Google Sites 공개본에 반영한다.
@@ -115,6 +158,23 @@
 - Presentation 리팩터링 backlog의 My Posts pagination·삭제 flow, Onboarding route host, MainTab intent, Home child ownership 항목을 순서대로 진행한다.
 
 ## Validation
+- Dev 외부 길안내 10초 이탈 뒤 측정 종료의 실제 기기 검증은 실패했다. simulator build·단위 테스트 통과는 해당 외부 앱 왕복·POST 흐름을 보장하지 않으므로 미해결로 기록했다.
+- Dev 종료 조건의 lifecycle fallback 보정 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 (iOS 17.2) `PracticeTrackingRestorationDecisionTests` 통과, `git diff --check` 통과. 실제 외부 앱 10초 왕복·POST 성공 수동 QA 대기.
+- Dev 외부 길안내 종료의 세션 출처 캡처 보정 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 (iOS 17.2) `PracticeTrackingRestorationDecisionTests` 통과, `git diff --check` 통과. 실제 외부 앱 10초 왕복 수동 QA 대기.
+- Dev 복귀 정책 보정 뒤 `xcodebuild -project /Users/mac/Documents/iOS_projects/SwiftUI/Rodi/Rodi.xcodeproj -scheme "Rodi Dev" -configuration Debug -destination "generic/platform=iOS Simulator" build` 성공, iPhone 15 (iOS 17.2) `PracticeTrackingRestorationDecisionTests` 통과. 실제 외부 앱 10초 왕복·POST 성공 뒤 후기 권유 수동 QA 대기.
+- Dev 외부 길안내 복귀 정책 변경 뒤 `xcodebuild -project /Users/mac/Documents/iOS_projects/SwiftUI/Rodi/Rodi.xcodeproj -scheme "Rodi Dev" -configuration Debug -destination "generic/platform=iOS Simulator" build` 성공, iPhone 15 (iOS 17.2) `PracticeTrackingRestorationDecisionTests` 통과, `git diff --check` 통과. 실제 외부 앱 왕복·후기 선택 뒤 POST 수동 QA 대기.
+- 행정구역 추천 목록 조회 경합 보완 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 (iOS 17.2) `PracticeTrackingRestorationDecisionTests` 6건 통과, `git diff --check` 통과. 부산광역시 동래구 실기기 수동 QA 대기.
+- Live Activity cold launch 탭 종료 변경 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 (iOS 17.2) `PracticeLiveActivityDeepLinkTests` 2건 통과, `git diff --check` 통과. 실기기 Live Activity 수동 QA 대기.
+- 전역 오류 재시도 버튼 통일 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 (iOS 17.2) `PracticeTrackingRestorationDecisionTests` 6건 통과, `git diff --check` 통과. 수동 UI QA 대기.
+- 추천 목록 빈 결과 drag 영역 변경 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 (iOS 17.2) `PracticeTrackingRestorationDecisionTests` 6건 통과, `git diff --check` 통과. 실기기 drag·터치 수동 QA 대기.
+- Live Activity 복구 뒤 `xcodebuild -project /Users/mac/Documents/iOS_projects/SwiftUI/Rodi/Rodi.xcodeproj -scheme "Rodi Dev" -configuration Debug -destination "generic/platform=iOS Simulator" build` 성공 및 `git diff --check` 통과. 실기기 Live Activity 수동 QA 대기.
+- 전역 네트워크 오류 문구 통일 뒤 Dev Debug build 성공, iPhone 15 (iOS 17.2) `PracticeTrackingRestorationDecisionTests` 6건 통과, 기존 문구 잔여 없음과 `git diff --check` 통과를 확인했다.
+- 행정구역 추천 목록 빈 결과 중앙 정렬 변경 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 (iOS 17.2) `PracticeTrackingRestorationDecisionTests` 6건 통과, `git diff --check` 통과. 수동 UI QA 대기.
+- 저장목록 선택·빈 후기·코스 등록 네트워크 지도 대체 화면 변경 뒤 `Rodi Dev` Debug generic simulator build와 `PracticeTrackingRestorationDecisionTests`를 통과했고, `git diff --check`를 통과했다. 수동 UI QA 대기.
+- Dev Debug build 성공. `xcodebuild -project Rodi.xcodeproj -scheme "Rodi Dev" -destination 'platform=iOS Simulator,OS=17.2,name=iPhone 15' -only-testing:RodiTests/PracticeTrackingRestorationDecisionTests test`에서 6건 통과. 외부 앱 실제 왕복 뒤 서버 POST 수동 검증 대기.
+- 분리 커밋 뒤 `Rodi Dev` Debug generic simulator build와 iPhone 15 (iOS 17.2) Simulator의 `xcodebuild test` 10건을 통과했다.
+- 전체 코드리뷰에서 `Rodi Dev` Debug generic simulator build 성공, iPhone 17 Pro simulator `xcodebuild test`는 RodiTests protocol stub 불일치로 컴파일 실패를 확인했다. 정적 검사에서 Domain SDK/DTO 누수, Presentation NetworkManager 직접 접근, `try!`·`as!`·`Task.detached`·`@unchecked Sendable`은 확인되지 않았다.
+- 코드리뷰 후속 변경 뒤 `Rodi Dev` Debug simulator build 성공, iPhone 17 Pro simulator에서 `xcodebuild test` 8건 통과, `git diff --check` 통과. `ServerDateParser`와 Debug 탈퇴 테스트 callback의 Swift 6 isolation·Sendable 경고도 현재 source 계약에 맞게 정리했다.
 - `RouteGuidanceState` 공통화 뒤 `Rodi Dev` Debug simulator build 성공, `git diff --check` 통과. 코스·주차장 길안내 수동 QA 대기.
 - 약관의 개발 구현 표현 정리 뒤 `Keychain`, `UserDefaults`, 토큰, 기기 저장소, `viewport` 잔여 문구를 정적 검사했고 `git diff --check`를 통과했다.
 - 완료 Live Activity 딥링크 소비·즉시 종료 변경 뒤 `Rodi Dev` Debug simulator build 성공, 변경 파일 `git diff --check` 통과. 실기기에서 코스·주차장 완료 카드 탭 뒤 즉시 사라짐 수동 QA 대기.
@@ -138,6 +198,8 @@
 - 코스 등록 튜토리얼·지도 선택·지역 검색 변경 뒤 `Rodi Dev` Debug build 성공. 수동 UI QA 미실행.
 - Login adapter·Kakao REST transport·Home state/component·MainTab presentation 변경 뒤 `Rodi Dev` Debug build 성공
 - `Rodi Dev` Debug build 성공
+- Presentation 잔여 백로그 마감 뒤 `Rodi Dev` Debug build 성공, iPhone 17 Pro simulator `xcodebuild test` 8건 통과, `git diff --check` 통과. 실기기 수동 QA는 미실행.
+- P2-CR-4 synthetic baseline 성능 테스트는 iPhone 17 Pro Simulator에서 통과했고, 전체 RodiTests 10건은 iPhone 15 (iOS 17.2) Simulator에서 통과했다. 실기기 test는 secure device connection 오류로 시작하지 못했다.
 - `git diff --check` 통과
 - Live Activity 구조 이동 후 `Rodi Dev` Debug build 성공
 - 길안내 I/O·로그아웃 경계 정리 후 `Rodi Dev` Debug build 성공

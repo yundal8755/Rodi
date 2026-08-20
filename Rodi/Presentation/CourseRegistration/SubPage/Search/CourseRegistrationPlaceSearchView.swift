@@ -118,14 +118,7 @@ private extension CourseRegistrationPlaceSearchView {
         } else if let errorMessage = state.placeErrorMessage {
             VStack(spacing: 12) {
                 messageState(errorMessage)
-                Button {
-                    send(.searchTapped)
-                } label: {
-                    Text("다시 시도")
-                        .rodiTypography(.buttonMedium)
-                        .foregroundStyle(RodiColor.primary)
-                }
-                    .buttonStyle(.plain)
+                RodiRetryButton { send(.searchTapped) }
             }
             .padding(.vertical, 24)
         } else if shouldShowEmptyResults {

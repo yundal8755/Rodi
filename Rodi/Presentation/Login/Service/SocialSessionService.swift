@@ -4,14 +4,9 @@ import Foundation
 import KakaoSDKUser
 #endif
 
-@MainActor
-protocol SocialSessionManaging {
-    func logoutKakaoSessionIfNeeded() async
-}
-
 /// 소셜 SDK 세션 정리는 Login Feature가 소유한다.
 @MainActor
-final class SocialSessionService: SocialSessionManaging {
+final class SocialSessionService {
     func logoutKakaoSessionIfNeeded() async {
         #if canImport(KakaoSDKUser)
         await withCheckedContinuation { continuation in

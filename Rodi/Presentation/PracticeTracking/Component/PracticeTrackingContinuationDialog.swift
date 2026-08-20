@@ -17,7 +17,7 @@ struct PracticeTrackingContinuationDialog: View {
                     Text("‘\(courseName)’")
                         .rodiTypography(.body1SemiBold)
                         .foregroundStyle(RodiColor.primary)
-                    Text("아직 코스를 연습 중이신가요?")
+                    Text("아직 코스를 연습중이신가요?")
                         .rodiTypography(.body1SemiBold)
                         .foregroundStyle(RodiColor.black)
                         .padding(.top, 4)
@@ -28,7 +28,7 @@ struct PracticeTrackingContinuationDialog: View {
                         .padding(.top, 24)
                     HStack(spacing: 8) {
                         ReviewDialogButton(title: "측정 종료", isPrimary: false, action: endAction)
-                        ReviewDialogButton(title: "계속 측정", isPrimary: true, action: continueAction)
+                        ReviewDialogButton(title: "계속 이동", isPrimary: true, action: continueAction)
                     }
                     .padding(.top, 24)
                 }

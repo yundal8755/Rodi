@@ -325,7 +325,7 @@ extension HomeView {
             }
 
             if isMapNetworkUnavailableScreenPresented {
-                HomeMapNetworkUnavailableView()
+                MapNetworkUnavailableView()
                     .ignoresSafeArea()
                     .transition(.opacity)
                     .zIndex(2)

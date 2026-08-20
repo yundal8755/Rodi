@@ -15,8 +15,8 @@ struct MyFeatureDependencies {
     let reviewRepository: ReviewRepository
     let courseRepository: CourseRepository
     let recentLoginProviderStore: RecentLoginProviderStore
-    let levelUpPresentationStore: LevelUpPresentationStoring
-    let socialSessionService: SocialSessionManaging
+    let levelUpPresentationStore: LevelUpPresentationStore
+    let socialSessionService: SocialSessionService
 
     init(appDependencies: AppDependencies) {
         authRepository = appDependencies.authRepository

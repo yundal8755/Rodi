@@ -23,7 +23,7 @@ struct CourseRegistrationDescriptionField: View {
         VStack(alignment: .trailing, spacing: 4) {
             RodiTextField(
                 text: $text,
-                placeholder: "최소 \(minimumLength)자 이상 입력해주세요.",
+                placeholder: "예) 교차로 연습하기 좋은 코스",
                 characterLimit: spec.maxLength,
                 isFocused: isFocused
             )
@@ -38,7 +38,7 @@ struct CourseRegistrationDescriptionField: View {
             if hasStartedInput {
                 HStack(spacing: 8) {
                     if isInvalid {
-                        Text("입력 길이를 확인해 주세요.")
+                        Text("최소 \(minimumLength)자 이상 입력해주세요")
                             .rodiTypography(.caption1Medium)
                             .foregroundStyle(RodiColor.informationCancel)
                     }

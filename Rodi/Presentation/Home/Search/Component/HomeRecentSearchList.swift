@@ -31,7 +31,7 @@ struct HomeRecentSearchList: View {
 
                 if !searches.isEmpty {
                     Button(action: clearAllAction) {
-                        Text("전체 삭제")
+                        Text("전체삭제")
                             .rodiTypography(.caption2Medium)
                             .foregroundStyle(RodiColor.gray500)
                     }
@@ -63,7 +63,7 @@ struct HomeRecentSearchList: View {
                                     }
                                     .frame(width: 20, height: 20)
 
-                                    Text(search.keyword)
+                                    Text(displayKeyword(for: search))
                                         .rodiTypography(.body1Medium)
                                         .foregroundStyle(RodiColor.gray800)
                                         .lineLimit(1)
@@ -86,7 +86,7 @@ struct HomeRecentSearchList: View {
                                     .frame(width: 24, height: 24)
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("\(search.keyword) 삭제")
+                            .accessibilityLabel("\(displayKeyword(for: search)) 삭제")
                         }
                         .padding(.horizontal, 16)
 
@@ -96,5 +96,11 @@ struct HomeRecentSearchList: View {
                 }
             }
         }
+    }
+
+    private func displayKeyword(for search: RecentSearch) -> String {
+        search.kind == .region
+            ? HomeSearchDisplayName.region(search.keyword)
+            : search.keyword
     }
 }
