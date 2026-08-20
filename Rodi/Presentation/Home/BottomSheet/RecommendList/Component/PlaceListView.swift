@@ -18,7 +18,7 @@ struct PlaceListView: View {
     let reloadAction: () -> Void
     let loadNextPageAction: () -> Void
     let debugReviewTestAction: () -> Void
-    let debugHardWithdrawAction: @MainActor () async throws -> Void
+    let debugHardWithdrawAction: () async throws -> Void
 
     var body: some View {
         Group {
@@ -267,7 +267,17 @@ private struct PlaceListMessageView: View {
 private struct PlaceListEmptyResultView: View {
     let isExpanded: Bool
     let debugReviewTestAction: () -> Void
-    let debugHardWithdrawAction: @MainActor () async throws -> Void
+    let debugHardWithdrawAction: () async throws -> Void
+
+    init(
+        isExpanded: Bool,
+        debugReviewTestAction: @escaping () -> Void,
+        debugHardWithdrawAction: @escaping () async throws -> Void
+    ) {
+        self.isExpanded = isExpanded
+        self.debugReviewTestAction = debugReviewTestAction
+        self.debugHardWithdrawAction = debugHardWithdrawAction
+    }
 
     #if DEBUG
     @State private var isDebugTestPagePresented = false

@@ -12,21 +12,10 @@ struct CourseDetailBottomSheetReducer: Reducer {
         var presentation: Presentation = .sheet
         var isRouteTimelineExpanded = false
         var reviews = CourseReviewReducer.State()
-        var routeGuidance = RouteGuidanceState()
+        var routeGuidance = RouteGuidanceReducer.State()
 
         var routeGuidancePresentation: RouteGuidanceFlowPresentation? {
-            get { routeGuidance.presentation }
-            set { routeGuidance.presentation = newValue }
-        }
-
-        var routeGuidanceRequest: RouteGuidanceFlowRequest? {
-            get { routeGuidance.request }
-            set { routeGuidance.request = newValue }
-        }
-
-        var routeGuidanceRequestID: Int {
-            get { routeGuidance.requestID }
-            set { routeGuidance.requestID = newValue }
+            routeGuidance.presentation
         }
 
         var isRouteGuidanceLaunching: Bool {
@@ -52,26 +41,7 @@ struct CourseDetailBottomSheetReducer: Reducer {
         case routeGuidanceRouteOnlySelected
         case routeGuidanceSettingsReturned
         case routeGuidanceDismissed
-        case routeGuidanceTrackingPrepared(
-            RouteGuidanceTrackingPreparation,
-            request: RouteGuidanceFlowRequest,
-            requestID: Int
-        )
-        case routeGuidanceWillOpen(
-            request: RouteGuidanceFlowRequest,
-            mode: PracticeMeasurementMode,
-            measurementID: UUID,
-            requestID: Int
-        )
-        case routeGuidanceOpenFinished(
-            RouteGuidanceResult,
-            request: RouteGuidanceFlowRequest,
-            measurementID: UUID,
-            cancelTrackingOnFailure: Bool,
-            requestID: Int
-        )
-        case routeGuidanceInstallFinished(RouteGuidanceResult, requestID: Int)
-        case activeMeasurementEnded
+        case routeGuidance(RouteGuidanceReducer.Action)
         case expandRequested
         case collapseRequested
         case routeTimelineToggled
@@ -84,7 +54,7 @@ struct CourseDetailBottomSheetReducer: Reducer {
     private let practiceTrackingService: PracticeTrackingService
     private let hasActiveSession: () -> Bool
     private let directionsService: KakaoDirectionsService
-    private let routeGuidanceFlowService: RouteGuidanceFlowService
+    private let routeGuidanceReducer: RouteGuidanceReducer
     private let reviewsReducer: CourseReviewReducer
     private let onDelegate: (Delegate) -> Void
 
@@ -105,11 +75,15 @@ struct CourseDetailBottomSheetReducer: Reducer {
         self.practiceTrackingService = practiceTrackingService
         self.hasActiveSession = hasActiveSession
         self.directionsService = directionsService
-        routeGuidanceFlowService = .init(
-            memberRepository: memberRepository,
-            practiceTrackingService: practiceTrackingService,
-            directionsService: directionsService,
-            routeGuidanceService: routeGuidanceService
+        routeGuidanceReducer = .init(
+            flowService: .init(
+                memberRepository: memberRepository,
+                practiceTrackingService: practiceTrackingService,
+                directionsService: directionsService,
+                routeGuidanceService: routeGuidanceService
+            ),
+            effectID: BottomSheetEffectID.courseRouteGuidance,
+            activeMeasurementFallbackName: "현재 코스"
         )
         self.onDelegate = onDelegate
         reviewsReducer = .init(repository: reviewRepository, memberRepository: memberRepository, hasActiveSession: hasActiveSession)
@@ -168,124 +142,28 @@ extension CourseDetailBottomSheetReducer {
             guard state.routeOverlay?.courseID == courseID else { return .none }; state.isRouteLoading = false; state.routeStatusMessage = message
             return .send(.delegate(.routeOverlayChanged(state.routeOverlay)))
         case .routeGuidanceTapped(let userLocation, let hasLocationPermission):
-            return startRouteGuidance(
-                userLocation: userLocation,
-                hasLocationPermission: hasLocationPermission,
-                state: &state
+            return reduceRouteGuidance(
+                &state,
+                action: .start(
+                    detail: state.detail,
+                    userLocation: userLocation,
+                    hasLocationPermission: hasLocationPermission
+                )
             )
         case .routeGuidanceAppSelected(let app, let rememberSelection):
-            guard let request = state.routeGuidanceRequest else { return .none }
-            if rememberSelection {
-                routeGuidanceFlowService.savePreferredApp(app)
-            }
-            return continueRouteGuidance(
-                .init(app: app, detail: request.detail, userLocation: request.userLocation),
-                state: &state
-            )
+            return reduceRouteGuidance(&state, action: .appSelected(app, rememberSelection: rememberSelection))
         case .routeGuidanceInstallSelected(let app):
-            state.routeGuidancePresentation = nil
-            state.routeGuidanceRequestID += 1
-            let requestID = state.routeGuidanceRequestID
-            return openInstallEffect(app: app, requestID: requestID)
+            return reduceRouteGuidance(&state, action: .installSelected(app))
         case .routeGuidanceActiveMeasurementEnded:
-            guard let request = state.routeGuidanceRequest else { return .none }
-            routeGuidanceFlowService.cancelActiveMeasurement()
-            state.routeGuidancePresentation = nil
-            state.routeGuidanceRequest = nil
-            return .run { send in
-                await send(.activeMeasurementEnded)
-                await send(.routeGuidanceTapped(userLocation: request.userLocation, hasLocationPermission: true))
-            }
+            return reduceRouteGuidance(&state, action: .activeMeasurementEnded)
         case .routeGuidanceRouteOnlySelected:
-            guard let request = state.routeGuidanceRequest else { return .none }
-            state.routeGuidancePresentation = nil
-            return openRouteEffect(
-                request: request,
-                mode: .routeOnly,
-                measurementID: UUID(),
-                cancelTrackingOnFailure: false,
-                state: &state
-            )
+            return reduceRouteGuidance(&state, action: .routeOnlySelected)
         case .routeGuidanceSettingsReturned:
-            guard let request = state.routeGuidanceRequest else { return .none }
-            state.routeGuidancePresentation = nil
-            if routeGuidanceFlowService.areLiveActivitiesEnabled {
-                return continueRouteGuidance(request, state: &state)
-            }
-            return openRouteEffect(
-                request: request,
-                mode: .routeOnly,
-                measurementID: UUID(),
-                cancelTrackingOnFailure: false,
-                state: &state
-            )
+            return reduceRouteGuidance(&state, action: .settingsReturned)
         case .routeGuidanceDismissed:
-            state.routeGuidancePresentation = nil
-            state.routeGuidanceRequest = nil
-            state.isRouteGuidanceLaunching = false
-            return .cancel(id: BottomSheetEffectID.courseRouteGuidance)
-        case .routeGuidanceTrackingPrepared(let preparation, let request, let requestID):
-            guard requestID == state.routeGuidanceRequestID,
-                  state.detail?.id == request.detail.id else { return .none }
-            state.isRouteGuidanceLaunching = false
-            switch preparation {
-            case .started(let measurementID):
-                return openRouteEffect(
-                    request: request,
-                    mode: .gpsTracking,
-                    measurementID: measurementID,
-                    cancelTrackingOnFailure: true,
-                    state: &state
-                )
-            case .authorizationRequested:
-                return finishRouteGuidance(
-                    "위치 권한을 허용한 뒤 다시 연습하러 가기를 눌러주세요.",
-                    state: &state
-                )
-            case .reducedAccuracyRequested:
-                return openRouteOnlyWithMessage(
-                    request,
-                    message: "정확한 위치를 허용하면 다음 길안내부터 연습 기록을 시작할 수 있어요.",
-                    state: &state
-                )
-            case .unavailable(let message):
-                return openRouteOnlyWithMessage(request, message: message, state: &state)
-            }
-        case .routeGuidanceWillOpen(let request, let mode, let measurementID, let requestID):
-            guard requestID == state.routeGuidanceRequestID,
-                  state.detail?.id == request.detail.id else { return .none }
-            let measurement = PracticeMeasurement(
-                id: measurementID,
-                placeID: request.detail.id,
-                placeName: request.detail.name,
-                mode: mode,
-                externalHandoffAt: .now,
-                status: mode == .gpsTracking ? .tracking : .awaitingReturn
-            )
-            practiceMeasurementStore.save(measurement)
-            practiceTrackingService.synchronizeCompletedSessionCertificationIfNeeded()
-            return .none
-        case .routeGuidanceOpenFinished(let result, let request, let measurementID, let cancelTrackingOnFailure, let requestID):
-            guard requestID == state.routeGuidanceRequestID,
-                  state.detail?.id == request.detail.id else { return .none }
-            state.isRouteGuidanceLaunching = false
-            state.routeGuidanceRequest = nil
-            if cancelTrackingOnFailure, case .openedApp = result {
-                // 성공한 외부 길안내만 측정 세션을 유지한다.
-            } else if cancelTrackingOnFailure {
-                routeGuidanceFlowService.cancelActiveMeasurement()
-            }
-            if case .openedApp = result {
-                // 측정 후보는 외부 앱 전환 전에 저장했다.
-            } else if practiceMeasurementStore.load()?.id == measurementID {
-                practiceMeasurementStore.clear()
-            }
-            return result.userMessage.map { .send(.delegate(.showSnackbar($0))) } ?? .none
-        case .routeGuidanceInstallFinished(let result, let requestID):
-            guard requestID == state.routeGuidanceRequestID else { return .none }
-            return result.userMessage.map { .send(.delegate(.showSnackbar($0))) } ?? .none
-        case .activeMeasurementEnded:
-            practiceMeasurementStore.clear()
+            return reduceRouteGuidance(&state, action: .dismiss)
+        case .routeGuidance(let child):
+            return reduceRouteGuidance(&state, action: child)
         case .expandRequested:
             guard let placeID = state.detail?.id, state.presentation == .sheet else { return .none }
             state.presentation = .expandedDetail
@@ -305,139 +183,48 @@ extension CourseDetailBottomSheetReducer {
 
 // MARK: - Child Delegate
 private extension CourseDetailBottomSheetReducer {
-    func startRouteGuidance(
-        userLocation: RodiCoordinate?,
-        hasLocationPermission: Bool,
-        state: inout State
+    func reduceRouteGuidance(
+        _ state: inout State,
+        action: RouteGuidanceReducer.Action
     ) -> Effect<Action> {
-        guard hasLocationPermission else {
-            return .send(.delegate(.showSnackbar("위치 권한을 허용한 뒤 다시 시도해주세요.")))
+        if case .delegate(let delegate) = action {
+            return reduceRouteGuidanceDelegate(delegate, state: &state)
         }
-        guard let detail = state.detail, let userLocation else {
-            return .send(.delegate(.showSnackbar("현재 위치를 확인한 뒤 다시 시도해주세요.")))
-        }
-
-        switch routeGuidanceFlowService.launchOption {
-        case .open(let app):
-            return continueRouteGuidance(
-                .init(app: app, detail: detail, userLocation: userLocation),
-                state: &state
-            )
-        case .choose:
-            state.routeGuidanceRequest = .init(app: .kakaoMap, detail: detail, userLocation: userLocation)
-            state.routeGuidancePresentation = .chooseApp
-            return .none
-        case .install:
-            state.routeGuidanceRequest = .init(app: .kakaoMap, detail: detail, userLocation: userLocation)
-            state.routeGuidancePresentation = .installApp
-            return .none
-        }
+        return routeGuidanceReducer
+            .reduce(&state.routeGuidance, with: action)
+            .map(Action.routeGuidance)
     }
 
-    func continueRouteGuidance(
-        _ request: RouteGuidanceFlowRequest,
+    func reduceRouteGuidanceDelegate(
+        _ delegate: RouteGuidanceReducer.Delegate,
         state: inout State
     ) -> Effect<Action> {
-        state.routeGuidanceRequest = request
+        switch delegate {
+        case let .willOpen(request, mode, measurementID):
+            practiceMeasurementStore.save(.init(
+                id: measurementID,
+                placeID: request.detail.id,
+                placeName: request.detail.name,
+                mode: mode,
+                externalHandoffAt: .now,
+                status: mode == .gpsTracking ? .tracking : .awaitingReturn
+            ))
+            practiceTrackingService.synchronizeCompletedSessionCertificationIfNeeded()
 
-        guard !routeGuidanceFlowService.hasActiveMeasurement else {
-            state.routeGuidancePresentation = .activeMeasurement(
-                courseName: routeGuidanceFlowService.activeMeasurementName ?? "현재 코스"
-            )
-            return .none
-        }
-
-        guard routeGuidanceFlowService.areLiveActivitiesEnabled else {
-            state.routeGuidancePresentation = .liveActivityPermission
-            return .none
-        }
-
-        state.routeGuidancePresentation = nil
-        state.isRouteGuidanceLaunching = true
-        state.routeGuidanceRequestID += 1
-        let requestID = state.routeGuidanceRequestID
-        let service = routeGuidanceFlowService
-        return .run { send in
-            await send(
-                .routeGuidanceTrackingPrepared(
-                    await service.prepareTracking(for: request),
-                    request: request,
-                    requestID: requestID
-                )
-            )
-        }
-        .cancelTask(id: BottomSheetEffectID.courseRouteGuidance)
-    }
-
-    func openRouteOnlyWithMessage(
-        _ request: RouteGuidanceFlowRequest,
-        message: String,
-        state: inout State
-    ) -> Effect<Action> {
-        let openEffect = openRouteEffect(
-            request: request,
-            mode: .routeOnly,
-            measurementID: UUID(),
-            cancelTrackingOnFailure: false,
-            initialSnackbarMessage: message,
-            state: &state
-        )
-        return openEffect
-    }
-
-    func openRouteEffect(
-        request: RouteGuidanceFlowRequest,
-        mode: PracticeMeasurementMode,
-        measurementID: UUID,
-        cancelTrackingOnFailure: Bool,
-        initialSnackbarMessage: String? = nil,
-        state: inout State
-    ) -> Effect<Action> {
-        state.isRouteGuidanceLaunching = true
-        state.routeGuidanceRequest = request
-        state.routeGuidanceRequestID += 1
-        let requestID = state.routeGuidanceRequestID
-        let service = routeGuidanceFlowService
-
-        return .run { send in
-            if let initialSnackbarMessage {
-                await send(.delegate(.showSnackbar(initialSnackbarMessage)))
+        case let .openFinished(result, measurementID):
+            if case .openedApp = result {
+                // 측정 후보는 외부 앱 전환 전에 저장했다.
+            } else if practiceMeasurementStore.load()?.id == measurementID {
+                practiceMeasurementStore.clear()
             }
-            await send(
-                .routeGuidanceWillOpen(
-                    request: request,
-                    mode: mode,
-                    measurementID: measurementID,
-                    requestID: requestID
-                )
-            )
-            let result = await service.open(request)
-            await send(
-                .routeGuidanceOpenFinished(
-                    result,
-                    request: request,
-                    measurementID: measurementID,
-                    cancelTrackingOnFailure: cancelTrackingOnFailure,
-                    requestID: requestID
-                )
-            )
-        }
-        .cancelTask(id: BottomSheetEffectID.courseRouteGuidance)
-    }
 
-    func openInstallEffect(app: RouteGuidanceApp, requestID: Int) -> Effect<Action> {
-        let service = routeGuidanceFlowService
-        return .run { send in
-            await send(.routeGuidanceInstallFinished(await service.openInstallPage(for: app), requestID: requestID))
-        }
-        .cancelTask(id: BottomSheetEffectID.courseRouteGuidance)
-    }
+        case .activeMeasurementEnded:
+            practiceMeasurementStore.clear()
 
-    func finishRouteGuidance(_ message: String, state: inout State) -> Effect<Action> {
-        state.routeGuidanceRequest = nil
-        state.routeGuidancePresentation = nil
-        state.isRouteGuidanceLaunching = false
-        return .send(.delegate(.showSnackbar(message)))
+        case let .showSnackbar(message):
+            return .send(.delegate(.showSnackbar(message)))
+        }
+        return .none
     }
 
     func reduceReviewsDelegate(_ delegate: CourseReviewReducer.Delegate, state: inout State) -> Effect<Action> {

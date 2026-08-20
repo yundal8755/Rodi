@@ -9,7 +9,7 @@ struct RecommendListBottomSheetView: View {
     let state: RecommendListBottomSheetReducer.State
     let send: (RecommendListBottomSheetReducer.Action) -> Void
     let debugReviewTestAction: () -> Void
-    let debugHardWithdrawAction: @MainActor () async throws -> Void
+    let debugHardWithdrawAction: () async throws -> Void
     let titlePanEnabled: Bool
     let titlePanChanged: (CGFloat) -> Void
     let titlePanEnded: (CGFloat) -> Void
@@ -18,7 +18,7 @@ struct RecommendListBottomSheetView: View {
         state: RecommendListBottomSheetReducer.State,
         send: @escaping (RecommendListBottomSheetReducer.Action) -> Void,
         debugReviewTestAction: @escaping () -> Void,
-        debugHardWithdrawAction: @escaping @MainActor () async throws -> Void,
+        debugHardWithdrawAction: @escaping () async throws -> Void,
         titlePanEnabled: Bool = false,
         titlePanChanged: @escaping (CGFloat) -> Void = { _ in },
         titlePanEnded: @escaping (CGFloat) -> Void = { _ in }
