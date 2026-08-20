@@ -65,12 +65,7 @@ struct CourseRegistrationDetailsView: View {
                 Text("등록 정보를 불러오지 못했어요.")
                     .rodiTypography(.body1SemiBold)
                     .foregroundStyle(RodiColor.black)
-                Button(action: { send(.retryTapped) }) {
-                    Text("다시 시도")
-                        .rodiTypography(.buttonMedium)
-                        .foregroundStyle(RodiColor.primary)
-                }
-                .buttonStyle(.plain)
+                RodiRetryButton { send(.retryTapped) }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .loaded(let form):
