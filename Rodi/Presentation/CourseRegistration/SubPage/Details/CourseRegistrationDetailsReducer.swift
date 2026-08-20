@@ -10,6 +10,7 @@ struct CourseRegistrationDetailsReducer: Reducer {
         var isDiscardConfirmationPresented = false
         var isSubmitting = false
         var isCompletionPresented = false
+        var hasStartedDescriptionInput = false
         var alertToast: CourseRegistrationAlertToastState?
         var alertToastRevision = 0
         var activeRequestID: UUID?
@@ -136,6 +137,9 @@ struct CourseRegistrationDetailsReducer: Reducer {
 
         case .descriptionChanged(let value):
             state.draft.description = String(value.prefix(CourseRegistrationDetailsTextLimit.description))
+            if !state.draft.description.isEmpty {
+                state.hasStartedDescriptionInput = true
+            }
 
         case .backTapped:
             guard !state.isSubmitting else { return .none }

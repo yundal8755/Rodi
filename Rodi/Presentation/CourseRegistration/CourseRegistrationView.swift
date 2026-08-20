@@ -10,22 +10,15 @@ struct CourseRegistrationView: View {
     let tutorialCompletedAction: () -> Void
     private let courseRegistrationCompletedAction: () -> Void
 
-    init(
-        isCourseTutorialCompleted: Bool,
-        memberRepository: MemberRepository,
-        courseRepository: CourseRepository,
-        closeAction: @escaping () -> Void,
-        tutorialCompletedAction: @escaping () -> Void,
-        courseRegistrationCompletedAction: @escaping () -> Void
-    ) {
-        self.closeAction = closeAction
-        self.tutorialCompletedAction = tutorialCompletedAction
-        self.courseRegistrationCompletedAction = courseRegistrationCompletedAction
+    init(presentation: CourseRegistrationPresentation, dependencies: CourseRegistrationFeatureDependencies) {
+        closeAction = presentation.close
+        tutorialCompletedAction = presentation.tutorialCompleted
+        courseRegistrationCompletedAction = presentation.registrationCompleted
         _store = StateObject(wrappedValue: Store(
-            state: .init(isCourseTutorialCompleted: isCourseTutorialCompleted),
+            state: .init(isCourseTutorialCompleted: presentation.isTutorialCompleted),
             reducer: CourseRegistrationReducer(
-                memberRepository: memberRepository,
-                courseRepository: courseRepository
+                memberRepository: dependencies.memberRepository,
+                courseRepository: dependencies.courseRepository
             )
         ))
     }

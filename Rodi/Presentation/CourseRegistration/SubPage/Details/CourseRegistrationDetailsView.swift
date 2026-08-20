@@ -103,19 +103,7 @@ struct CourseRegistrationDetailsView: View {
                             anchor: .cautionKeyboardAnchor,
                             proxy: proxy
                         )
-                        textInputSection(
-                            title: form.sections.description,
-                            text: Binding(
-                                get: { state.draft.description },
-                                set: { send(.descriptionChanged($0)) }
-                            ),
-                            spec: form.inputs.description,
-                            isFocused: $isDescriptionFocused,
-                            anchor: .descriptionKeyboardAnchor,
-                            proxy: proxy,
-                            showsCounter: true,
-                            isRequired: true
-                        )
+                        descriptionInputSection(form, proxy: proxy)
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 24)
@@ -182,7 +170,6 @@ struct CourseRegistrationDetailsView: View {
         isFocused: FocusState<Bool>.Binding,
         anchor: ScrollTarget,
         proxy: ScrollViewProxy,
-        showsCounter: Bool = false,
         isRequired: Bool = false
     ) -> some View {
         let focused = isFocused.wrappedValue
@@ -198,8 +185,8 @@ struct CourseRegistrationDetailsView: View {
             VStack(alignment: .trailing, spacing: 8) {
                 RodiTextField(
                     text: text,
-                    placeholder: showsCounter ? "최소 10자 이상 입력해주세요." : spec.placeholder,
-                    characterLimit: showsCounter ? 30 : 100,
+                    placeholder: spec.placeholder,
+                    characterLimit: spec.maxLength,
                     isFocused: isFocused
                 )
                 .padding(.vertical, 14)
@@ -208,12 +195,6 @@ struct CourseRegistrationDetailsView: View {
                 .overlay {
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(focused ? RodiColor.gray850 : RodiColor.gray300, lineWidth: 1)
-                }
-
-                if showsCounter {
-                    Text("\(text.wrappedValue.count)/\(spec.maxLength)")
-                        .rodiTypography(.caption1Medium)
-                        .foregroundStyle(RodiColor.gray500)
                 }
             }
 
@@ -224,6 +205,35 @@ struct CourseRegistrationDetailsView: View {
             DispatchQueue.main.async {
                 withAnimation(.easeOut(duration: 0.2)) {
                     proxy.scrollTo(anchor, anchor: .bottom)
+                }
+            }
+        }
+    }
+
+    private func descriptionInputSection(
+        _ form: CourseRegistrationForm,
+        proxy: ScrollViewProxy
+    ) -> some View {
+        let focused = isDescriptionFocused
+        return VStack(alignment: .leading, spacing: 12) {
+            requiredSectionTitle(form.sections.description)
+
+            CourseRegistrationDescriptionField(
+                text: Binding(
+                    get: { state.draft.description },
+                    set: { send(.descriptionChanged($0)) }
+                ),
+                spec: form.inputs.description,
+                hasStartedInput: state.hasStartedDescriptionInput,
+                isFocused: $isDescriptionFocused
+            )
+        }
+        .id(ScrollTarget.descriptionKeyboardAnchor)
+        .onChange(of: focused) { isNowFocused in
+            guard isNowFocused else { return }
+            DispatchQueue.main.async {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    proxy.scrollTo(ScrollTarget.descriptionKeyboardAnchor, anchor: .bottom)
                 }
             }
         }
