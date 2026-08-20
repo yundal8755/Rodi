@@ -37,18 +37,20 @@ struct MyPostReviewRow: View {
                     .foregroundStyle(RodiColor.gray600)
             }
 
-            Text(review.content)
-                .font(.pretendard(size: 13, weight: .regular))
-                .tracking(-0.26)
-                .foregroundStyle(RodiColor.gray700)
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 10)
-                .frame(height: 37)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(RodiColor.gray200, lineWidth: 1)
-                }
+            if !review.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(review.content)
+                    .font(.pretendard(size: 13, weight: .regular))
+                    .tracking(-0.26)
+                    .foregroundStyle(RodiColor.gray700)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 10)
+                    .frame(height: 37)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(RodiColor.gray200, lineWidth: 1)
+                    }
+            }
         }
     }
 }

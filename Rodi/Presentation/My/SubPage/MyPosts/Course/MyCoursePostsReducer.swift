@@ -164,11 +164,11 @@ private extension MyCoursePostsReducer {
     }
 
     static func message(for error: Error) -> String {
-        if case NetworkError.networkUnavailable = error { return "인터넷 연결을 확인한 뒤 다시 시도해 주세요." }
+        if case NetworkError.networkUnavailable = error { return "네트워크 연결을 확인해주세요." }
         return "등록한 코스를 불러오지 못했어요."
     }
     static func deleteMessage(for error: Error) -> String {
-        if case NetworkError.networkUnavailable = error { return "인터넷 연결을 확인한 뒤 다시 시도해 주세요." }
+        if case NetworkError.networkUnavailable = error { return "네트워크 연결을 확인해주세요." }
         return "코스를 삭제하지 못했어요. 다시 시도해주세요."
     }
 }

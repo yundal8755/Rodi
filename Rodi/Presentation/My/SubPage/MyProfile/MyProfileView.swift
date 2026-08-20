@@ -111,11 +111,7 @@ struct MyProfileView: View {
                 Text(errorMessage ?? "내 정보를 불러오지 못했어요.")
                     .rodiTypography(.body3Medium)
                     .foregroundStyle(RodiColor.gray700)
-                Button(action: retry) {
-                    Text("다시 시도")
-                        .rodiTypography(.body3Medium)
-                        .foregroundStyle(RodiColor.primary)
-                }
+                RodiRetryButton(action: retry)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 227)

@@ -98,16 +98,8 @@ private extension MyPracticeRecordsView {
         }
 
         if let errorMessage = store.state.errorMessage {
-            VStack(spacing: 8) {
-                Text(errorMessage)
-                    .rodiTypography(.body3Medium)
-                    .foregroundStyle(RodiColor.gray600)
-                Button(action: { store.send(.retryTapped) }) {
-                    Text("다시 시도")
-                        .rodiTypography(.body3Medium)
-                        .foregroundStyle(RodiColor.primary)
-                }
-                .buttonStyle(.plain)
+            RodiRetryView(message: errorMessage) {
+                store.send(.retryTapped)
             }
             .padding(.vertical, 16)
         }
@@ -174,15 +166,7 @@ private struct MyPracticeRecordsEmptyState: View {
     var body: some View {
         VStack(spacing: 8) {
             if let errorMessage {
-                Text(errorMessage)
-                    .rodiTypography(.body3Medium)
-                    .foregroundStyle(RodiColor.gray600)
-                Button(action: retry) {
-                    Text("다시 시도")
-                        .rodiTypography(.body3Medium)
-                        .foregroundStyle(RodiColor.primary)
-                }
-                .buttonStyle(.plain)
+                RodiRetryView(message: errorMessage, retryAction: retry)
             } else {
                 Text("아직 연습기록이 없어요!")
                     .rodiTypography(.body3Medium)

@@ -118,14 +118,7 @@ private extension CourseReviewReportPage {
                     .rodiTypography(.body3Medium)
                     .foregroundStyle(RodiColor.gray600)
 
-                Button {
-                    send(.retryTapped)
-                } label: {
-                    Text("다시 시도")
-                        .rodiTypography(.buttonMedium)
-                        .foregroundStyle(RodiColor.primary)
-                }
-                .buttonStyle(.plain)
+                RodiRetryButton { send(.retryTapped) }
             }
             .frame(maxWidth: .infinity, minHeight: 184)
         }
