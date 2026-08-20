@@ -122,3 +122,36 @@ enum PracticeTrackingStartResult: Equatable {
     case reducedAccuracyRequested
     case unavailable(String)
 }
+
+/// 앱 프로세스가 다시 시작된 뒤, 진행 중이던 측정 세션을 어떻게 다룰지 결정한다.
+/// GPS 연속성이 끊긴 주행은 재개하지 않고, 코스 진입 전 이동만 제한적으로 재개할 수 있다.
+enum PracticeTrackingRestorationDecision: Equatable {
+    case continueApproach
+    case discardApproach
+    case interruptDriving
+
+    static func make(
+        session: PracticeTrackingSession,
+        measurement: PracticeMeasurement?,
+        now: Date,
+        approachGracePeriod: TimeInterval
+    ) -> Self {
+        guard let measurement,
+              measurement.id == session.id,
+              measurement.isActiveTracking
+        else {
+            return session.phase == .drivingCourse ? .interruptDriving : .discardApproach
+        }
+
+        switch session.phase {
+        case .headingToCourse:
+            return now.timeIntervalSince(measurement.externalHandoffAt) <= approachGracePeriod
+                ? .continueApproach
+                : .discardApproach
+        case .drivingCourse:
+            return .interruptDriving
+        case .completed, .cancelled, .interrupted:
+            return .discardApproach
+        }
+    }
+}

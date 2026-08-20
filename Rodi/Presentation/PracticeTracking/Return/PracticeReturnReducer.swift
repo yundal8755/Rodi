@@ -23,11 +23,7 @@ struct PracticeReturnReducer: Reducer {
         case activeMeasurementEnded
         case promptInteraction(PracticeReturnPromptInteraction)
         case parkingVisitCompleted(revision: Int, Result<Void, Error>)
-        case debugCourseVisitCompleted(
-            revision: Int,
-            Result<PracticeMeasurement, Error>,
-            PracticeReturnPromptInteraction
-        )
+        case debugCourseVisitRecorded(revision: Int, Result<PracticeMeasurement, Error>)
         case reset
         case delegate(Delegate)
     }
@@ -58,6 +54,20 @@ struct PracticeReturnReducer: Reducer {
         self.measurementStore = measurementStore
         self.trackingService = trackingService
     }
+
+    #if DEBUG
+    nonisolated static func shouldRecordDebugCourseVisit(
+        measurement: PracticeMeasurement,
+        now: Date
+    ) -> Bool {
+        guard measurement.placeType != .parking,
+              measurement.mode == .gpsTracking
+        else {
+            return false
+        }
+        return now.timeIntervalSince(measurement.lastRodiInactiveAt ?? measurement.externalHandoffAt) >= 10
+    }
+    #endif
 }
 
 // MARK: - Reduce
@@ -66,8 +76,15 @@ extension PracticeReturnReducer {
     func reduce(_ state: inout State, with action: Action) -> Effect<Action> {
         switch action {
         case .sceneBecameActive(let canPresentPrompt):
-            trackingService.restoreIfNeeded()
+            let restorationDecision = trackingService.restoreIfNeeded()
             trackingService.retryCertificationIfNeeded()
+            if let restorationEffect = handleRestorationDecision(
+                restorationDecision,
+                canPresentPrompt: canPresentPrompt,
+                state: &state
+            ) {
+                return restorationEffect
+            }
             guard canPresentPrompt else { return .none }
             return preparePromptIfNeeded(state: &state)
 
@@ -75,15 +92,41 @@ extension PracticeReturnReducer {
             markInactiveIfNeeded()
 
         case .activeMeasurementContinued:
-            state.activeMeasurementContinuation = nil
+            guard let measurement = state.activeMeasurementContinuation else { return .none }
+            switch trackingService.continueTracking(sessionID: measurement.id) {
+            case .started:
+                state.activeMeasurementContinuation = nil
+            case .authorizationRequested:
+                return .send(.delegate(.showSnackbar("위치 권한을 허용하면 이동 측정을 이어갈 수 있어요.")))
+            case .reducedAccuracyRequested:
+                return .send(.delegate(.showSnackbar("정확한 위치 권한을 허용하면 이동 측정을 이어갈 수 있어요.")))
+            case .unavailable(let message):
+                return .send(.delegate(.showSnackbar(message)))
+            }
 
         case .activeMeasurementEnded:
             trackingService.cancel()
             state.activeMeasurementContinuation = nil
             guard var measurement = measurementStore.load() else { return .none }
             guard measurement.isParking else {
+                #if DEBUG
+                guard Self.shouldRecordDebugCourseVisit(
+                    measurement: measurement,
+                    now: .now
+                ) else {
+                    measurementStore.clear()
+                    return .none
+                }
+                state.isDebugCourseVisitSubmitting = true
+                state.requestRevision += 1
+                return registerDebugCourseVisit(
+                    measurement: measurement,
+                    revision: state.requestRevision
+                )
+                #else
                 measurementStore.clear()
                 return .none
+                #endif
             }
             guard hasElapsedPromptDelay(since: measurement.externalHandoffAt) else {
                 measurementStore.clear()
@@ -110,15 +153,15 @@ extension PracticeReturnReducer {
                 }
             }
 
-        case .debugCourseVisitCompleted(let revision, let result, let interaction):
+        case .debugCourseVisitRecorded(let revision, let result):
             guard revision == state.requestRevision else { return .none }
             state.isDebugCourseVisitSubmitting = false
             switch result {
             case .success(let measurement):
                 measurementStore.save(measurement)
-                state.pendingMeasurement = measurement
-                return .send(.delegate(.reviewPromptInteraction(interaction)))
+                return makePromptEffect(for: measurement, state: &state)
             case .failure:
+                measurementStore.clear()
                 return .send(.delegate(.showSnackbar("연습 기록에 추가하지 못했어요. 다시 시도해 주세요.")))
             }
 
@@ -137,6 +180,35 @@ extension PracticeReturnReducer {
 
 // MARK: - Prompt Policy
 private extension PracticeReturnReducer {
+
+    func handleRestorationDecision(
+        _ decision: PracticeTrackingRestorationDecision?,
+        canPresentPrompt: Bool,
+        state: inout State
+    ) -> Effect<Action>? {
+        switch decision {
+        case .continueApproach:
+            guard canPresentPrompt,
+                  let measurement = measurementStore.load(),
+                  measurement.isActiveTracking
+            else {
+                return .none
+            }
+            state.activeMeasurementContinuation = measurement
+            return .none
+
+        case .interruptDriving:
+            state.activeMeasurementContinuation = nil
+            return .send(.delegate(.showSnackbar("앱이 종료되어 연습 측정이 중단되었어요.")))
+
+        case .discardApproach:
+            state.activeMeasurementContinuation = nil
+            return nil
+
+        case nil:
+            return nil
+        }
+    }
 
     func preparePromptIfNeeded(state: inout State) -> Effect<Action> {
         guard state.pendingMeasurement == nil,
@@ -215,20 +287,6 @@ private extension PracticeReturnReducer {
             .cancelTask(id: EffectID.parkingVisit)
         }
 
-        #if DEBUG
-        if !measurement.isParking,
-           measurement.status != .certified,
-           !state.isDebugCourseVisitSubmitting {
-            state.isDebugCourseVisitSubmitting = true
-            state.requestRevision += 1
-            return registerDebugCourseVisit(
-                measurement: measurement,
-                interaction: interaction,
-                revision: state.requestRevision
-            )
-        }
-        #endif
-
         removePendingMeasurement(state: &state)
         return .send(.delegate(.reviewPromptInteraction(interaction)))
     }
@@ -236,7 +294,6 @@ private extension PracticeReturnReducer {
     #if DEBUG
     func registerDebugCourseVisit(
         measurement: PracticeMeasurement,
-        interaction: PracticeReturnPromptInteraction,
         revision: Int
     ) -> Effect<Action> {
         let practiceRepository = practiceRepository
@@ -250,9 +307,9 @@ private extension PracticeReturnReducer {
                 var registeredMeasurement = measurement
                 registeredMeasurement.practiceID = registration.practiceID
                 registeredMeasurement.status = .certified
-                await send(.debugCourseVisitCompleted(revision: revision, .success(registeredMeasurement), interaction))
+                await send(.debugCourseVisitRecorded(revision: revision, .success(registeredMeasurement)))
             } catch {
-                await send(.debugCourseVisitCompleted(revision: revision, .failure(error), interaction))
+                await send(.debugCourseVisitRecorded(revision: revision, .failure(error)))
             }
         }
         .cancelTask(id: EffectID.debugCourseVisit)

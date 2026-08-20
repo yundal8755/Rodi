@@ -38,7 +38,6 @@ struct RootView: View {
                     tokenStore: dependencies.tokenStore,
                     authRepository: dependencies.authRepository,
                     onboardingProgressStore: onboardingProgressStore,
-                    practiceLiveActivityService: dependencies.practiceLiveActivityService,
                     reviewFlowReducer: reviewFlowReducer,
                     practiceTrackingReducer: practiceTrackingReducer
                 )
@@ -109,9 +108,13 @@ struct RootView: View {
             }
         }
         .onOpenURL { url in
-            if !SocialLoginService.handleOpenURL(url) {
-                store.send(.urlOpened(url))
+            if let sessionID = PracticeLiveActivityDeepLink.sessionID(from: url) {
+                if #available(iOS 16.1, *) {
+                    PracticeLiveActivityService.shared.cancel(sessionID: sessionID)
+                }
+                return
             }
+            _ = SocialLoginService.handleOpenURL(url)
         }
     }
 

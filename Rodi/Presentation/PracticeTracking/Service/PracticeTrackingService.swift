@@ -12,6 +12,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
     static let shared = PracticeTrackingService()
 
     private enum Policy {
+        static let approachResumeGracePeriod: TimeInterval = 15 * 60
         static let maximumHorizontalAccuracy: CLLocationAccuracy = 60
         static let routeCorridorMeters = 150.0
         static let maximumSampleGap: TimeInterval = 60
@@ -64,31 +65,16 @@ final class PracticeTrackingService: NSObject, ObservableObject {
         session?.phase.isTerminal == false
     }
 
+    var isSessionFromCurrentProcess: Bool {
+        didStartSessionInCurrentProcess
+    }
+
     func start(
         course: RodiCourseItem,
         routePath: [RodiCoordinate],
         rabbitAssetName: String = "img_rabbit_navigation"
     ) -> PracticeTrackingStartResult {
-        guard CLLocationManager.locationServicesEnabled() else {
-            return .unavailable("위치 서비스를 켠 뒤 연습 기록을 시작해주세요.")
-        }
-
-        switch locationManager.authorizationStatus {
-        case .notDetermined:
-            locationManager.requestWhenInUseAuthorization()
-            return .authorizationRequested
-        case .authorizedWhenInUse, .authorizedAlways:
-            break
-        case .denied, .restricted:
-            return .unavailable("위치 권한이 없어 이번 길안내에는 연습 기록이 포함되지 않아요.")
-        @unknown default:
-            return .unavailable("위치 권한 상태를 확인하지 못해 이번 길안내에는 연습 기록이 포함되지 않아요.")
-        }
-
-        guard locationManager.accuracyAuthorization == .fullAccuracy else {
-            locationManager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "PracticeTracking")
-            return .reducedAccuracyRequested
-        }
+        if let prerequisite = locationPrerequisite() { return prerequisite }
 
         guard routePath.count >= 2 else {
             return .unavailable("코스 경로를 준비하지 못했어요. 잠시 후 다시 시도해주세요.")
@@ -124,57 +110,64 @@ final class PracticeTrackingService: NSObject, ObservableObject {
 
         self.session = session
         sessionStore.save(session)
-        didStartSessionInCurrentProcess = true
         lastInCourseLocation = nil
-        beginBackgroundActivitySession()
-        applyLocationPolicy(for: session)
-        locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.startUpdatingLocation()
-        startLiveActivity(for: session)
-        syncLiveActivity(session, force: true)
+        activateTracking(for: session)
         RodiAnalytics.track(.practiceTrackingStarted(placeType: session.analyticsPlaceType))
         RodiLogger.info("Practice tracking started sessionID=\(session.id.uuidString), courseID=\(course.id)")
         return .started
     }
 
-    func restoreIfNeeded() {
-        guard var session, !session.phase.isTerminal else { return }
+    func restoreIfNeeded() -> PracticeTrackingRestorationDecision? {
+        guard let session, !session.phase.isTerminal else {
+            return nil
+        }
         guard didStartSessionInCurrentProcess else {
-            session.phase = .interrupted
-            self.session = session
-            sessionStore.save(session)
-            measurementStore?.clear()
-            cancelLiveActivity()
-            RodiLogger.info("Practice tracking interrupted after process restart sessionID=\(session.id.uuidString)")
-            return
+            let decision = PracticeTrackingRestorationDecision.make(
+                session: session,
+                measurement: measurementStore?.load(),
+                now: .now,
+                approachGracePeriod: Policy.approachResumeGracePeriod
+            )
+            switch decision {
+            case .continueApproach:
+                return decision
+            case .discardApproach, .interruptDriving:
+                discardRestoredSession(session, decision: decision)
+                return decision
+            }
         }
 
         guard locationManager.authorizationStatus == .authorizedWhenInUse
                 || locationManager.authorizationStatus == .authorizedAlways
-        else { return }
+        else {
+            return nil
+        }
+        activateTracking(for: session)
+        return nil
+    }
 
-        beginBackgroundActivitySession()
-        applyLocationPolicy(for: session)
-        locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.startUpdatingLocation()
-        startLiveActivity(for: session)
-        syncLiveActivity(session, force: true)
-        RodiLogger.info("Practice tracking restored sessionID=\(session.id.uuidString)")
+    func continueTracking(sessionID: UUID) -> PracticeTrackingStartResult {
+        guard let session,
+              session.id == sessionID,
+              session.phase == .headingToCourse || session.phase == .drivingCourse
+        else {
+            return .unavailable("이동 중인 연습 기록을 찾지 못했어요.")
+        }
+        if session.phase == .drivingCourse, didStartSessionInCurrentProcess {
+            return .started
+        }
+        if let prerequisite = locationPrerequisite() { return prerequisite }
+
+        lastInCourseLocation = nil
+        activateTracking(for: session)
+        return .started
     }
 
     func cancel() {
-        guard var session, !session.phase.isTerminal else { return }
-        session.phase = .cancelled
-        self.session = session
-        sessionStore.save(session)
-        cancelLiveActivity()
-        stopLocationUpdates()
-        endBackgroundActivitySession()
-        didStartSessionInCurrentProcess = false
-        lastInCourseLocation = nil
-        cancelCertificationRequest()
+        guard let session, !session.phase.isTerminal else { return }
+        endActiveSession(session, clearMeasurement: false)
         RodiAnalytics.track(.practiceTrackingCancelled(placeType: session.analyticsPlaceType))
-        RodiLogger.info("Practice tracking cancelled sessionID=\(session.id.uuidString)")
+        RodiLogger.info("Practice tracking cancelled")
     }
 
     /// 로그아웃·회원탈퇴 뒤 이전 계정의 측정 복구 상태가 이어지지 않게 정리한다.
@@ -188,6 +181,35 @@ final class PracticeTrackingService: NSObject, ObservableObject {
         didStartSessionInCurrentProcess = false
         lastInCourseLocation = nil
         cancelLiveActivity()
+    }
+
+    private func endActiveSession(
+        _ session: PracticeTrackingSession,
+        clearMeasurement: Bool
+    ) {
+        self.session = nil
+        sessionStore.clear()
+        if clearMeasurement, measurementStore?.load()?.id == session.id {
+            measurementStore?.clear()
+        }
+        cancelLiveActivity()
+        stopLocationUpdates()
+        endBackgroundActivitySession()
+        didStartSessionInCurrentProcess = false
+        lastInCourseLocation = nil
+        cancelCertificationRequest()
+    }
+
+    private func discardRestoredSession(
+        _ session: PracticeTrackingSession,
+        decision: PracticeTrackingRestorationDecision
+    ) {
+        endActiveSession(session, clearMeasurement: true)
+        RodiLogger.info(
+            decision == .interruptDriving
+                ? "Practice tracking interrupted after process restart"
+                : "Practice tracking approach expired after process restart"
+        )
     }
 
     private func receive(_ location: CLLocation) {
@@ -261,10 +283,10 @@ final class PracticeTrackingService: NSObject, ObservableObject {
             stopLocationUpdates()
             endBackgroundActivitySession()
             didStartSessionInCurrentProcess = false
+            finishLiveActivity(session)
             self.session = session
             sessionStore.save(session)
             markCertificationPending(for: session, retryImmediately: false)
-            syncLiveActivity(session, completionRecordState: .saving, force: true)
             retryCertificationIfNeeded()
             RodiLogger.info(
                 "Practice tracking completed sessionID=\(session.id.uuidString), progress=\(session.courseProgress), seconds=\(session.activeDrivingSeconds)"
@@ -374,12 +396,6 @@ final class PracticeTrackingService: NSObject, ObservableObject {
                 current.status = .certified
                 measurementStore.save(current)
                 self.certificationRevision += 1
-                if !current.isParking,
-                   let completedSession = self.session,
-                   completedSession.id == current.id,
-                   completedSession.phase == .completed {
-                    self.finishLiveActivity(completedSession, completionRecordState: .saved)
-                }
             } catch is CancellationError {
                 return
             } catch {
@@ -403,7 +419,6 @@ final class PracticeTrackingService: NSObject, ObservableObject {
             markCertificationPending(for: session)
         } else {
             markCertificationPending(for: session, retryImmediately: false)
-            syncLiveActivity(session, completionRecordState: .saving, force: true)
             retryCertificationIfNeeded()
         }
     }
@@ -411,6 +426,40 @@ final class PracticeTrackingService: NSObject, ObservableObject {
     private func stopLocationUpdates() {
         locationManager.stopUpdatingLocation()
         locationManager.allowsBackgroundLocationUpdates = false
+    }
+
+    private func locationPrerequisite() -> PracticeTrackingStartResult? {
+        guard CLLocationManager.locationServicesEnabled() else {
+            return .unavailable("위치 서비스를 켠 뒤 연습 기록을 시작해주세요.")
+        }
+
+        switch locationManager.authorizationStatus {
+        case .notDetermined:
+            locationManager.requestWhenInUseAuthorization()
+            return .authorizationRequested
+        case .authorizedWhenInUse, .authorizedAlways:
+            break
+        case .denied, .restricted:
+            return .unavailable("위치 권한이 없어 이번 길안내에는 연습 기록이 포함되지 않아요.")
+        @unknown default:
+            return .unavailable("위치 권한 상태를 확인하지 못해 이번 길안내에는 연습 기록이 포함되지 않아요.")
+        }
+
+        guard locationManager.accuracyAuthorization == .fullAccuracy else {
+            locationManager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "PracticeTracking")
+            return .reducedAccuracyRequested
+        }
+        return nil
+    }
+
+    private func activateTracking(for session: PracticeTrackingSession) {
+        didStartSessionInCurrentProcess = true
+        beginBackgroundActivitySession()
+        applyLocationPolicy(for: session)
+        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.startUpdatingLocation()
+        startLiveActivity(for: session)
+        syncLiveActivity(session, force: true)
     }
 
     private func applyLocationPolicy(for session: PracticeTrackingSession) {
@@ -446,28 +495,14 @@ final class PracticeTrackingService: NSObject, ObservableObject {
         PracticeLiveActivityService.shared.start(for: session)
     }
 
-    private func syncLiveActivity(
-        _ session: PracticeTrackingSession,
-        completionRecordState: PracticeLiveActivityService.CompletionRecordState? = nil,
-        force: Bool = false
-    ) {
+    private func syncLiveActivity(_ session: PracticeTrackingSession, force: Bool = false) {
         guard #available(iOS 16.1, *) else { return }
-        PracticeLiveActivityService.shared.sync(
-            session,
-            completionRecordState: completionRecordState,
-            force: force
-        )
+        PracticeLiveActivityService.shared.sync(session, force: force)
     }
 
-    private func finishLiveActivity(
-        _ session: PracticeTrackingSession,
-        completionRecordState: PracticeLiveActivityService.CompletionRecordState? = nil
-    ) {
+    private func finishLiveActivity(_ session: PracticeTrackingSession) {
         guard #available(iOS 16.1, *) else { return }
-        PracticeLiveActivityService.shared.finish(
-            session,
-            completionRecordState: completionRecordState
-        )
+        PracticeLiveActivityService.shared.finish(session)
     }
 
     private func cancelLiveActivity() {

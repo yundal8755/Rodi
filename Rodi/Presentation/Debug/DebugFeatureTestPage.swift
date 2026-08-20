@@ -87,14 +87,8 @@ struct DebugFeatureTestPage: View {
             Button("코스 주행중 - 방금 출발") {
                 PracticeLiveActivityService.shared.showPreview(state: .drivingCourseJustStarted)
             }
-            Button("코스 완료 - 연습기록 저장 중") {
-                PracticeLiveActivityService.shared.showPreview(state: .courseRecordSaving)
-            }
-            Button("코스 완료 - 기록하러 가기") {
-                PracticeLiveActivityService.shared.showPreview(state: .courseRecordSaved)
-            }
-            Button("주차장 완료 - 홈으로 이동") {
-                PracticeLiveActivityService.shared.showPreview(state: .parkingCompleted)
+            Button("코스 주행 완료") {
+                PracticeLiveActivityService.shared.showPreview(state: .completed)
             }
             Button("취소", role: .cancel) {}
         }

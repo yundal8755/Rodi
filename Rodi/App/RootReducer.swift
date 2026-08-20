@@ -41,7 +41,6 @@ struct RootReducer: Reducer {
         case socialLoginRequested(SocialLoginProvider)
         case automaticLoginRequestConsumed
         case pendingAuthenticationIntentConsumed
-        case urlOpened(URL)
         case logoutCompleted
         case courseTutorialCompleted
         case reviewFlow(ReviewFlowCoordinatorReducer.Action)
@@ -62,7 +61,6 @@ struct RootReducer: Reducer {
     private let tokenStore: TokenStoring
     private let authRepository: AuthRepository
     private let onboardingProgressStore: OnboardingProgressStore
-    private let practiceLiveActivityService: PracticeLiveActivityService
     private let reviewFlowReducer: ReviewFlowCoordinatorReducer
     private let practiceTrackingReducer: PracticeTrackingReducer
 
@@ -70,14 +68,12 @@ struct RootReducer: Reducer {
         tokenStore: TokenStoring,
         authRepository: AuthRepository,
         onboardingProgressStore: OnboardingProgressStore,
-        practiceLiveActivityService: PracticeLiveActivityService,
         reviewFlowReducer: ReviewFlowCoordinatorReducer,
         practiceTrackingReducer: PracticeTrackingReducer
     ) {
         self.tokenStore = tokenStore
         self.authRepository = authRepository
         self.onboardingProgressStore = onboardingProgressStore
-        self.practiceLiveActivityService = practiceLiveActivityService
         self.reviewFlowReducer = reviewFlowReducer
         self.practiceTrackingReducer = practiceTrackingReducer
     }
@@ -165,22 +161,6 @@ extension RootReducer {
 
         case .pendingAuthenticationIntentConsumed:
             state.pendingAuthenticationIntent = nil
-            return .none
-
-        case let .urlOpened(url):
-            guard url.scheme == "rodi" else { return .none }
-            switch url.host {
-            case "practice-records":
-                state.pendingAuthenticationIntent = .openMyPracticeRecords
-            case "home":
-                state.pendingAuthenticationIntent = .openHome
-            default:
-                return .none
-            }
-            if #available(iOS 16.1, *) {
-                practiceLiveActivityService.consumeCompletedActivity(for: url)
-            }
-            state.navigationRequestID += 1
             return .none
 
         case .logoutCompleted:
