@@ -16,7 +16,7 @@ struct HomeBottomSheetRouteContent: View {
     let userLocation: RodiCoordinate?
     let hasLocationPermission: Bool
     let debugReviewTestAction: () -> Void
-    let debugHardWithdrawAction: @MainActor @Sendable () async throws -> Void
+    let debugHardWithdrawAction: @MainActor () async throws -> Void
     let recommendationPanChanged: (CGFloat) -> Void
     let recommendationPanEnded: (CGFloat) -> Void
     let detailPanChanged: (CGFloat) -> Void

@@ -13,13 +13,13 @@ struct RouteGuidanceFlowService {
     init(
         memberRepository: MemberRepository,
         practiceTrackingService: PracticeTrackingService,
-        directionsService: KakaoDirectionsService? = nil,
-        routeGuidanceService: RouteGuidanceService? = nil
+        directionsService: KakaoDirectionsService,
+        routeGuidanceService: RouteGuidanceService
     ) {
         self.memberRepository = memberRepository
         self.practiceTrackingService = practiceTrackingService
-        self.directionsService = directionsService ?? KakaoDirectionsService()
-        self.routeGuidanceService = routeGuidanceService ?? .shared
+        self.directionsService = directionsService
+        self.routeGuidanceService = routeGuidanceService
     }
 
     var launchOption: RouteGuidanceLaunchOption {

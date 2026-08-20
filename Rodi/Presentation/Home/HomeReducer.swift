@@ -28,6 +28,19 @@ struct HomeReducer: Reducer {
         case bottomSheet(HomeBottomSheetReducer.Action)
         case search(HomeSearchReducer.Action)
         case presentation(PresentationAction)
+        case delegate(Delegate)
+        #if DEBUG
+        case debugReviewTestRequested
+        #endif
+    }
+
+    enum Delegate {
+        case requestAuthentication
+        case reviewWritingRequested(ReviewWriteRequest)
+        case reviewEditingRequested(Int)
+        #if DEBUG
+        case reviewTestRequested
+        #endif
     }
 
     enum MapAction {
@@ -63,16 +76,12 @@ struct HomeReducer: Reducer {
         case snackbarRequestHandled
     }
 
-    /// NOTE - 확인 필요
     private let mapService: MapService
     private let markerRenderingService: MapMarkerRenderingService
     private let bottomSheetReducer: HomeBottomSheetReducer
     private let searchReducer: HomeSearchReducer
     private let hasActiveSession: () -> Bool
-    /// NOTE - 확인 필요
-    private let authenticationRequired: () -> Void
-    private let reviewWritingRequested: (ReviewWriteRequest) -> Void
-    private let reviewEditingRequested: (Int) -> Void
+    private let delegateHandler: (Delegate) -> Void
     private let markerTierResolver = MapMarkerTierResolver()
     private let markerInteractionResolver = MapMarkerInteractionResolver()
 
@@ -87,9 +96,7 @@ struct HomeReducer: Reducer {
 
     init(
         dependencies: Dependencies,
-        authenticationRequired: @escaping () -> Void = {},
-        reviewWritingRequested: @escaping (ReviewWriteRequest) -> Void = { _ in },
-        reviewEditingRequested: @escaping (Int) -> Void = { _ in }
+        delegateHandler: @escaping (Delegate) -> Void = { _ in }
     ) {
         mapService = MapService(
             placeRepository: dependencies.placeRepository,
@@ -104,7 +111,8 @@ struct HomeReducer: Reducer {
                 reviewRepository: dependencies.reviewRepository,
                 memberRepository: dependencies.memberRepository,
                 practiceMeasurementStore: dependencies.practiceMeasurementStore,
-                practiceTrackingService: dependencies.practiceTrackingService
+                practiceTrackingService: dependencies.practiceTrackingService,
+                routeGuidanceService: .init()
             )
         )
         searchReducer = HomeSearchReducer(
@@ -115,9 +123,7 @@ struct HomeReducer: Reducer {
             [dependencies.tokenStore.accessToken, dependencies.tokenStore.refreshToken]
                 .contains { $0?.isEmpty == false }
         }
-        self.authenticationRequired = authenticationRequired
-        self.reviewWritingRequested = reviewWritingRequested
-        self.reviewEditingRequested = reviewEditingRequested
+        self.delegateHandler = delegateHandler
     }
 }
 
@@ -139,6 +145,15 @@ extension HomeReducer {
 
         case .presentation(let action):
             return reducePresentation(&state, action: action)
+
+        case .delegate(let delegate):
+            delegateHandler(delegate)
+            return .none
+
+        #if DEBUG
+        case .debugReviewTestRequested:
+            return .send(.delegate(.reviewTestRequested))
+        #endif
         }
     }
 
@@ -374,8 +389,7 @@ extension HomeReducer {
 
         case .searchEntryTapped:
             guard hasActiveSession() else {
-                authenticationRequired()
-                return .none
+                return .send(.delegate(.requestAuthentication))
             }
             map.isCurrentLocationButtonActive = false
             state.search = .init()
@@ -539,16 +553,16 @@ extension HomeReducer {
         state.map.selectedSearchResultName = nil
 
     case .requestAuthentication:
-        authenticationRequired()
+        return .send(.delegate(.requestAuthentication))
 
     case .showSnackbar(let message):
         state.presentation.pendingSnackbar = ToastStruct(message: message, state: .error)
 
     case .reviewWritingRequested(let request):
-        reviewWritingRequested(request)
+        return .send(.delegate(.reviewWritingRequested(request)))
 
     case .reviewEditingRequested(let reviewID):
-        reviewEditingRequested(reviewID)
+        return .send(.delegate(.reviewEditingRequested(reviewID)))
     }
 
     return .none

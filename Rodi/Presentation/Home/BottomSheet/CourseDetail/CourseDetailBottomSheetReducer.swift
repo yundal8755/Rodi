@@ -12,10 +12,27 @@ struct CourseDetailBottomSheetReducer: Reducer {
         var presentation: Presentation = .sheet
         var isRouteTimelineExpanded = false
         var reviews = CourseReviewReducer.State()
-        var routeGuidancePresentation: RouteGuidanceFlowPresentation?
-        var routeGuidanceRequest: RouteGuidanceFlowRequest?
-        var routeGuidanceRequestID = 0
-        var isRouteGuidanceLaunching = false
+        var routeGuidance = RouteGuidanceState()
+
+        var routeGuidancePresentation: RouteGuidanceFlowPresentation? {
+            get { routeGuidance.presentation }
+            set { routeGuidance.presentation = newValue }
+        }
+
+        var routeGuidanceRequest: RouteGuidanceFlowRequest? {
+            get { routeGuidance.request }
+            set { routeGuidance.request = newValue }
+        }
+
+        var routeGuidanceRequestID: Int {
+            get { routeGuidance.requestID }
+            set { routeGuidance.requestID = newValue }
+        }
+
+        var isRouteGuidanceLaunching: Bool {
+            get { routeGuidance.isLaunching }
+            set { routeGuidance.isLaunching = newValue }
+        }
     }
 
     enum Action {
@@ -78,6 +95,7 @@ struct CourseDetailBottomSheetReducer: Reducer {
         reviewRepository: ReviewRepository,
         practiceMeasurementStore: PracticeMeasurementStoring,
         practiceTrackingService: PracticeTrackingService,
+        routeGuidanceService: RouteGuidanceService,
         hasActiveSession: @escaping () -> Bool,
         directionsService: KakaoDirectionsService = .init(),
         onDelegate: @escaping (Delegate) -> Void = { _ in }
@@ -90,7 +108,8 @@ struct CourseDetailBottomSheetReducer: Reducer {
         routeGuidanceFlowService = .init(
             memberRepository: memberRepository,
             practiceTrackingService: practiceTrackingService,
-            directionsService: directionsService
+            directionsService: directionsService,
+            routeGuidanceService: routeGuidanceService
         )
         self.onDelegate = onDelegate
         reviewsReducer = .init(repository: reviewRepository, memberRepository: memberRepository, hasActiveSession: hasActiveSession)

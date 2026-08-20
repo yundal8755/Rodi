@@ -51,9 +51,7 @@ struct HomeView: View {
                     practiceMeasurementStore: dependencies.practiceMeasurementStore,
                     practiceTrackingService: dependencies.practiceTrackingService
                 ),
-                authenticationRequired: presentation.requestAuthentication,
-                reviewWritingRequested: presentation.reviewWritingRequested,
-                reviewEditingRequested: presentation.reviewEditingRequested
+                delegateHandler: presentation.handleDelegate
             )
         ))
     }
@@ -313,7 +311,7 @@ extension HomeView {
                     requestLocationPermission: {
                         store.send(.presentation(.setLocationSettingsAlertPresented(true)))
                     },
-                    debugReviewTestAction: presentation.reviewTestRequested,
+                    debugReviewTestAction: debugReviewTestAction,
                     debugHardWithdrawAction: {
                         try await dependencies.memberRepository.hardWithdraw()
                     }
@@ -385,6 +383,16 @@ extension HomeView {
         case .recommendList, .filter:
             break
         }
+    }
+}
+
+private extension HomeView {
+    var debugReviewTestAction: () -> Void {
+        #if DEBUG
+        return { store.send(.debugReviewTestRequested) }
+        #else
+        return {}
+        #endif
     }
 }
 

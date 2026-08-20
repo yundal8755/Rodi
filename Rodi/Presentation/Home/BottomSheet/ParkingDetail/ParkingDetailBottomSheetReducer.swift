@@ -9,10 +9,27 @@ struct ParkingDetailBottomSheetReducer: Reducer {
     struct State {
         var detail: PlaceDetail?
         var isBookmarkUpdating = false
-        var routeGuidancePresentation: RouteGuidanceFlowPresentation?
-        var routeGuidanceRequest: RouteGuidanceFlowRequest?
-        var routeGuidanceRequestID = 0
-        var isRouteGuidanceLaunching = false
+        var routeGuidance = RouteGuidanceState()
+
+        var routeGuidancePresentation: RouteGuidanceFlowPresentation? {
+            get { routeGuidance.presentation }
+            set { routeGuidance.presentation = newValue }
+        }
+
+        var routeGuidanceRequest: RouteGuidanceFlowRequest? {
+            get { routeGuidance.request }
+            set { routeGuidance.request = newValue }
+        }
+
+        var routeGuidanceRequestID: Int {
+            get { routeGuidance.requestID }
+            set { routeGuidance.requestID = newValue }
+        }
+
+        var isRouteGuidanceLaunching: Bool {
+            get { routeGuidance.isLaunching }
+            set { routeGuidance.isLaunching = newValue }
+        }
     }
 
     enum Action {
@@ -70,6 +87,7 @@ struct ParkingDetailBottomSheetReducer: Reducer {
          memberRepository: MemberRepository,
          practiceMeasurementStore: PracticeMeasurementStoring,
          practiceTrackingService: PracticeTrackingService,
+         routeGuidanceService: RouteGuidanceService,
          hasActiveSession: @escaping () -> Bool,
          onDelegate: @escaping (Delegate) -> Void = { _ in }) {
         self.placeRepository = placeRepository
@@ -78,7 +96,9 @@ struct ParkingDetailBottomSheetReducer: Reducer {
         self.hasActiveSession = hasActiveSession
         routeGuidanceFlowService = .init(
             memberRepository: memberRepository,
-            practiceTrackingService: practiceTrackingService
+            practiceTrackingService: practiceTrackingService,
+            directionsService: .init(),
+            routeGuidanceService: routeGuidanceService
         )
         self.onDelegate = onDelegate
     }

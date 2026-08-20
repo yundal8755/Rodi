@@ -23,7 +23,7 @@ struct HomeBottomSheetView: View {
     let onCourseExpansionSettled: () -> Void
     let requestLocationPermission: () -> Void
     let debugReviewTestAction: () -> Void
-    let debugHardWithdrawAction: @MainActor @Sendable () async throws -> Void
+    let debugHardWithdrawAction: @MainActor () async throws -> Void
 
     init(
         state: HomeBottomSheetReducer.State,
@@ -37,7 +37,7 @@ struct HomeBottomSheetView: View {
         onCourseExpansionSettled: @escaping () -> Void = {},
         requestLocationPermission: @escaping () -> Void,
         debugReviewTestAction: @escaping () -> Void = {},
-        debugHardWithdrawAction: @escaping @MainActor @Sendable () async throws -> Void = {}
+        debugHardWithdrawAction: @escaping @MainActor () async throws -> Void = {}
     ) {
         self.state = state
         self.send = send
