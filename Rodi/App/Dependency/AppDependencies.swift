@@ -21,7 +21,7 @@ final class AppDependencies {
     let practiceMeasurementStore: PracticeMeasurementStoring
     let practiceTrackingService: PracticeTrackingService
     let practiceLiveActivityService: PracticeLiveActivityService
-    let levelUpPresentationStore: LevelUpPresentationStoring
+    let levelUpPresentationStore: LevelUpPresentationStore
 
     init() {
         let tokenStore = KeychainTokenStore()
