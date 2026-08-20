@@ -54,8 +54,7 @@
 | P1-10 | 완료 | `PracticeTracking/Service/PracticeTrackingService.swift` | 423줄 singleton이 위치 runtime, 인증 재시도 `Task`, Live Activity, session 저장과 background lifecycle을 소유한다. | 인증 재시도 Task를 service가 명시 소유하고, 취소·새 요청·늦은 응답을 request ID로 차단한다. | 앱 복귀, 측정 취소·완료, 인증 재시도, Live Activity start/sync/end, 늦은 응답 |
 | P1-11 | 완료 | `Review/Flow/ReviewFlowRefreshService.swift`, `ReviewFlowCoordinatorReducer.swift` | refresh service가 조회 결과를 버리며, coordinator가 완료 refresh ID와 화면별 갱신 request ID를 중재한다. | 결과를 소비하지 않는 prefetch를 제거하고 기존 완료 request ID 갱신으로 최신화를 요청한다. | 홈·마이·내 게시글·코스 상세의 후기 완료/취소 후 최신화 |
 | P1-12 | 미착수 | `Home/Map` | 지도 카메라·마커·권한·Kakao SDK event가 Home child state에 있으나 별도 reducer로 추출하려면 mapper와 request revision ownership을 함께 옮겨야 한다. | 재현 가능한 지도 lifecycle 문제 또는 충분한 단위 테스트가 생길 때 named child reducer로 분리한다. | 위치 권한·카메라·marker·화면 이탈 후 늦은 응답 |
-| P1-13 | 미착수 | `CourseDetail`, `ParkingDetail` 길안내 | 두 상세 reducer의 route guidance Action은 유사하지만 장소별 측정·route overlay 정책이 다르다. | 공통 `RouteGuidance` child reducer 후보를 별도 설계·QA 후 검토한다. | 코스/주차장 선택·설정 복귀·외부 앱 실패·중복 탭 |
-| P1-14 | 미착수 | `HomePresentation` → `HomeBottomSheet` 추천목록 | Debug 후기·강제 탈퇴 callback이 일반 Presentation 계약을 따라 전달된다. | Debug 전용 action payload를 `#if DEBUG` 경계로 한정하고 Release 계약에서 제거한다. | Debug 테스트 진입, Release build의 일반 추천목록 |
+| P1-13 | 진행 중 | `CourseDetail`, `ParkingDetail` 길안내 | 두 상세 reducer의 route guidance Action은 유사하지만 장소별 측정·route overlay 정책이 다르다. | `RouteGuidanceFlowService`의 hidden singleton 기본값을 제거했고, 공통 `RouteGuidanceState`로 presentation·request·revision·launch 상태를 통일했다. 장소별 정책 회귀 QA와 함께 action/effect child 분리는 다음 묶음에서 진행한다. | 코스/주차장 선택·설정 복귀·외부 앱 실패·중복 탭 |
 
 ### P2 — 레이아웃·유지보수
 
@@ -94,6 +93,10 @@
 
 | 완료일 | 대상 | 정리 결과 | 검증 |
 | --- | --- | --- | --- |
+| 2026-08-20 | Home 상위 delegate | 인증·후기 작성·수정 closure를 `HomeReducer.Delegate`로 통합하고 MainTab이 기존 로그인·Review flow로 중계하게 했다. | Dev Debug build, Release build, 수동 QA 대기 |
+| 2026-08-20 | Home Debug 계약 | Debug 후기 요청을 `#if DEBUG` Home action·delegate로 한정해 Release `HomePresentation`에서 제거했다. | Dev Debug build, Release build, 수동 QA 대기 |
+| 2026-08-20 | My 권한·조립 | 권한 시스템 접근을 Adapter/Reducer로 이동하고 destination 의존성·social session 조립을 feature dependency로 축소했다. | Dev Debug build, 수동 QA 대기 |
+| 2026-08-20 | 코스 등록 진입 | MainTab/My가 `CourseRegistrationPresentation`·feature dependency로 같은 등록 entry contract를 사용하게 했다. | Dev Debug build, Release build, 수동 QA 대기 |
 | 2026-08-19 | `Home/BottomSheet/CourseDetail`, `ParkingDetail` 길안내 | View의 `RouteGuidanceService.shared`·View 내부 `Task`를 제거하고, BottomSheet reducer와 `RouteGuidanceFlowService`가 dialog·측정 준비·외부 앱 실행·stale result를 소유하게 했다. | Dev Debug build, 정적 검색, 수동 QA 대기 |
 | 2026-08-19 | `My` 로그아웃 SDK 호출 | `MyReducer`의 Kakao SDK 직접 callback을 `Login/Service/SocialSessionService` contract로 이동했다. | Dev Debug build, 수동 로그아웃 QA 대기 |
 | 2026-08-19 | Login SDK bridge | Apple authorization continuation과 Kakao callback·timeout을 `Login/Adapter`로 이동하고, `SocialLoginService`는 provider fallback·credential orchestration만 소유하도록 축소했다. | Dev Debug build, 수동 Kakao/Apple 취소·fallback QA 대기 |

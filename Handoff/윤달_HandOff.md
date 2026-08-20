@@ -6,7 +6,23 @@
 - 작업 상태: Presentation 리팩터링 진행 중
 
 ## Recent Work
+- 1.4.2 개인정보처리방침과 위치기반서비스 이용약관에서 Keychain·UserDefaults·토큰·기기 저장소 등 개발 구현 표현을 제거하고, 이용자 관점의 로그인·연습 진행 정보 처리 문구로 정리했다.
+- 완료 Live Activity의 `기록하러 가기` 딥링크 소비 시 코스는 연습기록 이동, 주차장은 홈 이동 후 해당 완료 Activity만 즉시 종료하도록 처리했다.
 
+- 1.4.2 공개 전 검토용 서비스 이용약관·개인정보처리방침·위치기반서비스 이용약관 최종 본문을 `Docs/temp`에 작성했다. Google Sites 현행 17·14·12개 조문을 보존하고 코스 등록·후기·신고·차단·활성 연습·Live Activity·Firebase·Clarity 변경만 해당 조항에 반영했다. 앱 코드·공개 Google Sites URL은 변경하지 않았다.
+- Home 인증·후기 작성·수정 상위 callback을 `HomeReducer.Delegate` 하나로 통합하고, MainTab이 기존 로그인·Review flow로 중계하게 정리했다. `HomePresentation`에서 개별 상위 callback을 제거했다.
+- My 권한 설정의 시스템 권한 조회·설정 앱 이동을 `MyPermissionSettingsAdapter`와 reducer로 분리했다. MyView는 destination dependency payload를 사용하고, `SocialSessionService` 생성도 feature dependency로 옮겼다.
+- MainTab과 My가 코스 등록 flow를 조립할 때 공통 `CourseRegistrationPresentation`·`CourseRegistrationFeatureDependencies` 계약을 사용하게 통일했다.
+- Debug 후기 요청은 `HomePresentation` callback이 아니라 Debug 전용 `HomeReducer` action·delegate로만 MainTab에 전달하게 했고, 길안내 flow service의 hidden singleton 기본값을 explicit injection으로 교체했다.
+- 1.4.2 출시 검증 중 Prod Release simulator build가 성공했다. 다만 현재 Prod xcconfig의 marketing version은 아직 `1.4.1 (0)`이므로 1.4.2 배포 전 버전 변경이 필요하다.
+- Debug 테스트 페이지의 Live Activity 선택지를 이동 중, 주행 중, 방금 출발, 코스 완료 저장 중, 코스 완료 기록 이동, 주차장 완료 홈 이동의 6개 프리뷰로 확장했다.
+- 홈 지도 cluster의 구성원이 한 개면 줌 단계와 무관하게 cluster count marker 대신 원래 코스·주차장 단일 마커를 표시하도록 수정했다.
+- 코스 완료 Live Activity는 방문 기록 저장 중에는 `연습기록을 저장하고 있어요.`만 표시하고, `register → recordVisit` 성공 뒤에만 30분 유지되는 `기록하러 가기` 카드를 표시하도록 바꿨다. 주차장 완료 카드는 기존 문구를 유지하되 홈 deep link로 이동한다.
+- `rodi://practice-records`는 마이 > 연습기록으로 이동하며, 이미 열린 연습기록도 reload Action으로 GET을 다시 실행한다. `rodi://home`은 추천 목록을 열지 않고 홈 root만 선택한다.
+- 코스 후기 권유는 GPS 인증 방문 기록이 성공한 경우에만 표시하도록 바꿨다. 코스에는 10분 대기 조건을 적용하지 않으며, 인증 완료 코스의 `안 했어요`는 미방문 사유 API를 호출하지 않고 팝업만 닫는다. 주차장 정책은 유지했다.
+- 완료 Live Activity의 `기록하러 가기`를 `rodi://practice-records` deep link로 연결했다. 앱은 기존 MainTab·My route를 재사용해 마이 > 연습기록만 열며, CTA에서 방문·후기 API를 직접 호출하지 않는다.
+- 코스 등록 한줄 소개에만 쓰는 입력 검증 Component를 추가했다. 한 글자라도 입력한 뒤 10자 미만이면 빨간 테두리·길이 안내·`현재 글자 수/최대 글자 수`를 표시하며, 다시 0자로 지워도 해당 상태를 유지한다. Core `RodiTextField`는 수정하지 않았다.
+- Prod 강제 업데이트와 Live Activity 완료 행동을 정적 점검했다. App Store 조회는 현재 1.4.1을 반환하며 1.4.0 Prod에는 필수 업데이트 dialog가 표시되는 조건이다. 다만 완료 Live Activity의 `기록하러 가기`는 deep link·`widgetURL`·앱 route 처리 없이 텍스트만 렌더링되어 있다.
 - 코스 polyline 카메라의 기본 여백과 최소 span을 줄여, 코스 마커 선택 뒤 경로가 지도 영역을 더 크게 채우도록 조정했다. 추천 목록의 코스·주차장 행 선택은 상위 Home delegate를 통해 검색창 선택 상태를 즉시 갱신하도록 연결했다.
 - 코스 등록 검색에 최근 검색어가 없을 때 중앙 empty state를 추가했고, 경유지 삭제 뒤 남은 출발지·도착지 기준 route를 즉시 재조회하도록 보완했다.
 - 추천 목록·코스·주차장 바텀시트의 제목 비버튼 영역에도 기존 vertical pan을 연결했다. indicator의 기존 동작은 보존하고 filter·닫기·북마크 버튼은 drag overlay에서 제외했다.
@@ -74,9 +90,18 @@
 
 ## Next
 
+- Home Map child reducer와 길안내 action/effect child 분리는 현재 sibling 상태 결합을 typed delegate로 해소하는 별도 구조 리팩터링으로 계속 진행한다. 이번에는 코스·주차장 길안내의 공통 상태(`RouteGuidanceState`)만 먼저 통일했다.
+
+- 1.4.2 공개 전 운영·법무가 `Docs/temp` 약관 개정안의 시행일, Firebase·Clarity 국외 이전·보유 기간, 위치정보 사실확인자료 보관 정책, 위치기반서비스사업자 신고 정보를 확정한 뒤 Google Sites 공개본에 반영한다.
+- Home Map child reducer와 코스·주차장 길안내 named child는 request revision·effect cancellation의 현재 owner를 보존하는 별도 구조 리팩터링 묶음으로 진행한다.
+- iPhone 12 Pro에서 코스 완료 직후 저장 중 카드, 저장 성공 뒤 연습기록 GET·VISITED 행, 저장 실패 후 앱 활성 재시도, 주차장 완료 카드의 홈 이동을 수동 QA한다.
+- iPhone 12 Pro에서 GPS 코스 완료 후 즉시 후기 팝업, 인증 전/실패 시 미노출, `X`·`안 했어요`의 연습기록 유지, 주차장 기존 흐름을 수동 QA한다.
+- iPhone 12 Pro에서 한줄 소개의 첫 입력, 10자 미만·10자 이상 전환, 다시 0자로 삭제한 뒤 검증 문구·테두리·카운터 상태를 수동 QA한다.
+- iPhone 12 Pro에서 완료 Live Activity의 `기록하러 가기`가 마이 > 연습기록으로 이동하고, 방문·후기 API를 추가 호출하지 않는지 수동 QA한다.
 - iPhone 12 Pro에서 코스 마커 선택 후 polyline 카메라 범위와 추천 목록 장소 선택 뒤 검색창의 뒤로가기·장소명 표시를 수동 QA한다.
 - iPhone 12 Pro에서 최초 출발지 선택 전 검색 진입과 도로 경로 조회 실패 뒤 중앙 핀 유지 상태를 수동 QA한다.
 - 실제 Fastlane 배포 전에는 `fastlane/.env.example`을 참고해 로컬 또는 CI에 `FASTLANE_ITC_TEAM_ID`, `FASTLANE_TEAM_ID`를 제공하고, local secrets의 환경별 `APP_STORE_APP_ID`를 확인한다.
+- 1.4.2 출시 전 `Config/Prod.xcconfig`의 `MARKETING_VERSION`을 `1.4.2`로 올리고, App Store Connect privacy·legal·support URL 사람 확인 항목을 마무리한다.
 - iPhone 12 Pro에서 경유지 삭제·주소 유지, My 프로필/설정/연습기록/드롭다운, 주차장 팝업 X 후 연습기록 저장을 수동 QA한다.
 - iPhone 12 Pro에서 코스 등록 튜토리얼 drag·상단 완료, 중앙 핀 주소 preview, 출발지/도착지 확정, 지역 검색 이동과 빈 결과 화면을 수동 QA한다.
 - P1 Debug callback의 Release 계약 제거와 Home Map·길안내 child reducer 분리 후보를 별도 묶음으로 검토한다.
@@ -90,7 +115,18 @@
 - Presentation 리팩터링 backlog의 My Posts pagination·삭제 flow, Onboarding route host, MainTab intent, Home child ownership 항목을 순서대로 진행한다.
 
 ## Validation
+- `RouteGuidanceState` 공통화 뒤 `Rodi Dev` Debug simulator build 성공, `git diff --check` 통과. 코스·주차장 길안내 수동 QA 대기.
+- 약관의 개발 구현 표현 정리 뒤 `Keychain`, `UserDefaults`, 토큰, 기기 저장소, `viewport` 잔여 문구를 정적 검사했고 `git diff --check`를 통과했다.
+- 완료 Live Activity 딥링크 소비·즉시 종료 변경 뒤 `Rodi Dev` Debug simulator build 성공, 변경 파일 `git diff --check` 통과. 실기기에서 코스·주차장 완료 카드 탭 뒤 즉시 사라짐 수동 QA 대기.
 
+- 약관 최종 본문 3종의 현행 공개본 17·14·12개 조문, Release·Privacy Manifest·활성 연습·관측 SDK 구현 정적 대조와 `git diff --check`를 완료했다. Google Sites 게시 전 시행일·국외 이전 세부 기준·위치정보 사실확인자료 보관 정책은 운영·법무 확인이 필요하다.
+- Home typed Delegate, My 권한 Adapter, 코스 등록 공통 진입 계약 변경 뒤 `Rodi Dev` Debug 및 `Rodi` Release simulator build 성공. 수동 Home 인증·후기, 권한 설정 복귀, MainTab/My 코스 등록 진입 QA 대기.
+- Live Activity Debug 프리뷰 확장 뒤 `Rodi Dev` Debug build 성공, `git diff --check` 통과. 기기에서 각 프리뷰의 Lock Screen·Dynamic Island와 deep link 수동 확인 대기.
+- 단일 cluster marker 렌더링 변경 뒤 `Rodi Dev` Debug build 성공, `git diff --check` 통과. 지도 줌 단계별 수동 QA 대기.
+- 코스/주차장 Live Activity 완료 이동 변경 뒤 `Rodi Dev` Debug build 성공, `git diff --check` 통과. 실기기 Live Activity·서버 흐름 수동 QA 대기.
+- 코스 후기 권유 조건 변경 뒤 `Rodi Dev` Debug build 성공. 정적 확인으로 코스 `skip-reason` 호출을 차단했으며 수동 QA 대기.
+- 코스 후기 권유·완료 Live Activity route 변경 뒤 `Rodi Dev` Debug build 성공. `git diff --check` 수동 QA 대기.
+- 코스 등록 한줄 소개 입력 검증 변경 뒤 `Rodi Dev` Debug build 성공, `git diff --check` 통과. 수동 UI QA 대기.
 - 코스 polyline camera fit·추천 목록 검색창 선택 상태 변경 뒤 `Rodi Dev` Debug build 성공, `git diff --check` 통과. 수동 UI QA 대기.
 - 코스 등록 최근 검색 empty state·경유지 삭제 route 재조회 변경 뒤 `Rodi Dev` Debug build 성공, `git diff --check` 통과. 수동 QA 대기.
 - 바텀시트 제목 drag hit 영역 확장 뒤 `Rodi Dev` Debug build 성공. `git diff --check`와 실기기 drag·버튼 터치 수동 QA 대기.
@@ -129,3 +165,4 @@
 - 튜토리얼 stepper의 드래그 중간 진행값 제거 뒤 `Rodi Dev` Debug build 성공. 수동 UI QA 대기.
 - 네트워크 단절 표시·코스 등록 주소 preview·바텀시트 drag hit 영역 변경 뒤 `Rodi Dev` Debug build 성공. 수동 UI QA 대기.
 - 검색 skeleton·GPS 미수신 단일 안내·경유지 placeholder·바텀시트 drag 복구 변경 뒤 빌드 및 수동 QA 대기.
+- Prod Release simulator build 성공. resolve 값은 `com.dororong.rodi`, `prod`, `1.4.1 (0)`이며, 1.4.2 버전 수정 전에는 Fastlane 업로드를 실행하지 않는다.
