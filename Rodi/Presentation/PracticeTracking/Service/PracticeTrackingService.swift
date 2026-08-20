@@ -248,12 +248,16 @@ final class PracticeTrackingService: NSObject, ObservableObject {
             stopLocationUpdates()
             endBackgroundActivitySession()
             didStartSessionInCurrentProcess = false
-            finishLiveActivity(session)
-            markCertificationPending(for: session)
+            self.session = session
+            sessionStore.save(session)
+            markCertificationPending(for: session, retryImmediately: false)
+            syncLiveActivity(session, completionRecordState: .saving, force: true)
+            retryCertificationIfNeeded()
             RodiLogger.info(
                 "Practice tracking completed sessionID=\(session.id.uuidString), progress=\(session.courseProgress), seconds=\(session.activeDrivingSeconds)"
             )
             RodiAnalytics.track(.practiceTrackingCompleted(placeType: session.analyticsPlaceType))
+            return
         }
 
         self.session = session
@@ -299,14 +303,19 @@ final class PracticeTrackingService: NSObject, ObservableObject {
         lastInCourseLocation = location
     }
 
-    private func markCertificationPending(for session: PracticeTrackingSession) {
+    private func markCertificationPending(
+        for session: PracticeTrackingSession,
+        retryImmediately: Bool = true
+    ) {
         guard var measurement = measurementStore.load(), measurement.id == session.id else { return }
         measurement.status = .certificationPendingRegistration
         measurement.certifiedDistanceMeters = session.isParking
             ? nil
             : Int(session.drivenRouteDistance.rounded())
         measurementStore.save(measurement)
-        retryCertificationIfNeeded()
+        if retryImmediately {
+            retryCertificationIfNeeded()
+        }
     }
 
     func retryCertificationIfNeeded() {
@@ -348,6 +357,12 @@ final class PracticeTrackingService: NSObject, ObservableObject {
                 current.status = .certified
                 self.measurementStore.save(current)
                 self.certificationRevision += 1
+                if !current.isParking,
+                   let completedSession = self.session,
+                   completedSession.id == current.id,
+                   completedSession.phase == .completed {
+                    self.finishLiveActivity(completedSession, completionRecordState: .saved)
+                }
             } catch is CancellationError {
                 return
             } catch {
@@ -367,7 +382,13 @@ final class PracticeTrackingService: NSObject, ObservableObject {
     /// 외부 길안내가 열린 뒤에만 측정 후보를 저장하므로, 도착 지점에서 즉시 종료된 세션도 인증 대기 상태로 전환한다.
     func synchronizeCompletedSessionCertificationIfNeeded() {
         guard let session, session.phase == .completed else { return }
-        markCertificationPending(for: session)
+        if session.isParking {
+            markCertificationPending(for: session)
+        } else {
+            markCertificationPending(for: session, retryImmediately: false)
+            syncLiveActivity(session, completionRecordState: .saving, force: true)
+            retryCertificationIfNeeded()
+        }
     }
 
     private func stopLocationUpdates() {
@@ -408,14 +429,28 @@ final class PracticeTrackingService: NSObject, ObservableObject {
         PracticeLiveActivityService.shared.start(for: session)
     }
 
-    private func syncLiveActivity(_ session: PracticeTrackingSession, force: Bool = false) {
+    private func syncLiveActivity(
+        _ session: PracticeTrackingSession,
+        completionRecordState: PracticeLiveActivityService.CompletionRecordState? = nil,
+        force: Bool = false
+    ) {
         guard #available(iOS 16.1, *) else { return }
-        PracticeLiveActivityService.shared.sync(session, force: force)
+        PracticeLiveActivityService.shared.sync(
+            session,
+            completionRecordState: completionRecordState,
+            force: force
+        )
     }
 
-    private func finishLiveActivity(_ session: PracticeTrackingSession) {
+    private func finishLiveActivity(
+        _ session: PracticeTrackingSession,
+        completionRecordState: PracticeLiveActivityService.CompletionRecordState? = nil
+    ) {
         guard #available(iOS 16.1, *) else { return }
-        PracticeLiveActivityService.shared.finish(session)
+        PracticeLiveActivityService.shared.finish(
+            session,
+            completionRecordState: completionRecordState
+        )
     }
 
     private func cancelLiveActivity() {

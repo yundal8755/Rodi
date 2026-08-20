@@ -6,10 +6,12 @@
 import Foundation
 
 enum MainTabIntent: Equatable {
+    case openHome
     case presentHomeList
     case openHomePlace(PlaceListItem)
     case openMyProfile
     case openMySavedPlaces
+    case openMyPracticeRecords
     case openCourseRegistration
 }
 
@@ -27,6 +29,7 @@ struct MainTabReducer: Reducer {
         var isHomeBottomTabBarVisible = true
         var homePlaceSelectionRequest: HomePlaceSelectionRequest?
         var myDataRefreshRequestID = 0
+        var practiceRecordsNavigationRequestID = 0
         fileprivate var nextHomePlaceSelectionRequestID = 0
     }
 
@@ -97,6 +100,9 @@ extension MainTabReducer {
             if selectedTab == .my {
                 requestMyDataRefresh(state: &state)
             }
+            if case .openMyPracticeRecords = intent {
+                state.practiceRecordsNavigationRequestID += 1
+            }
             state.navigationIntent = intent
             if case .openHomePlace(let place) = intent {
                 state.nextHomePlaceSelectionRequestID += 1
@@ -129,9 +135,9 @@ extension MainTabReducer {
 
     private func tab(for intent: MainTabIntent) -> RodiTab {
         switch intent {
-        case .presentHomeList, .openHomePlace:
+        case .openHome, .presentHomeList, .openHomePlace:
             .home
-        case .openMyProfile, .openMySavedPlaces:
+        case .openMyProfile, .openMySavedPlaces, .openMyPracticeRecords:
             .my
         case .openCourseRegistration:
             .register

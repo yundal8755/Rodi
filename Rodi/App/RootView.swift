@@ -38,6 +38,7 @@ struct RootView: View {
                     tokenStore: dependencies.tokenStore,
                     authRepository: dependencies.authRepository,
                     onboardingProgressStore: onboardingProgressStore,
+                    practiceLiveActivityService: dependencies.practiceLiveActivityService,
                     reviewFlowReducer: reviewFlowReducer,
                     practiceTrackingReducer: practiceTrackingReducer
                 )
@@ -108,7 +109,9 @@ struct RootView: View {
             }
         }
         .onOpenURL { url in
-            _ = SocialLoginService.handleOpenURL(url)
+            if !SocialLoginService.handleOpenURL(url) {
+                store.send(.urlOpened(url))
+            }
         }
     }
 
@@ -148,6 +151,7 @@ extension RootView {
                     },
                     requestLogin: { store.send(.loginRequired($0)) },
                     onLogoutCompleted: { store.send(.logoutCompleted) },
+                    navigationRequestID: store.state.navigationRequestID,
                     homeTabSelectionRequestID: store.state.homeTabSelectionRequestID,
                     homeReviewFlowFinishedRequestID: store.state.reviewFlow.homeFinishedRequestID,
                     myPracticeRecordsReviewFlowFinishedRequestID: store.state.reviewFlow.myPracticeRecordsFinishedRequestID,

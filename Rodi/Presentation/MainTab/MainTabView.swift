@@ -40,20 +40,13 @@ struct MainTabView: View {
                     placeSelectionRequest: store.state.homePlaceSelectionRequest,
                     reviewFlowFinishedRequestID: presentation.homeReviewFlowFinishedRequestID,
                     courseDetailReviewPresentation: presentation.courseDetailReviewPresentation,
-                    requestAuthentication: { presentation.requestLogin(nil) },
-                    reviewTestRequested: presentation.onReviewTestRequested,
                     bottomTabBarVisibilityChanged: {
                         store.send(.homeBottomTabBarVisibilityChanged($0))
                     },
                     placeSelectionHandled: {
                         store.send(.homePlaceSelectionHandled($0))
                     },
-                    reviewWritingRequested: {
-                        presentation.onReviewRequested(.init(writeRequest: $0, entrySource: .courseDetail))
-                    },
-                    reviewEditingRequested: {
-                        presentation.onReviewRequested(.init(editingReviewID: $0, entrySource: .courseDetail))
-                    }
+                    handleDelegate: handleHomeDelegate
                 ),
                 bottomTabBarHeight: RodiBottomTabBar.totalHeight(
                     safeAreaBottom: screenSafeAreaInsets.bottom
@@ -76,6 +69,7 @@ struct MainTabView: View {
                 onReviewEditRequested: {
                     presentation.onReviewRequested(.init(editingReviewID: $0, entrySource: .myPosts))
                 },
+                practiceRecordsNavigationRequestID: store.state.practiceRecordsNavigationRequestID,
                 myPracticeRecordsReviewFlowFinishedRequestID: presentation.myPracticeRecordsReviewFlowFinishedRequestID,
                 myPostsReviewFlowFinishedRequestID: presentation.myPostsReviewFlowFinishedRequestID,
                 isCourseTutorialCompleted: presentation.isCourseTutorialCompleted,
@@ -88,14 +82,16 @@ struct MainTabView: View {
 
             if store.state.selectedTab == .register {
                 CourseRegistrationView(
-                    isCourseTutorialCompleted: presentation.isCourseTutorialCompleted,
-                    memberRepository: dependencies.memberRepository,
-                    courseRepository: dependencies.courseRepository,
-                    closeAction: { store.send(.courseRegistrationExited) },
-                    tutorialCompletedAction: presentation.onCourseTutorialCompleted,
-                    courseRegistrationCompletedAction: {
-                        store.send(.courseRegistrationExited)
-                    }
+                    presentation: .init(
+                        isTutorialCompleted: presentation.isCourseTutorialCompleted,
+                        close: { store.send(.courseRegistrationExited) },
+                        tutorialCompleted: presentation.onCourseTutorialCompleted,
+                        registrationCompleted: { store.send(.courseRegistrationExited) }
+                    ),
+                    dependencies: .init(
+                        memberRepository: dependencies.memberRepository,
+                        courseRepository: dependencies.courseRepository
+                    )
                 )
                 .transition(.opacity)
                 .zIndex(2)
@@ -116,6 +112,9 @@ struct MainTabView: View {
         .onAppear {
             consumePendingAuthenticationIntentIfNeeded()
             selectHomeAfterAuthenticationIfNeeded()
+        }
+        .onChange(of: presentation.navigationRequestID) { _ in
+            consumePendingAuthenticationIntentIfNeeded()
         }
         .onChange(of: presentation.homeTabSelectionRequestID) { _ in
             selectHomeAfterAuthenticationIfNeeded()
@@ -161,6 +160,9 @@ private extension MainTabView {
 
     func handleNavigationIntent(_ intent: MainTabIntent) {
         switch intent {
+        case .openHome:
+            break
+
         case .presentHomeList:
             homeListPresentationRequestID += 1
 
@@ -173,10 +175,31 @@ private extension MainTabView {
         case .openMySavedPlaces:
             myCoordinator.router.replace(with: [.savedPlaces])
 
+        case .openMyPracticeRecords:
+            myCoordinator.router.replace(with: [.practiceRecords])
+
         case .openCourseRegistration:
             break
         }
 
         store.send(.navigationHandled)
+    }
+
+    func handleHomeDelegate(_ delegate: HomeReducer.Delegate) {
+        switch delegate {
+        case .requestAuthentication:
+            presentation.requestLogin(nil)
+
+        case .reviewWritingRequested(let request):
+            presentation.onReviewRequested(.init(writeRequest: request, entrySource: .courseDetail))
+
+        case .reviewEditingRequested(let reviewID):
+            presentation.onReviewRequested(.init(editingReviewID: reviewID, entrySource: .courseDetail))
+
+        #if DEBUG
+        case .reviewTestRequested:
+            presentation.onReviewTestRequested()
+        #endif
+        }
     }
 }

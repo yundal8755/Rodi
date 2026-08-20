@@ -20,12 +20,14 @@ final class AppDependencies {
     let recentLoginProviderStore: RecentLoginProviderStore
     let practiceMeasurementStore: PracticeMeasurementStoring
     let practiceTrackingService: PracticeTrackingService
+    let practiceLiveActivityService: PracticeLiveActivityService
     let levelUpPresentationStore: LevelUpPresentationStoring
 
     init() {
         let tokenStore = KeychainTokenStore()
         let recentLoginProviderStore = RecentLoginProviderStore()
         let practiceTrackingService = PracticeTrackingService.shared
+        let practiceLiveActivityService = PracticeLiveActivityService.shared
         let unauthenticatedNetworkManager = NetworkManager()
         let authRemoteDataSource = AuthRemoteDataSource(
             networkManager: unauthenticatedNetworkManager
@@ -45,6 +47,7 @@ final class AppDependencies {
         self.recentLoginProviderStore = recentLoginProviderStore
         practiceMeasurementStore = PracticeMeasurementStore()
         self.practiceTrackingService = practiceTrackingService
+        self.practiceLiveActivityService = practiceLiveActivityService
         levelUpPresentationStore = LevelUpPresentationStore(tokenStore: tokenStore)
 
         authRepository = AuthRepositoryImpl(

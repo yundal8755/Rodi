@@ -177,20 +177,43 @@ private struct PracticeActivityView: View {
                 Text("오늘의 운전연습을 완료했어요!")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(PracticeActivityPalette.primary)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("오늘도 한 걸음 성장했어요.")
-                    Text("Rodi로 돌아가 기록을 남겨주세요.")
+                if isCourseRecordSaving {
+                    Text("연습기록을 저장하고 있어요.")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(PracticeActivityPalette.gray800)
+                } else {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("오늘도 한 걸음 성장했어요.")
+                        Text("Rodi로 돌아가 기록을 남겨주세요.")
+                    }
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(PracticeActivityPalette.gray800)
                 }
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(PracticeActivityPalette.gray800)
             }
-            Text("기록하러 가기")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 7)
-                .background(PracticeActivityPalette.primary, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            if !isCourseRecordSaving {
+                Link(destination: completionDestination) {
+                    Text("기록하러 가기")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                        .background(PracticeActivityPalette.primary, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .accessibilityLabel(isParking ? "홈으로 이동" : "연습기록으로 이동")
+            }
         }
+    }
+
+    private var isParking: Bool {
+        context.attributes.placeTypeRawValue == "parking"
+    }
+
+    private var isCourseRecordSaving: Bool {
+        !isParking && context.state.completionRecordStateRawValue == "saving"
+    }
+
+    private var completionDestination: URL {
+        URL(string: isParking ? "rodi://home" : "rodi://practice-records")!
     }
 
     static func phaseTitle(for state: PracticeLiveActivityAttributes.ContentState) -> String {

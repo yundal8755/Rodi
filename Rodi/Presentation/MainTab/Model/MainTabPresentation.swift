@@ -13,6 +13,7 @@ struct MainTabPresentation {
     let consumePendingAuthenticationIntent: () -> MainTabIntent?
     let requestLogin: (MainTabIntent?) -> Void
     let onLogoutCompleted: () -> Void
+    let navigationRequestID: Int
     let homeTabSelectionRequestID: Int
     let homeReviewFlowFinishedRequestID: Int
     let myPracticeRecordsReviewFlowFinishedRequestID: Int

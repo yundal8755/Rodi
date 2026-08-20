@@ -81,6 +81,10 @@ extension PracticeReturnReducer {
             trackingService.cancel()
             state.activeMeasurementContinuation = nil
             guard var measurement = measurementStore.load() else { return .none }
+            guard measurement.isParking else {
+                measurementStore.clear()
+                return .none
+            }
             guard hasElapsedPromptDelay(since: measurement.externalHandoffAt) else {
                 measurementStore.clear()
                 return .none
@@ -178,6 +182,15 @@ private extension PracticeReturnReducer {
             return .none
         }
 
+        // GPS 인증이 끝난 코스의 방문 기록은 이미 서버에 저장되어 있다.
+        // 미방문 사유로 상태를 바꾸지 않고 팝업만 닫는다.
+        if !measurement.isParking,
+           measurement.status == .certified,
+           interaction == .notVisited {
+            removePendingMeasurement(state: &state)
+            return .send(.delegate(.reviewPromptInteraction(.closed)))
+        }
+
         if measurement.isParking,
            interaction != .notVisited,
            measurement.status != .certified,
@@ -260,8 +273,12 @@ private extension PracticeReturnReducer {
     }
 
     func isReviewEligible(_ measurement: PracticeMeasurement) -> Bool {
-        guard measurement.status == .certified || measurement.status == .awaitingReturn else { return false }
-        return hasElapsedPromptDelay(since: measurement.externalHandoffAt)
+        if measurement.isParking {
+            guard measurement.status == .certified || measurement.status == .awaitingReturn else { return false }
+            return hasElapsedPromptDelay(since: measurement.externalHandoffAt)
+        }
+
+        return measurement.status == .certified
     }
 
     func hasElapsedPromptDelay(since date: Date?) -> Bool {
