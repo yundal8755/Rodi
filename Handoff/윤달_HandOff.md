@@ -3,9 +3,10 @@
 ## Current
 
 - 브랜치: `test/1.4.2-refactoring`
-- 작업 상태: Dev 외부 길안내 10초 종료·방문 기록 흐름 미해결 — 원인 추적 대기
+- 작업 상태: 1.4.2 TestFlight 업로드 완료 · Dev 외부 길안내 10초 종료·방문 기록 흐름 미해결 — 원인 추적 대기
 
 ## Recent Work
+- Prod `1.4.2 (1)` archive와 TestFlight 업로드를 완료했다. App Store Connect의 build processing·배포 가능 상태 확인이 남아 있다.
 - Dev 외부 길안내 10초 테스트는 세션·lifecycle guard를 완화했지만 실제 기기에서 `register → recordVisit`와 후기 권유가 실행되지 않아 미해결 과제로 전환했다. 다음 작업은 action 도달, 저장 측정 상태, Debug 조건, POST 결과를 비식별 로그로 추적하는 것이다.
 - Dev/Prod 코스 연습은 활성 측정이 남아 있으면 이탈 시간과 무관하게 연속 측정 dialog를 연다. Prod는 GPS 인증·방문 기록 성공 코스에만 후기 권유를 연다. Dev의 10초 이탈 뒤 `측정 종료 → register → recordVisit → 후기 권유` 테스트 경로는 실제 기기에서 실패해 원인 확인이 필요하다.
 - 추천 목록이 중간 높이의 빈 결과를 표시할 때만 indicator 아래에 레이아웃을 바꾸지 않는 48pt 투명 수직 drag 영역을 추가했다. 기존 제목·필터·빈 결과 콘텐츠의 터치 계약은 변경하지 않았다.
@@ -158,6 +159,7 @@
 - Presentation 리팩터링 backlog의 My Posts pagination·삭제 flow, Onboarding route host, MainTab intent, Home child ownership 항목을 순서대로 진행한다.
 
 ## Validation
+- `bundle exec fastlane ios prod_beta`로 Prod `1.4.2 (1)` archive·IPA export·App Store Connect 업로드 성공을 확인했다. App Store Connect build processing 완료 확인은 별도다.
 - Dev 외부 길안내 10초 이탈 뒤 측정 종료의 실제 기기 검증은 실패했다. simulator build·단위 테스트 통과는 해당 외부 앱 왕복·POST 흐름을 보장하지 않으므로 미해결로 기록했다.
 - Dev 종료 조건의 lifecycle fallback 보정 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 (iOS 17.2) `PracticeTrackingRestorationDecisionTests` 통과, `git diff --check` 통과. 실제 외부 앱 10초 왕복·POST 성공 수동 QA 대기.
 - Dev 외부 길안내 종료의 세션 출처 캡처 보정 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 (iOS 17.2) `PracticeTrackingRestorationDecisionTests` 통과, `git diff --check` 통과. 실제 외부 앱 10초 왕복 수동 QA 대기.
