@@ -189,7 +189,9 @@ extension RootReducer {
             state.isLoginRequiredPresented = false
             state.pendingAuthenticationIntent = nil
             state.isCourseTutorialCompleted = false
-            return .none
+            return practiceTrackingReducer
+                .reduce(&state.practiceTracking, with: .sessionEnded)
+                .map(Action.practiceTracking)
 
         case .courseTutorialCompleted:
             state.isCourseTutorialCompleted = true

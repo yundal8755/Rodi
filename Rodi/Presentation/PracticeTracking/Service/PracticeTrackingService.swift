@@ -31,7 +31,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
 
     private let locationManager = CLLocationManager()
     private let sessionStore: PracticeTrackingSessionStore
-    private var measurementStore: PracticeMeasurementStoring = PracticeMeasurementStore()
+    private var measurementStore: PracticeMeasurementStoring?
     private var practiceRepository: PracticeRepository?
     private var lastInCourseLocation: CLLocation?
     private var isCertificationRequestInFlight = false
@@ -143,7 +143,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
             session.phase = .interrupted
             self.session = session
             sessionStore.save(session)
-            measurementStore.clear()
+            measurementStore?.clear()
             cancelLiveActivity()
             RodiLogger.info("Practice tracking interrupted after process restart sessionID=\(session.id.uuidString)")
             return
@@ -175,6 +175,19 @@ final class PracticeTrackingService: NSObject, ObservableObject {
         cancelCertificationRequest()
         RodiAnalytics.track(.practiceTrackingCancelled(placeType: session.analyticsPlaceType))
         RodiLogger.info("Practice tracking cancelled sessionID=\(session.id.uuidString)")
+    }
+
+    /// 로그아웃·회원탈퇴 뒤 이전 계정의 측정 복구 상태가 이어지지 않게 정리한다.
+    func endForSessionChange() {
+        cancelCertificationRequest()
+        stopLocationUpdates()
+        endBackgroundActivitySession()
+        sessionStore.clear()
+        measurementStore?.clear()
+        session = nil
+        didStartSessionInCurrentProcess = false
+        lastInCourseLocation = nil
+        cancelLiveActivity()
     }
 
     private func receive(_ location: CLLocation) {
@@ -307,7 +320,10 @@ final class PracticeTrackingService: NSObject, ObservableObject {
         for session: PracticeTrackingSession,
         retryImmediately: Bool = true
     ) {
-        guard var measurement = measurementStore.load(), measurement.id == session.id else { return }
+        guard let measurementStore,
+              var measurement = measurementStore.load(),
+              measurement.id == session.id
+        else { return }
         measurement.status = .certificationPendingRegistration
         measurement.certifiedDistanceMeters = session.isParking
             ? nil
@@ -320,6 +336,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
 
     func retryCertificationIfNeeded() {
         guard let repository = practiceRepository,
+              let measurementStore,
               !isCertificationRequestInFlight,
               let measurement = measurementStore.load(),
               measurement.mode == .gpsTracking,
@@ -346,7 +363,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
                     guard !Task.isCancelled, self.certificationRequestID == requestID else { return }
                     current.practiceID = registration.practiceID
                     current.status = .certificationPendingVisit
-                    self.measurementStore.save(current)
+                    measurementStore.save(current)
                 }
                 guard let practiceID = current.practiceID else { return }
                 _ = try await repository.recordVisit(
@@ -355,7 +372,7 @@ final class PracticeTrackingService: NSObject, ObservableObject {
                 )
                 guard !Task.isCancelled, self.certificationRequestID == requestID else { return }
                 current.status = .certified
-                self.measurementStore.save(current)
+                measurementStore.save(current)
                 self.certificationRevision += 1
                 if !current.isParking,
                    let completedSession = self.session,

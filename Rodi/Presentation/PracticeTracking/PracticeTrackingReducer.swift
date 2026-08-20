@@ -18,6 +18,7 @@ struct PracticeTrackingReducer: Reducer {
         case certificationRevisionChanged(canPresentPrompt: Bool)
         case activeMeasurementContinued
         case activeMeasurementEnded
+        case sessionEnded
         case promptInteractionRequested(PracticeReturnPromptInteraction)
         case practiceReturn(PracticeReturnReducer.Action)
         case delegate(Delegate)
@@ -32,12 +33,14 @@ struct PracticeTrackingReducer: Reducer {
     }
 
     private let practiceReturnReducer: PracticeReturnReducer
+    private let trackingService: PracticeTrackingService
 
     init(
         practiceRepository: PracticeRepository,
         measurementStore: PracticeMeasurementStoring,
         trackingService: PracticeTrackingService
     ) {
+        self.trackingService = trackingService
         practiceReturnReducer = PracticeReturnReducer(
             practiceRepository: practiceRepository,
             measurementStore: measurementStore,
@@ -67,6 +70,10 @@ extension PracticeTrackingReducer {
 
         case .activeMeasurementEnded:
             return reducePracticeReturn(&state, action: .activeMeasurementEnded)
+
+        case .sessionEnded:
+            trackingService.endForSessionChange()
+            return reducePracticeReturn(&state, action: .reset)
 
         case .promptInteractionRequested(let interaction):
             return reducePracticeReturn(&state, action: .promptInteraction(interaction))
