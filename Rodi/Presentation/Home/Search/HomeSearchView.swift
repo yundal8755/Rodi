@@ -40,7 +40,7 @@ struct HomeSearchView: View {
                     searchContent
                     .padding(.top, state.query.trimmingCharacters(
                         in: .whitespacesAndNewlines
-                    ).isEmpty ? 24 : 0)
+                    ).isEmpty ? 3 : 0)
                     .padding(.bottom, showsCenteredEmptyState ? 0 : 32)
                 }
 

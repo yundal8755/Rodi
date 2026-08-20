@@ -179,7 +179,7 @@ struct HomeMapReducer: Reducer {
         case .savedPlaceSelected(let place):
             state.isCurrentLocationButtonActive = false
             state.routeOverlay = nil
-            state.selectedSearchResultName = nil
+            state.selectedSearchResultName = place.name
             selectMarker(id: markerID(for: place.type, id: place.id), coordinate: .init(latitude: place.latitude, longitude: place.longitude), focus: .closeSingleLocation, state: &state)
             return effects([.delegate(.bottomTabBarVisibilityChanged(false)), .delegate(.resolveSavedPlace(place))], cancellation: .progressiveMarkerRendering)
 

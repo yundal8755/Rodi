@@ -10,6 +10,7 @@ struct PlaceListView: View {
     let items: [PlaceListItem]
     let isInitialLoading: Bool
     let isAwaitingRegionViewport: Bool
+    let isRegionSearchResult: Bool
     let isNextPageLoading: Bool
     let errorMessage: String?
     let hasNextPage: Bool
@@ -26,10 +27,11 @@ struct PlaceListView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 180)
             } else if items.isEmpty, let errorMessage {
-                PlaceListMessageView(message: errorMessage, actionTitle: "다시 시도", action: reloadAction)
+                PlaceListMessageView(message: errorMessage, action: reloadAction)
             } else if items.isEmpty {
                 PlaceListEmptyResultView(
                     isExpanded: isExpanded,
+                    isCentered: isRegionSearchResult,
                     debugReviewTestAction: debugReviewTestAction,
                     debugHardWithdrawAction: debugHardWithdrawAction
                 )
@@ -61,7 +63,6 @@ struct PlaceListView: View {
                         if let errorMessage {
                             PlaceListMessageView(
                                 message: errorMessage,
-                                actionTitle: "다시 시도",
                                 action: loadNextPageAction
                             )
                             .padding(.vertical, 16)
@@ -243,8 +244,7 @@ private struct PlaceListTagRow: View {
 
 private struct PlaceListMessageView: View {
     let message: String
-    var actionTitle: String?
-    var action: (() -> Void)?
+    let action: () -> Void
 
     var body: some View {
         VStack(spacing: 12) {
@@ -252,13 +252,7 @@ private struct PlaceListMessageView: View {
                 .rodiTypography(.body3Medium)
                 .foregroundStyle(RodiColor.gray700)
 
-            if let actionTitle, let action {
-                Button(action: action) {
-                    Text(actionTitle)
-                        .rodiTypography(.body3Medium)
-                        .foregroundStyle(RodiColor.primary)
-                }
-            }
+            RodiRetryButton(action: action)
         }
         .frame(maxWidth: .infinity, minHeight: 140)
     }
@@ -266,15 +260,18 @@ private struct PlaceListMessageView: View {
 
 private struct PlaceListEmptyResultView: View {
     let isExpanded: Bool
+    let isCentered: Bool
     let debugReviewTestAction: () -> Void
     let debugHardWithdrawAction: () async throws -> Void
 
     init(
         isExpanded: Bool,
+        isCentered: Bool,
         debugReviewTestAction: @escaping () -> Void,
         debugHardWithdrawAction: @escaping () async throws -> Void
     ) {
         self.isExpanded = isExpanded
+        self.isCentered = isCentered
         self.debugReviewTestAction = debugReviewTestAction
         self.debugHardWithdrawAction = debugHardWithdrawAction
     }
@@ -299,13 +296,13 @@ private struct PlaceListEmptyResultView: View {
 
     private var layout: some View {
         Group {
-            if isExpanded {
+            if isExpanded || isCentered {
                 VStack {
                     Spacer(minLength: 0)
                     emptyContent
                     Spacer(minLength: 0)
                 }
-                .padding(.bottom, 56)
+                .padding(.bottom, isExpanded ? 56 : 0)
             } else {
                 VStack {
                     emptyContent
@@ -314,7 +311,7 @@ private struct PlaceListEmptyResultView: View {
                 .padding(.top, 68)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: isExpanded ? .infinity : nil)
+        .frame(maxWidth: .infinity, maxHeight: isExpanded || isCentered ? .infinity : nil)
     }
 
     private var emptyContent: some View {

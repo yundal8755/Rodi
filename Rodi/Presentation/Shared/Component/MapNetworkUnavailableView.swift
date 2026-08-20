@@ -1,12 +1,7 @@
-//
-//  HomeMapNetworkUnavailableView.swift
-//  Rodi
-//
-
 import SwiftUI
 
-/// Home 지도에서만 네트워크 단절이 지속될 때 지도 대신 표시한다.
-struct HomeMapNetworkUnavailableView: View {
+/// 지도 화면에서 네트워크 단절이 지속될 때 지도를 대신해 표시한다.
+struct MapNetworkUnavailableView: View {
     var body: some View {
         VStack(spacing: 8) {
             Image("ic_network_inactive")
