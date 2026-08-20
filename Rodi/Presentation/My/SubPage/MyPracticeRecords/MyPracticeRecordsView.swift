@@ -3,11 +3,13 @@ import SwiftUI
 struct MyPracticeRecordsView: View {
     @StateObject private var store: StoreOf<MyPracticeRecordsReducer>
     let backAction: () -> Void
+    let navigationRefreshRequestID: Int
     let reviewFlowFinishedRequestID: Int
 
     init(
         practiceRepository: PracticeRepository,
         reviewRequested: @escaping (ReviewWriteRequest) -> Void,
+        navigationRefreshRequestID: Int,
         reviewFlowFinishedRequestID: Int,
         backAction: @escaping () -> Void
     ) {
@@ -18,6 +20,7 @@ struct MyPracticeRecordsView: View {
             )
         )
         self.reviewRequested = reviewRequested
+        self.navigationRefreshRequestID = navigationRefreshRequestID
         self.reviewFlowFinishedRequestID = reviewFlowFinishedRequestID
         self.backAction = backAction
     }
@@ -33,6 +36,10 @@ struct MyPracticeRecordsView: View {
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             store.send(.appeared)
+        }
+        .onChange(of: navigationRefreshRequestID) { requestID in
+            guard requestID > 0 else { return }
+            store.send(.reloadRequested)
         }
         .onChange(of: reviewFlowFinishedRequestID) { requestID in
             guard requestID > 0 else { return }

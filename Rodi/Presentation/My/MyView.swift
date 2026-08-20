@@ -18,15 +18,12 @@ struct MyView: View {
     let onReviewTestRequested: () -> Void
     let onReviewRequested: (ReviewWriteRequest) -> Void
     let onReviewEditRequested: (Int) -> Void
+    let practiceRecordsNavigationRequestID: Int
     let myPracticeRecordsReviewFlowFinishedRequestID: Int
     let myPostsReviewFlowFinishedRequestID: Int
     let isCourseTutorialCompleted: Bool
     let onCourseTutorialCompleted: () -> Void
-    private let memberRepository: MemberRepository
-    private let placeRepository: PlaceRepository
-    private let practiceRepository: PracticeRepository
-    private let reviewRepository: ReviewRepository
-    private let courseRepository: CourseRepository
+    private let destinationDependencies: MyDestinationDependencies
     private var router: Router<MyRoute> { coordinator.router }
 
     init(
@@ -38,6 +35,7 @@ struct MyView: View {
         onReviewTestRequested: @escaping () -> Void,
         onReviewRequested: @escaping (ReviewWriteRequest) -> Void,
         onReviewEditRequested: @escaping (Int) -> Void,
+        practiceRecordsNavigationRequestID: Int,
         myPracticeRecordsReviewFlowFinishedRequestID: Int,
         myPostsReviewFlowFinishedRequestID: Int,
         isCourseTutorialCompleted: Bool,
@@ -52,6 +50,7 @@ struct MyView: View {
         self.onReviewTestRequested = onReviewTestRequested
         self.onReviewRequested = onReviewRequested
         self.onReviewEditRequested = onReviewEditRequested
+        self.practiceRecordsNavigationRequestID = practiceRecordsNavigationRequestID
         self.myPracticeRecordsReviewFlowFinishedRequestID = myPracticeRecordsReviewFlowFinishedRequestID
         self.myPostsReviewFlowFinishedRequestID = myPostsReviewFlowFinishedRequestID
         self.isCourseTutorialCompleted = isCourseTutorialCompleted
@@ -65,15 +64,11 @@ struct MyView: View {
                     practiceRepository: dependencies.practiceRepository,
                     recentLoginProviderStore: dependencies.recentLoginProviderStore,
                     levelUpPresentationStore: dependencies.levelUpPresentationStore,
-                    socialSessionService: SocialSessionService()
+                    socialSessionService: dependencies.socialSessionService
                 )
             )
         )
-        memberRepository = dependencies.memberRepository
-        placeRepository = dependencies.placeRepository
-        practiceRepository = dependencies.practiceRepository
-        reviewRepository = dependencies.reviewRepository
-        courseRepository = dependencies.courseRepository
+        destinationDependencies = dependencies.destinations
     }
 
     var body: some View {
@@ -141,14 +136,14 @@ private extension MyView {
         case .drivingGoal:
             MyDrivingGoalView(
                 initialDrivingGoal: store.state.profile?.drivingGoal ?? "",
-                memberRepository: memberRepository,
+                memberRepository: destinationDependencies.memberRepository,
                 onUpdated: { store.send(.drivingGoalUpdated($0)) },
                 backAction: { router.pop() }
             )
             
         case .savedPlaces:
             SavedPlacesView(
-                placeRepository: placeRepository,
+                placeRepository: destinationDependencies.placeRepository,
                 backAction: { router.pop() },
                 selectPlaceAction: { item in
                     RodiAnalytics.track(.savedPlaceSelected)
@@ -159,8 +154,9 @@ private extension MyView {
 
         case .practiceRecords:
             MyPracticeRecordsView(
-                practiceRepository: practiceRepository,
+                practiceRepository: destinationDependencies.practiceRepository,
                 reviewRequested: onReviewRequested,
+                navigationRefreshRequestID: practiceRecordsNavigationRequestID,
                 reviewFlowFinishedRequestID: myPracticeRecordsReviewFlowFinishedRequestID,
                 backAction: { router.pop() }
             )
@@ -168,9 +164,9 @@ private extension MyView {
         case .myPosts:
             MyPostsView(
                 dependencies: .init(
-                    reviewRepository: reviewRepository,
-                    practiceRepository: practiceRepository,
-                    courseRepository: courseRepository
+                    reviewRepository: destinationDependencies.reviewRepository,
+                    practiceRepository: destinationDependencies.practiceRepository,
+                    courseRepository: destinationDependencies.courseRepository
                 ),
                 backAction: { router.pop() },
                 openPracticeRecords: { router.push(.practiceRecords) },
@@ -182,12 +178,16 @@ private extension MyView {
 
         case .courseRegistration:
             CourseRegistrationView(
-                isCourseTutorialCompleted: isCourseTutorialCompleted,
-                memberRepository: memberRepository,
-                courseRepository: courseRepository,
-                closeAction: { router.pop() },
-                tutorialCompletedAction: onCourseTutorialCompleted,
-                courseRegistrationCompletedAction: { router.pop() }
+                presentation: .init(
+                    isTutorialCompleted: isCourseTutorialCompleted,
+                    close: { router.pop() },
+                    tutorialCompleted: onCourseTutorialCompleted,
+                    registrationCompleted: { router.pop() }
+                ),
+                dependencies: .init(
+                    memberRepository: destinationDependencies.memberRepository,
+                    courseRepository: destinationDependencies.courseRepository
+                )
             )
             .navigationBarBackButtonHidden(true)
             .toolbar(.hidden, for: .navigationBar)
@@ -214,7 +214,7 @@ private extension MyView {
 
         case .blockedMembers:
             MyBlockedMembersView(
-                memberRepository: memberRepository,
+                memberRepository: destinationDependencies.memberRepository,
                 backAction: { router.pop() }
             )
             

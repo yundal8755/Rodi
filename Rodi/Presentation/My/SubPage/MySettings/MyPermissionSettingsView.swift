@@ -1,12 +1,13 @@
-import ActivityKit
 import CoreLocation
 import SwiftUI
 
 struct MyPermissionSettingsView: View {
     let backAction: () -> Void
     @Environment(\.scenePhase) private var scenePhase
-    @State private var authorizationStatus: CLAuthorizationStatus = .notDetermined
-    @State private var areLiveActivitiesEnabled = false
+    @StateObject private var store = Store(
+        state: MyPermissionSettingsReducer.State(),
+        reducer: MyPermissionSettingsReducer(adapter: .init())
+    )
 
     var body: some View {
         VStack(spacing: 0) {
@@ -28,12 +29,15 @@ struct MyPermissionSettingsView: View {
             Spacer()
         }
         .background(RodiColor.white).toolbar(.hidden, for: .navigationBar)
-        .onAppear(perform: refreshPermissionSettings)
-        .onChange(of: scenePhase) { phase in if phase == .active { refreshPermissionSettings() } }
+        .onAppear { store.send(.appeared) }
+        .onChange(of: scenePhase) { phase in
+            guard phase == .active else { return }
+            store.send(.appBecameActive)
+        }
     }
 
     private var locationAuthorizationTitle: String {
-        switch authorizationStatus {
+        switch store.state.locationAuthorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse: "허용됨"
         case .denied, .restricted: "허용 안 됨"
         case .notDetermined: "설정 필요"
@@ -41,10 +45,12 @@ struct MyPermissionSettingsView: View {
         }
     }
 
-    private var liveActivityAuthorizationTitle: String { areLiveActivitiesEnabled ? "허용됨" : "허용 필요" }
+    private var liveActivityAuthorizationTitle: String {
+        store.state.areLiveActivitiesEnabled ? "허용됨" : "허용 필요"
+    }
 
     private func permissionSettingButton(title: String, status: String, description: String) -> some View {
-        Button(action: AppSettings.openSetting) {
+        Button { store.send(.settingsTapped) } label: {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
                     Text(title).rodiTypography(.body1Medium).foregroundStyle(RodiColor.black)
@@ -68,8 +74,4 @@ struct MyPermissionSettingsView: View {
         .buttonStyle(.plain)
     }
 
-    private func refreshPermissionSettings() {
-        authorizationStatus = CLLocationManager().authorizationStatus
-        areLiveActivitiesEnabled = ActivityAuthorizationInfo().areActivitiesEnabled
-    }
 }

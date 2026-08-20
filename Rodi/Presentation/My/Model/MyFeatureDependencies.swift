@@ -16,6 +16,7 @@ struct MyFeatureDependencies {
     let courseRepository: CourseRepository
     let recentLoginProviderStore: RecentLoginProviderStore
     let levelUpPresentationStore: LevelUpPresentationStoring
+    let socialSessionService: SocialSessionManaging
 
     init(appDependencies: AppDependencies) {
         authRepository = appDependencies.authRepository
@@ -26,5 +27,24 @@ struct MyFeatureDependencies {
         courseRepository = appDependencies.courseRepository
         recentLoginProviderStore = appDependencies.recentLoginProviderStore
         levelUpPresentationStore = appDependencies.levelUpPresentationStore
+        socialSessionService = SocialSessionService()
     }
+
+    var destinations: MyDestinationDependencies {
+        .init(
+            memberRepository: memberRepository,
+            placeRepository: placeRepository,
+            practiceRepository: practiceRepository,
+            reviewRepository: reviewRepository,
+            courseRepository: courseRepository
+        )
+    }
+}
+
+struct MyDestinationDependencies {
+    let memberRepository: MemberRepository
+    let placeRepository: PlaceRepository
+    let practiceRepository: PracticeRepository
+    let reviewRepository: ReviewRepository
+    let courseRepository: CourseRepository
 }
