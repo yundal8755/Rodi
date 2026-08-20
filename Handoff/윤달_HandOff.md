@@ -2,10 +2,11 @@
 
 ## Current
 
-- 브랜치: `test/1.4.2-refactoring`
-- 작업 상태: 1.4.2 TestFlight 업로드 완료 · Dev 외부 길안내 10초 종료·방문 기록 흐름 미해결 — 원인 추적 대기
+- 브랜치: `release/1.4.2`
+- 작업 상태: 1.4.2 TestFlight 업로드 완료 · GitHub version tag·Release 게시 준비
 
 ## Recent Work
+- `VERSION_HISTORY.md`에 1.4.2 사용자용 패치노트 3개 항목을 추가했다. Central-MakeUs 원격의 version tag와 GitHub Release 본문 반영이 다음 단계다.
 - Prod `1.4.2 (1)` archive와 TestFlight 업로드를 완료했다. App Store Connect의 build processing·배포 가능 상태 확인이 남아 있다.
 - Dev 외부 길안내 10초 테스트는 세션·lifecycle guard를 완화했지만 실제 기기에서 `register → recordVisit`와 후기 권유가 실행되지 않아 미해결 과제로 전환했다. 다음 작업은 action 도달, 저장 측정 상태, Debug 조건, POST 결과를 비식별 로그로 추적하는 것이다.
 - Dev/Prod 코스 연습은 활성 측정이 남아 있으면 이탈 시간과 무관하게 연속 측정 dialog를 연다. Prod는 GPS 인증·방문 기록 성공 코스에만 후기 권유를 연다. Dev의 10초 이탈 뒤 `측정 종료 → register → recordVisit → 후기 권유` 테스트 경로는 실제 기기에서 실패해 원인 확인이 필요하다.
