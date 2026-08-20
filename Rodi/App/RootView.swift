@@ -179,16 +179,3 @@ extension RootView {
     }
 
 }
-
-
-private struct RootLaunchLoadingView: View {
-    var body: some View {
-        ZStack {
-            RodiColor.white
-                .ignoresSafeArea()
-            ProgressView()
-                .tint(RodiColor.primary)
-                .accessibilityLabel("세션 확인 중")
-        }
-    }
-}
