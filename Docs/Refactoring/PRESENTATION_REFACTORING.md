@@ -25,18 +25,18 @@
 ## 감사 범위·판정
 
 - 감사 범위는 `Presentation/Debug`를 제외한 `Home`, `CourseRegistration`, `Login`, `MainTab`, `My`, `Onboarding`, `PracticeTracking`, `Review` 전체다.
-- 2026-08-19 기준 Swift 파일은 30,639줄이다. 장문 파일은 단독 분리 사유가 아니며, State·Action·Effect 또는 독립 UI 계약이 확인된 경우에만 활성 항목으로 둔다.
+- 2026-08-20 기준 Swift 파일은 33,201줄이다. 장문 파일은 단독 분리 사유가 아니며, State·Action·Effect 또는 독립 UI 계약이 확인된 경우에만 활성 항목으로 둔다.
 - `현 구조 유지` 항목은 이번 감사에서 명확한 Presentation 규칙 위반을 찾지 못한 영역이다. 이후 기능 변경이나 재현 가능한 문제 발생 시 다시 판정한다.
 - `보류` 항목은 `Data/Local` 변경 승인이 필요한 저장소 이전, 또는 UI QA·측정 결과가 필요한 레이아웃 변경이다.
 
-| Feature | 감사 결론 | 관련 활성 항목 |
+| Feature | 감사 결론 | 관련 완료 항목 |
 | --- | --- | --- |
-| Home | root의 외부 입력과 길안내 overlay, BottomSheet route 콘텐츠 조립을 분리했다. Map Adapter와 위치·marker rendering은 유지한다. | P2-1 ~ P2-4 |
-| CourseRegistration | root/child 흐름은 유지하고, 외부 Kakao adapter 중복과 최근 검색 저장 경계를 후속 검토한다. | P2-5, P2-7 |
+| Home | root의 외부 입력과 길안내 overlay, BottomSheet route 콘텐츠 조립을 분리했다. Map Adapter와 위치·marker rendering은 유지한다. | P2-1 ~ P2-4, P1-12, P1-13, P2-11 |
+| CourseRegistration | root/child 흐름은 유지하고, 외부 Kakao adapter 중복과 최근 검색 저장 경계를 정리했다. | P2-5, P2-7 |
 | My | root 조립, 내 활동 목록 child ownership, 설정 파일 분리, 레벨업 저장 경계를 정리했다. | P2-8, P2-10 |
-| Onboarding | route/session host와 법적 문서 화면의 navigation ownership을 감사 완료했다. | P2-9 |
-| Login | SDK bridge의 timeout·continuation lifecycle을 검토하고 화면 폭 계산을 보류한다. | P1-8, P2-9 |
-| MainTab | 상위 Feature callback·refresh intent 전달을 축소한다. | P1-9 |
+| Onboarding | route/session host와 법적 문서 화면의 navigation ownership 및 화면 크기 의존을 감사 완료했다. | P2-9 |
+| Login | SDK bridge의 timeout·continuation lifecycle과 화면 폭 계산을 정리했다. | P2-6, P2-9 |
+| MainTab | 상위 Feature callback·refresh intent 전달을 축소했다. | 완료 항목 |
 | PracticeTracking | 위치 runtime·인증 재시도·Live Activity lifetime과 session 저장 경계를 검토한다. | P1-10, P2-10 |
 | Review | Flow refresh의 결과 소비 정책을 검토한다. Prompt·Writing·SkipReason child 구조는 유지한다. | P1-11 |
 
@@ -53,8 +53,6 @@
 | --- | --- | --- | --- | --- |
 | P1-10 | 완료 | `PracticeTracking/Service/PracticeTrackingService.swift` | 423줄 singleton이 위치 runtime, 인증 재시도 `Task`, Live Activity, session 저장과 background lifecycle을 소유한다. | 인증 재시도 Task를 service가 명시 소유하고, 취소·새 요청·늦은 응답을 request ID로 차단한다. | 앱 복귀, 측정 취소·완료, 인증 재시도, Live Activity start/sync/end, 늦은 응답 |
 | P1-11 | 완료 | `Review/Flow/ReviewFlowRefreshService.swift`, `ReviewFlowCoordinatorReducer.swift` | refresh service가 조회 결과를 버리며, coordinator가 완료 refresh ID와 화면별 갱신 request ID를 중재한다. | 결과를 소비하지 않는 prefetch를 제거하고 기존 완료 request ID 갱신으로 최신화를 요청한다. | 홈·마이·내 게시글·코스 상세의 후기 완료/취소 후 최신화 |
-| P1-12 | 미착수 | `Home/Map` | 지도 카메라·마커·권한·Kakao SDK event가 Home child state에 있으나 별도 reducer로 추출하려면 mapper와 request revision ownership을 함께 옮겨야 한다. | 재현 가능한 지도 lifecycle 문제 또는 충분한 단위 테스트가 생길 때 named child reducer로 분리한다. | 위치 권한·카메라·marker·화면 이탈 후 늦은 응답 |
-| P1-13 | 진행 중 | `CourseDetail`, `ParkingDetail` 길안내 | 두 상세 reducer의 route guidance Action은 유사하지만 장소별 측정·route overlay 정책이 다르다. | `RouteGuidanceFlowService`의 hidden singleton 기본값을 제거했고, 공통 `RouteGuidanceState`로 presentation·request·revision·launch 상태를 통일했다. 장소별 정책 회귀 QA와 함께 action/effect child 분리는 다음 묶음에서 진행한다. | 코스/주차장 선택·설정 복귀·외부 앱 실패·중복 탭 |
 
 ### P2 — 레이아웃·유지보수
 
@@ -64,18 +62,14 @@
 | P2-2 | 완료 | `CourseDetailExpandedPage.swift` | dropdown anchor와 상세·전체보기·신고 page 조립이 함께 있다. | overlay 최상단 표시를 보존하는 anchor preference 측정은 유지하고, page 조립은 별도 P1 CourseReview 항목에서 다룬다. | 후기 menu·level dropdown, safe area, compact/large 기기 |
 | P2-3 | 완료 | `CourseRegistrationTutorialView.swift` | tutorial reference image 폭을 컨테이너 폭의 72%로 유지한다. | iOS 16.1에서 화면 전역값 없이 컨테이너 비율을 계산하는 유일한 측정 책임이므로 유지한다. | Dynamic Type, compact/large layout |
 | P2-4 | 완료 | `Home/HomeView.swift`, `BottomSheetPanGestureView.swift` | 구현 위치에 남아 있던 모호한 TODO가 실제 owner·완료 조건을 설명하지 않았다. | TODO를 제거하고 snackbar·drag의 후속 책임은 각각 P1-1·P1-2 및 수동 QA 항목으로 추적한다. | snackbar 연속 표시, drag·dismiss, 화면 이탈 |
-| P2-6 | 미착수 | `OnboardingAnalysisDialog.swift`, `LoginView.swift` | 직접 `UIScreen.main.bounds`를 사용한다. | 컨테이너 기반 max width/height로 전환할 수 있는지 검토한다. | SE·대형 iPhone, keyboard, 긴 문구 |
 | P2-7 | 완료 | `CourseRegistrationRecentSearchStore.swift`, `HomePracticeFilterStore.swift`, `RouteGuidanceService.swift` | 최근 검색어·필터·선호 길안내 앱 선택을 Presentation에서 UserDefaults로 저장한다. | 저장 key·payload를 유지한 채 `Data/Local/Support/UserDefaultsStores` 표현으로 이동했다. | 앱 재시작, 기존 값 복원, 검색 순서, 필터·길안내 앱 유지 |
 | P2-8 | 완료 | `MySettingsViews.swift` | 설정, 계정 관리, 문의, 약관, 라이선스, 권한 화면이 하나의 파일에 있다. | account, information, permission SubPage 파일로 분리하고 route·문구를 유지했다. | 모든 설정 route의 back·logout·탈퇴·문서 표시 |
-| P2-9 | 보류 | `LoginView.swift`, `OnboardingAnalysisDialog.swift` | 기기 전역 화면 크기에 의존하는 UI가 있어 Figma·실기기 비교가 선행돼야 한다. | UI QA에서 문제 재현 시 P2-6과 함께 변경한다. | SE·일반·Max 기기, 회전 제외 portrait, Dynamic Type |
 | P2-10 | 완료 | `LevelUpPresentationStore.swift`, `PracticeTrackingSessionStore.swift` | 계정별 레벨업 상태와 연습 세션을 Presentation에서 UserDefaults로 저장한다. | 저장 key·Codable payload를 유지한 채 `Data/Local` persistence 표현을 사용하도록 정리했다. | 계정 전환, 앱 재시작, 측정 복구, 기존 저장값 호환 |
-| P2-11 | 미착수 | 400줄 이상 파일 | `HomeReducer` 822줄, `HomeView` 816줄, `HomeBottomSheetView` 727줄, `MyPostsReducer` 585줄 등 장문 파일이 있다. | P1 책임 분리와 연결된 파일만 우선 분리하고, 단일 화면 표현 파일은 `MARK`와 private extension을 유지한다. | 대상 Feature build, 핵심 smoke test, 이전 심볼 참조 제거 |
 
 ## 실행 순서
 
-1. P2-6·P2-9의 실제 기기 UI QA를 수행한다.
-2. P2-11 장문 파일은 독립 책임이 확인된 경우에만 후속으로 분리한다.
-3. `Presentation/Debug` 내부 항목은 이 문서 범위에 넣지 않는다.
+1. `Presentation/Debug` 내부 항목은 이 문서 범위에 넣지 않는다.
+2. 이후 기능 변경으로 독립 State·Effect 책임 또는 실기기 결함이 재현될 때만 새 활성 항목을 추가한다.
 
 ## 현 구조 유지
 
@@ -93,6 +87,10 @@
 
 | 완료일 | 대상 | 정리 결과 | 검증 |
 | --- | --- | --- | --- |
+| 2026-08-20 | Home Map child ownership | `HomeMapReducer`가 지도 카메라·권한·위치 갱신·마커·Kakao 결과와 request revision·Effect ID를 소유하게 하고, Home root는 Map/Search/BottomSheet의 typed Delegate 중재만 남겼다. | Dev Debug build, RodiTests 8건 통과, 수동 지도 lifecycle QA 대기 |
+| 2026-08-20 | 장소 길안내 child ownership | 코스·주차장 상세가 공통 `RouteGuidanceReducer`만 통해 앱 선택·설치·외부 앱 실행·취소·stale result를 처리하게 하고, 부모의 미사용 request proxy를 제거했다. | Dev Debug build, RodiTests 8건 통과, 수동 외부 앱 전환 QA 대기 |
+| 2026-08-20 | Login·Onboarding 화면 크기 의존 | `LoginView` tooltip은 parent 폭 안의 최대 폭 제약으로, 분석 dialog는 content intrinsic height로 전환해 직접 `UIScreen.main` 의존을 제거했다. | Dev Debug build, RodiTests 8건 통과, SE·대형 기기 시각 QA 대기 |
+| 2026-08-20 | 장문 파일 재감사 | Home root는 219줄로 축소했고, 남은 HomeMap·HomeView·BottomSheet·Search·MapSelection·PracticeTracking 장문 파일은 각각 단일 State/Effect 또는 화면 조립 책임임을 확인했다. | 정적 책임 감사, 기능 변경 시 재감사 |
 | 2026-08-20 | Home 상위 delegate | 인증·후기 작성·수정 closure를 `HomeReducer.Delegate`로 통합하고 MainTab이 기존 로그인·Review flow로 중계하게 했다. | Dev Debug build, Release build, 수동 QA 대기 |
 | 2026-08-20 | Home Debug 계약 | Debug 후기 요청을 `#if DEBUG` Home action·delegate로 한정해 Release `HomePresentation`에서 제거했다. | Dev Debug build, Release build, 수동 QA 대기 |
 | 2026-08-20 | My 권한·조립 | 권한 시스템 접근을 Adapter/Reducer로 이동하고 destination 의존성·social session 조립을 feature dependency로 축소했다. | Dev Debug build, 수동 QA 대기 |
@@ -130,5 +128,5 @@
 
 - MUST 코드 구조 변경 뒤 `Rodi Dev` Debug build와 `git diff --check`를 실행한다.
 - MUST 각 항목의 표에 적힌 수동 시나리오를 해당 변경 단위에서 확인한다.
-- MUST 테스트 target이 없으므로 자동 테스트 통과라고 기록하지 않는다.
+- MUST 테스트 target 변경 뒤에는 실제 실행한 `xcodebuild test` 명령과 결과를 기록한다.
 - SHOULD 구조 이동 전후 `rg`로 이전 경로·심볼 참조가 남지 않았는지 확인한다.

@@ -16,7 +16,7 @@
 
 ### UserDefaults의 Codable 구조체 저장 위치와 복구 정책
 
-상태: 미해결 · 우선순위: P0
+상태: 부분 완료 · 우선순위: P0
 
 `UserDefaults`에 구조체를 `JSONEncoder`로 `Data`로 변환해 저장하는 행위 자체는 iOS에서 허용되는 방식이다. 현재 문제는 “구조체라서 저장하면 안 된다”가 아니라, 제품 상태 저장 구현이 `Presentation`, `Core`, `Data/Local`에 흩어져 있고 schema version·decode 실패·migration·보존 기간의 정책이 일관되지 않은 점이다.
 
@@ -24,14 +24,14 @@
 
 - `Data/Local/Onboarding/OnboardingDraftStore.swift`
 - `Presentation/PracticeTracking/Service/PracticeTrackingSessionStore.swift`
-- `Core/Service/PracticeMeasurementStore.swift`
+- `Data/Local/Practice/PracticeMeasurementStore.swift` — schema v1, legacy payload lazy migration, 손상 payload 제거를 적용했다.
 - `Presentation/CourseRegistration/Service/CourseRegistrationRecentSearchStore.swift`
 - `Presentation/Home/BottomSheet/Filter/Service/HomePracticeFilterStore.swift`
 - `Presentation/My/Service/LevelUpPresentationStore.swift`
 
 완료 조건:
 
-- MUST 저장 데이터별 소유 Feature, 민감도, 유지 기간, schema version·migration·decode 실패 정책을 표로 확정한다.
+- MUST 남은 저장 데이터별 소유 Feature, 민감도, 유지 기간, schema version·migration·decode 실패 정책을 표로 확정한다.
 - MUST 장기 제품 데이터와 화면 임시 상태를 구분한다.
 - MUST `Data/Local` 변경 전 사용자 승인을 받고, 기존 key·payload 호환성과 앱 업데이트 복구를 검증한다.
 - SHOULD 공통 encode/decode 실패 처리와 key namespace 정책을 정리한다.
@@ -78,15 +78,9 @@ Core/
 
 ### TODO 주석 정리
 
-상태: 미해결 · 우선순위: P1
+상태: 완료
 
-2026-08-19 기준 Swift source의 TODO는 3개다.
-
-| 위치 | 내용 | 처리 방향 |
-| --- | --- | --- |
-| `Presentation/Home/HomeReducer.swift:35` | `isMapInteractive` 계산 프로퍼티 제거 필요 | map lifecycle·tab 선택·app active 상태의 ownership을 정리한 뒤 명시 State 또는 service output으로 교체 검토 |
-| `Presentation/Home/HomeView.swift:116` | snackbar 정리 필요 | 위 SnackbarService 항목과 함께 처리 |
-| `Presentation/Home/BottomSheet/Component/BottomSheetPanGestureView.swift:3` | 코드 수정 필요 | 현재 gesture 취소·settle·touch 영역을 재현한 뒤 구체적 문제와 완료 조건으로 대체 |
+2026-08-20 기준 Swift source에서 TODO/FIXME/HACK/XXX 주석을 찾지 못했다. 모호한 주석은 Presentation 리팩터링 백로그 또는 QA 이슈 로그로 이관했다.
 
 완료 조건:
 
@@ -97,16 +91,16 @@ Core/
 
 상태: 미해결 · 우선순위: P1
 
-2026-08-19 기준 500줄 초과 Swift 파일:
+2026-08-20 기준 500줄 초과 Swift 파일:
 
 | 줄 수 | 파일 | 우선 분리 후보 |
 | ---: | --- | --- |
-| 822 | `Presentation/Home/HomeReducer.swift` | Map·Search·BottomSheet child reducer의 최종 delegate 중재만 root에 남기는지 재검토 |
-| 768 | `Presentation/Home/BottomSheet/HomeBottomSheetView.swift` | drag/settle gesture adapter, route별 sheet rendering, dialog overlay 책임 분리 |
-| 736 | `Presentation/Home/HomeView.swift` | root composition, map controls, sheet·dialog presentation, full-screen route 분리 |
-| 585 | `Presentation/My/SubPage/MyPosts/MyPostsReducer.swift` | 목록 pagination, menu action, 수정·삭제 intent를 named child 또는 Service boundary로 분리 |
-| 568 | `Presentation/Home/Search/HomeSearchReducer.swift` | 입력 debounce, region/place 결과, recent search effect owner 분리 |
-| 518 | `Presentation/Home/BottomSheet/CourseDetail/SubPage/CourseDetailExpandedPage.swift` | course info·route timeline·review composition·dropdown overlay 분리 |
+| 906 | `Presentation/Home/HomeReducer.swift` | Map·Search·BottomSheet child reducer의 최종 delegate 중재만 root에 남기는지 재검토 |
+| 766 | `Presentation/Home/HomeView.swift` | root composition, map controls, sheet·dialog presentation, full-screen route 분리 |
+| 533 | `Presentation/Home/Search/HomeSearchReducer.swift` | 입력 debounce, region/place 결과, recent search effect owner 분리 |
+| 532 | `Presentation/Home/BottomSheet/HomeBottomSheetView.swift` | drag/settle gesture adapter, route별 sheet rendering, dialog overlay 책임 분리 |
+| 532 | `Presentation/CourseRegistration/SubPage/MapSelection/CourseRegistrationMapSelectionReducer.swift` | 지도 candidate·주소 조회·route effect ownership을 재검토 |
+| 519 | `Presentation/Home/BottomSheet/HomeBottomSheetReducer.swift` | route·상세 child teardown과 delegate 중재를 재검토 |
 
 완료 조건:
 
