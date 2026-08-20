@@ -25,10 +25,6 @@ final class NetworkUnavailableOverlayPresenter: ObservableObject {
         }
     }
 
-    deinit {
-        overlayWindow?.isHidden = true
-    }
-
     func attach(to windowScene: UIWindowScene) {
         guard self.windowScene !== windowScene else {
             updateVisibility(for: monitor.status)
