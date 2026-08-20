@@ -45,6 +45,7 @@ enum RodiTypography {
     case headline2
     case body1SemiBold
     case body1Medium
+    case body2Medium
     case body3Medium
     case caption1Medium
     case caption1Regular
@@ -80,6 +81,8 @@ enum RodiTypography {
             17
         case .body1SemiBold, .body1Medium, .buttonMedium:
             16
+        case .body2Medium:
+            15
         case .body3Medium:
             14
         case .caption1Medium, .caption1Regular:
@@ -99,7 +102,7 @@ enum RodiTypography {
             "Pretendard-SemiBold"
         case .caption1Regular:
             "Pretendard-Regular"
-        case .body1Medium, .body3Medium, .caption1Medium, .caption2Medium, .caption3Medium, .buttonMedium:
+        case .body1Medium, .body2Medium, .body3Medium, .caption1Medium, .caption2Medium, .caption3Medium, .buttonMedium:
             "Pretendard-Medium"
         }
     }

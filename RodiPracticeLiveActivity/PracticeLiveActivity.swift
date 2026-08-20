@@ -44,6 +44,7 @@ struct RodiPracticeLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PracticeLiveActivityAttributes.self) { context in
             PracticeActivityView(context: context)
+                .widgetURL(PracticeLiveActivityDeepLink.url(sessionID: context.attributes.sessionID))
                 .activityBackgroundTint(PracticeActivityPalette.gray100)
                 .activitySystemActionForegroundColor(PracticeActivityPalette.primary)
         } dynamicIsland: { context in
@@ -73,6 +74,7 @@ struct RodiPracticeLiveActivity: Widget {
                 Image(systemName: context.state.phaseRawValue == "completed" ? "checkmark" : "car.fill")
             }
             .keylineTint(PracticeActivityPalette.primary400)
+            .widgetURL(PracticeLiveActivityDeepLink.url(sessionID: context.attributes.sessionID))
         }
     }
 
