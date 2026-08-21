@@ -3,9 +3,15 @@
 ## Current
 
 - 브랜치: `release/1.4.3`
-- 작업 상태: 1.4.3 변경 분리 커밋·origin 원격 push 완료
+- 작업 상태: 1.4.3 QA 수정 구현·검증 완료, iPhone 12 Pro 수동 확인 대기
 
 ## Recent Work
+- 확장 Dynamic Island 상단은 각 영역의 폭 제약에 맞춰 상태명을 `이동 중`·`주행 중`·`완료`로 축약하고, 양쪽 4pt 여백과 12pt typography를 적용했다. 전체 상태명은 VoiceOver label로 유지한다.
+- 확장 Dynamic Island가 잠금 화면용 카드·진행 바를 그대로 재사용해 하단이 잘리던 문제를 전용 축소 레이아웃으로 분리했다. 이동·주행·완료 상태는 짧은 텍스트와 얇은 진행 바로 표시하며, compact·minimal과 잠금 화면 카드 UI는 유지했다. Dynamic Island 지원 기기에서 세 상태의 시각 QA가 남아 있다.
+- 둘러보기 단일 코스·주차장 마커 탭은 카메라·선택 상태를 바꾸기 전에 인증을 확인하도록 수정했다. 비로그인 상태에서는 로그인 요청만 전달하고 cluster 확대는 유지한다.
+- 코스 등록 상세는 서버 정렬 첫 카테고리(현재 기초 주행)를 기본 선택하고, 카테고리를 단일 선택으로 전환했다. 전환 시 이전 연습유형을 정리하며 자동 기본값만으로 이탈 확인이 뜨지 않게 했다.
+- 핀 수정은 선택 장소 확정 전 `완료`를 비활성화하고, 우회 Action도 취소·저장하지 않도록 보완했다. 공통 지도 route polyline 외곽선은 새 `RodiColor.primary800`(`#2600B1`)을 사용하도록 통일했다.
+- Home Map·코스 등록 Details·핀 수정 회귀 XCTest 4건을 추가했다. iPhone 15 simulator의 전체 `RodiTests` 27건과 Dev Debug generic simulator build, `git diff --check`를 통과했다. iPhone 12 Pro에서 둘러보기 마커, 카테고리 전환, 핀 수정 완료 조건, 세 지도 route 외곽선의 수동 QA가 남아 있다.
 - 코드리뷰 권장 묶음을 처리했다. My·ReviewFlow·차단목록 Snackbar 타이머에 취소 guard를 추가하고, 미사용 네트워크 UI·길안내 singleton·상세 chip 및 LicenseList 중복 참조를 제거했다. Home 검색과 코스 등록 지도 주소의 stale response 회귀 XCTest 3건을 추가했다.
 - Central-MakeUs GitHub에 `1.2.0`부터 `1.4.2`까지 version tag를 반영하고, `v1.3.0`·`v1.4.0`·`v1.4.1`·`v1.4.2` 공개 Release를 버전 이력의 사용자용 패치노트로 생성했다. 기존 `v1.2.0` Release는 유지했다.
 - `VERSION_HISTORY.md`에 1.4.2 사용자용 패치노트 3개 항목을 추가했다.
