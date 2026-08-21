@@ -53,7 +53,7 @@ final class HomeMapAndCourseRegistrationReducerTests: XCTestCase {
         XCTAssertFalse(state.isDirty)
     }
 
-    func testRegistrationCategorySwitchClearsPreviousPracticeTypes() {
+    func testRegistrationCategorySwitchKeepsPreviousPracticeTypes() {
         let reducer = CourseRegistrationDetailsReducer(courseRepository: CourseRepositoryStub())
         var state = CourseRegistrationDetailsReducer.State()
         let requestID = UUID()
@@ -64,7 +64,50 @@ final class HomeMapAndCourseRegistrationReducerTests: XCTestCase {
         _ = reducer.reduce(&state, with: .categoryTapped("URBAN"))
 
         XCTAssertEqual(state.draft.selectedCategoryCodes, ["URBAN"])
-        XCTAssertTrue(state.draft.selectedPracticeTypeCodes.isEmpty)
+        XCTAssertEqual(state.draft.selectedPracticeTypeCodes, ["STRAIGHT"])
+    }
+
+    func testHomeFilterKeepsTypesAcrossCategoryChanges() {
+        var selection = HomePracticeFilterSelection()
+
+        selection.selectCategory(.basicDriving)
+        selection.toggleType(.straight)
+        selection.selectCategory(.urbanBasics)
+        selection.toggleType(.intersection)
+        selection.selectCategory(.trafficFlow)
+        selection.toggleType(.merging)
+        selection.selectCategory(.urbanBasics)
+
+        XCTAssertEqual(selection.category, .urbanBasics)
+        XCTAssertEqual(selection.filterTags, [.straight, .intersection, .merging])
+        XCTAssertTrue(selection.selectedTypes.contains(.intersection))
+    }
+
+    func testHomeFilterTappingActiveCategoryHidesPracticeTypes() {
+        var selection = HomePracticeFilterSelection()
+
+        selection.selectCategory(.basicDriving)
+        selection.toggleType(.straight)
+        selection.selectCategory(.basicDriving)
+
+        XCTAssertNil(selection.category)
+        XCTAssertFalse(selection.showsPracticeTypeOptions)
+        XCTAssertEqual(selection.filterTags, [.straight])
+    }
+
+    func testHomeFilterParkingAddsAndRemovesParkingTagWithoutPracticeTypes() {
+        var selection = HomePracticeFilterSelection()
+
+        selection.selectCategory(.parking)
+
+        XCTAssertEqual(selection.category, .parking)
+        XCTAssertFalse(selection.showsPracticeTypeOptions)
+        XCTAssertEqual(selection.filterTags, [.parking])
+
+        selection.selectCategory(.parking)
+
+        XCTAssertNil(selection.category)
+        XCTAssertTrue(selection.filterTags.isEmpty)
     }
 
     func testPinEditingCompletionWithoutConfirmedPlaceDoesNothing() {

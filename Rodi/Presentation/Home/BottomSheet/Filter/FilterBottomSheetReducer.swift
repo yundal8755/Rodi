@@ -108,7 +108,7 @@ extension FilterBottomSheetReducer {
             state.draftSelection = selection
             state.isApplying = false
             filterStore.save(selection)
-            RodiAnalytics.track(.practiceFilterApplied(category: selection.category.rawValue, selectedTagCount: selection.filterTags.count, isAll: selection.isAllSelected))
+            RodiAnalytics.track(.practiceFilterApplied(category: selection.category?.rawValue ?? "none", selectedTagCount: selection.filterTags.count, isAll: selection.isAllSelected))
             return .send(.delegate(.applied))
 
         case .authenticationRequired:
