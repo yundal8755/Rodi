@@ -2,12 +2,14 @@
 
 ## Current
 
-- 브랜치: `release/1.4.2`
-- 작업 상태: 1.4.2 TestFlight 업로드 완료 · GitHub version tag·Release 게시 완료
+- 브랜치: `release/1.4.3`
+- 작업 상태: 1.4.3 변경 분리 커밋·원격 push 준비
 
 ## Recent Work
+- 코드리뷰 권장 묶음을 처리했다. My·ReviewFlow·차단목록 Snackbar 타이머에 취소 guard를 추가하고, 미사용 네트워크 UI·길안내 singleton·상세 chip 및 LicenseList 중복 참조를 제거했다. Home 검색과 코스 등록 지도 주소의 stale response 회귀 XCTest 3건을 추가했다.
 - Central-MakeUs GitHub에 `1.2.0`부터 `1.4.2`까지 version tag를 반영하고, `v1.3.0`·`v1.4.0`·`v1.4.1`·`v1.4.2` 공개 Release를 버전 이력의 사용자용 패치노트로 생성했다. 기존 `v1.2.0` Release는 유지했다.
 - `VERSION_HISTORY.md`에 1.4.2 사용자용 패치노트 3개 항목을 추가했다.
+- Prod 강제 업데이트는 App Store 조회가 끝날 때까지 Root 진입을 보류하고, 최신 버전이 확인되면 기존 dialog만 표시하도록 보완했다. Dev에는 `-RODI_FORCE_REQUIRED_UPDATE` 실행 인자로 전체 차단 상태를 재현하는 실험 경로를 추가했다.
 - Prod `1.4.2 (1)` archive와 TestFlight 업로드를 완료했다. App Store Connect의 build processing·배포 가능 상태 확인이 남아 있다.
 - Dev 외부 길안내 10초 테스트는 세션·lifecycle guard를 완화했지만 실제 기기에서 `register → recordVisit`와 후기 권유가 실행되지 않아 미해결 과제로 전환했다. 다음 작업은 action 도달, 저장 측정 상태, Debug 조건, POST 결과를 비식별 로그로 추적하는 것이다.
 - Dev/Prod 코스 연습은 활성 측정이 남아 있으면 이탈 시간과 무관하게 연속 측정 dialog를 연다. Prod는 GPS 인증·방문 기록 성공 코스에만 후기 권유를 연다. Dev의 10초 이탈 뒤 `측정 종료 → register → recordVisit → 후기 권유` 테스트 경로는 실제 기기에서 실패해 원인 확인이 필요하다.
@@ -119,6 +121,7 @@
 - title 영역까지 넓힌 바텀시트 drag hit 영역은 기능 오류를 피하기 위해 기존 indicator 영역 방식으로 되돌렸다.
 
 ## Next
+- iPhone 12 Pro에서 같은 Snackbar를 연속 표시했을 때 최신 메시지만 유지되는지, Home 검색·코스 등록 지도 주소 최신성 및 오픈소스 라이선스 화면을 수동 QA한다.
 
 - Dev 외부 길안내 10초 이탈 뒤 측정 종료 action·저장 측정·POST 실패 지점을 비식별 로그로 추적해 미해결 항목을 해결한다.
 - iPhone 12 Pro에서 추천 목록의 빈 결과 상태로 indicator 아래 48pt 영역을 수직 drag했을 때 확장·축소·닫기가 되고, 이미지 3회 탭·필터·문구 터치가 기존대로인지 수동 QA한다.
@@ -161,6 +164,8 @@
 - Presentation 리팩터링 backlog의 My Posts pagination·삭제 flow, Onboarding route host, MainTab intent, Home child ownership 항목을 순서대로 진행한다.
 
 ## Validation
+- 코드리뷰 권장 묶음 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 (iOS 17.2) 전체 `RodiTests` 23건 통과. 이번 변경 범위 `git diff --check` 통과. 전체 검사에는 보호된 `Coordinator.swift` 기존 trailing whitespace 2건이 남아 있다.
+- 강제 업데이트 변경 뒤 `Rodi Dev` Debug simulator build와 `AppVersionUpdateCheckerTests` 2건을 통과했다. iPhone 15 simulator에서 강제 실행 인자로 Root 진입 차단·기존 dialog 표시를 확인했다.
 - `bundle exec fastlane ios prod_beta`로 Prod `1.4.2 (1)` archive·IPA export·App Store Connect 업로드 성공을 확인했다. App Store Connect build processing 완료 확인은 별도다.
 - Dev 외부 길안내 10초 이탈 뒤 측정 종료의 실제 기기 검증은 실패했다. simulator build·단위 테스트 통과는 해당 외부 앱 왕복·POST 흐름을 보장하지 않으므로 미해결로 기록했다.
 - Dev 종료 조건의 lifecycle fallback 보정 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 (iOS 17.2) `PracticeTrackingRestorationDecisionTests` 통과, `git diff --check` 통과. 실제 외부 앱 10초 왕복·POST 성공 수동 QA 대기.
