@@ -3,7 +3,7 @@
 ## Current
 
 - 브랜치: `release/1.4.3`
-- 작업 상태: 1.4.3 변경 분리 커밋·원격 push 준비
+- 작업 상태: 1.4.3 변경 분리 커밋·origin 원격 push 완료
 
 ## Recent Work
 - 코드리뷰 권장 묶음을 처리했다. My·ReviewFlow·차단목록 Snackbar 타이머에 취소 guard를 추가하고, 미사용 네트워크 UI·길안내 singleton·상세 chip 및 LicenseList 중복 참조를 제거했다. Home 검색과 코스 등록 지도 주소의 stale response 회귀 XCTest 3건을 추가했다.
