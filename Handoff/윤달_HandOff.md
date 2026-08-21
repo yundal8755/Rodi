@@ -2,10 +2,15 @@
 
 ## Current
 
-- 브랜치: `release/1.4.3`
-- 작업 상태: 1.4.3 QA 수정 구현·검증 완료, iPhone 12 Pro 수동 확인 대기
+- 브랜치: `main`
+- 작업 상태: 코스·주차장 연습 완료 정책 통일 구현·자동 검증 완료, 수동 확인 대기. 별도 부스용 오프라인 퀴즈 자산 교체 완료.
 
 ## Recent Work
+- `/Users/mac/Desktop/rodiquiz`의 부스용 정적 퀴즈를 제공받은 경고표지·노면표시 원본에서 잘라낸 로컬 PNG 40개로 교체했다. 원본 설명 텍스트가 있는 하단 영역을 제외했고 워터마크·로고가 있는 자료는 사용하지 않았다. 서버·외부 요청 없이 `file://`로 동작한다.
+- 연습기록의 후기 가능 여부는 `PARKING` 태그 포함 여부가 아니라 서버 계약의 단일 `[PARKING]` 배열로 판별하도록 수정했다. 따라서 주차 유형을 포함한 코스는 `후기 작성`, 주차장만 `작성 불가`로 표시된다.
+- Prod 연습 기록은 GPS 인증과 `register → recordVisit` 성공으로 통일했다. 코스만 인증 성공 뒤 후기 권유를 표시하며, 주차장은 후기 팝업 없이 연습기록 추가 안내·Home 갱신만 한다. Dev 코스는 외부 앱에서 5초 이상 체류 후 복귀할 때 테스트용 POST·후기 권유를 허용하며, 주차장의 시간 기반 self-report POST는 제거했다.
+- 홈 추천목록 필터는 선택 카테고리의 연습유형만 열고, 같은 카테고리 재탭 시 해당 영역을 접도록 변경했다. 연습유형과 주차 필터는 카테고리 전환 뒤에도 누적 선택값으로 유지한다. 코스 등록도 단일 카테고리 표시를 유지하면서 이전 카테고리의 선택 연습유형을 보존한다.
+- `Rodi Dev` Debug build와 iPhone 15 Pro simulator `RodiTests` 30건을 통과했다. 필터 카테고리 전환·주차 토글·코스 등록 카테고리 왕복의 수동 UI 확인이 남아 있다.
 - 확장 Dynamic Island 상단은 각 영역의 폭 제약에 맞춰 상태명을 `이동 중`·`주행 중`·`완료`로 축약하고, 양쪽 4pt 여백과 12pt typography를 적용했다. 전체 상태명은 VoiceOver label로 유지한다.
 - 확장 Dynamic Island가 잠금 화면용 카드·진행 바를 그대로 재사용해 하단이 잘리던 문제를 전용 축소 레이아웃으로 분리했다. 이동·주행·완료 상태는 짧은 텍스트와 얇은 진행 바로 표시하며, compact·minimal과 잠금 화면 카드 UI는 유지했다. Dynamic Island 지원 기기에서 세 상태의 시각 QA가 남아 있다.
 - 둘러보기 단일 코스·주차장 마커 탭은 카메라·선택 상태를 바꾸기 전에 인증을 확인하도록 수정했다. 비로그인 상태에서는 로그인 요청만 전달하고 cluster 확대는 유지한다.
@@ -17,8 +22,7 @@
 - `VERSION_HISTORY.md`에 1.4.2 사용자용 패치노트 3개 항목을 추가했다.
 - Prod 강제 업데이트는 App Store 조회가 끝날 때까지 Root 진입을 보류하고, 최신 버전이 확인되면 기존 dialog만 표시하도록 보완했다. Dev에는 `-RODI_FORCE_REQUIRED_UPDATE` 실행 인자로 전체 차단 상태를 재현하는 실험 경로를 추가했다.
 - Prod `1.4.2 (1)` archive와 TestFlight 업로드를 완료했다. App Store Connect의 build processing·배포 가능 상태 확인이 남아 있다.
-- Dev 외부 길안내 10초 테스트는 세션·lifecycle guard를 완화했지만 실제 기기에서 `register → recordVisit`와 후기 권유가 실행되지 않아 미해결 과제로 전환했다. 다음 작업은 action 도달, 저장 측정 상태, Debug 조건, POST 결과를 비식별 로그로 추적하는 것이다.
-- Dev/Prod 코스 연습은 활성 측정이 남아 있으면 이탈 시간과 무관하게 연속 측정 dialog를 연다. Prod는 GPS 인증·방문 기록 성공 코스에만 후기 권유를 연다. Dev의 10초 이탈 뒤 `측정 종료 → register → recordVisit → 후기 권유` 테스트 경로는 실제 기기에서 실패해 원인 확인이 필요하다.
+- Prod 코스 연습은 GPS 인증·방문 기록 성공 시에만 후기 권유를 연다. Dev 코스는 현재 프로세스에서 시작한 세션이 외부 앱에 5초 이상 머문 뒤 복귀하면 테스트용 `register → recordVisit → 후기 권유`를 자동 수행한다.
 - 추천 목록이 중간 높이의 빈 결과를 표시할 때만 indicator 아래에 레이아웃을 바꾸지 않는 48pt 투명 수직 drag 영역을 추가했다. 기존 제목·필터·빈 결과 콘텐츠의 터치 계약은 변경하지 않았다.
 - Live Activity만 `release/1.4.1` 동작으로 복구했다. 코스 완료는 서버 저장 완료를 기다리지 않고 즉시 기존 완료 카드로 전환하며, 저장 중 상태·완료/진행 딥링크·세션별 Activity 정리·6개 프리뷰는 제거했다. 연습 기록 저장·세션 복구·로그아웃 정리 로직은 유지했다.
 - 후기 작성·코스 상세 후기·저장 목록·차단 목록·등록 코스·내 후기·온보딩 프로필의 네트워크 오류 문구를 모두 `네트워크 연결을 확인해주세요.`로 통일했다. 기존 연습기록 적용분까지 활성 사용처를 정적 확인했다.
@@ -129,11 +133,11 @@
 ## Next
 - iPhone 12 Pro에서 같은 Snackbar를 연속 표시했을 때 최신 메시지만 유지되는지, Home 검색·코스 등록 지도 주소 최신성 및 오픈소스 라이선스 화면을 수동 QA한다.
 
-- Dev 외부 길안내 10초 이탈 뒤 측정 종료 action·저장 측정·POST 실패 지점을 비식별 로그로 추적해 미해결 항목을 해결한다.
+- Dev에서 외부 길안내 5초 이탈 뒤 자동 POST·후기 권유와 연습기록 표시를 수동 QA한다.
 - iPhone 12 Pro에서 추천 목록의 빈 결과 상태로 indicator 아래 48pt 영역을 수직 drag했을 때 확장·축소·닫기가 되고, 이미지 3회 탭·필터·문구 터치가 기존대로인지 수동 QA한다.
 - iPhone 12 Pro에서 후기·저장 목록·차단 목록·내 활동의 네트워크 오류 문구가 통일됐는지 수동 QA한다.
 - iPhone 12 Pro에서 행정구역 선택 뒤 빈 추천 응답의 중앙 empty state와 일반 재검색 empty state를 수동 QA한다.
-- Dev에서 코스 외부 길안내로 10초 이상 이탈한 뒤 복귀하여 `측정 종료 → 방문 기록 POST → 후기 권유` 흐름을 수동 QA한다.
+- Dev에서 코스 외부 길안내로 5초 이상 이탈한 뒤 복귀하여 `방문 기록 POST → 후기 권유` 흐름을 수동 QA한다.
 - iPhone 12 Pro에서 저장목록 장소 선택 뒤 검색창 상태, 빈 후기 행 높이, 코스 등록 단절 3초 대체 화면과 새로고침을 수동 QA한다.
 - iPhone 12 Pro에서 홈 검색의 8pt header 간격·행정구역 생략 표기와 마이 연습기록·저장목록·내 활동·차단 목록을 포함한 오류 재시도 버튼을 수동 QA한다.
 
@@ -170,6 +174,9 @@
 - Presentation 리팩터링 backlog의 My Posts pagination·삭제 flow, Onboarding route host, MainTab intent, Home child ownership 항목을 순서대로 진행한다.
 
 ## Validation
+- 부스 퀴즈는 `node --check /Users/mac/Desktop/rodiquiz/app.js`, 40문항·40개 이미지 자산 존재 검증, 외부 URL·`fetch`·SVG 렌더러 잔여 없음 정적 검사를 통과했다. 브라우저 자동화의 `file://` 접근은 환경 URL 정책으로 실행되지 않아 실제 브라우저 수동 확인은 남아 있다.
+- 연습기록 후기 가능 상태 수정 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 Pro(iOS 17.2) `PracticeTrackingRestorationDecisionTests` 9건 통과, `git diff --check` 통과. Dev 실제 코스·주차장 행 표시는 수동 확인 대기.
+- Dev 외부 앱 5초 체류 테스트 경로 추가 뒤 `Rodi Dev` Debug·`Rodi` Release generic simulator build 성공, iPhone 15 Pro(iOS 17.2) `PracticeTrackingRestorationDecisionTests` 7건 통과. Dev 코스의 실제 `register → recordVisit → 후기 권유 → 연습기록` 수동 확인이 남아 있다.
 - 코드리뷰 권장 묶음 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 (iOS 17.2) 전체 `RodiTests` 23건 통과. 이번 변경 범위 `git diff --check` 통과. 전체 검사에는 보호된 `Coordinator.swift` 기존 trailing whitespace 2건이 남아 있다.
 - 강제 업데이트 변경 뒤 `Rodi Dev` Debug simulator build와 `AppVersionUpdateCheckerTests` 2건을 통과했다. iPhone 15 simulator에서 강제 실행 인자로 Root 진입 차단·기존 dialog 표시를 확인했다.
 - `bundle exec fastlane ios prod_beta`로 Prod `1.4.2 (1)` archive·IPA export·App Store Connect 업로드 성공을 확인했다. App Store Connect build processing 완료 확인은 별도다.
