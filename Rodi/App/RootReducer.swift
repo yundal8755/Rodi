@@ -228,9 +228,6 @@ private extension RootReducer {
         case .reviewPromptInteractionReady(let interaction):
             return .send(.reviewFlow(.practiceReturnPromptInteractionResolved(interaction)))
 
-        case .reviewPromptVisitSubmissionChanged(let isSubmitting):
-            return .send(.reviewFlow(.practiceReturnVisitSubmissionChanged(isSubmitting)))
-
         case .reviewFlowFinishedWithoutReview(let message):
             return .send(.reviewFlow(.practiceReturnFinishedWithoutReview(message)))
 

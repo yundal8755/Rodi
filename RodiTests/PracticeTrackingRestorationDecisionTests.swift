@@ -61,9 +61,30 @@ final class PracticeTrackingRestorationDecisionTests: XCTestCase {
         )
     }
 
-    func testDebugCourseVisitIsRecordedAfterTenSecondExternalReturn() {
+    func testRouteOnlyMeasurementIsNotReviewEligibleBeforeCertification() {
         var measurement = makeMeasurement(id: UUID(), handoffAt: .now)
-        measurement.lastRodiInactiveAt = .now.addingTimeInterval(-10)
+        measurement.status = .awaitingReturn
+
+        XCTAssertFalse(measurement.isReviewEligible)
+    }
+
+    func testCourseContainingParkingPracticeTypeIsReviewWritable() {
+        XCTAssertFalse(
+            makePracticeItem(types: [PlacePracticeType.parking.rawValue, PlacePracticeType.straight.rawValue])
+                .isParkingPractice
+        )
+    }
+
+    func testParkingPracticeIsNotReviewWritable() {
+        XCTAssertTrue(makePracticeItem(types: [PlacePracticeType.parking.rawValue]).isParkingPractice)
+    }
+
+    #if DEBUG
+    func testDebugCourseVisitIsEligibleAfterFiveSecondExternalHandoff() {
+        let measurement = makeMeasurement(
+            id: UUID(),
+            handoffAt: .now.addingTimeInterval(-5)
+        )
 
         XCTAssertTrue(
             PracticeReturnReducer.shouldRecordDebugCourseVisit(
@@ -73,9 +94,20 @@ final class PracticeTrackingRestorationDecisionTests: XCTestCase {
         )
     }
 
-    func testDebugCourseVisitIsNotRecordedBeforeTenSecondExternalReturn() {
-        var measurement = makeMeasurement(id: UUID(), handoffAt: .now)
-        measurement.lastRodiInactiveAt = .now.addingTimeInterval(-9)
+    func testDebugCourseVisitDoesNotApplyToParking() {
+        var measurement = makeMeasurement(
+            id: UUID(),
+            handoffAt: .now.addingTimeInterval(-5)
+        )
+        measurement = .init(
+            id: measurement.id,
+            placeID: measurement.placeID,
+            placeName: measurement.placeName,
+            placeType: .parking,
+            mode: measurement.mode,
+            externalHandoffAt: measurement.externalHandoffAt,
+            status: measurement.status
+        )
 
         XCTAssertFalse(
             PracticeReturnReducer.shouldRecordDebugCourseVisit(
@@ -84,6 +116,7 @@ final class PracticeTrackingRestorationDecisionTests: XCTestCase {
             )
         )
     }
+    #endif
 
     private func makeSession(phase: PracticeTrackingPhase) -> PracticeTrackingSession {
         .init(
@@ -122,6 +155,20 @@ final class PracticeTrackingRestorationDecisionTests: XCTestCase {
             mode: .gpsTracking,
             externalHandoffAt: handoffAt,
             status: .tracking
+        )
+    }
+
+    private func makePracticeItem(types: [String]) -> MyPracticeItem {
+        .init(
+            id: 1,
+            placeID: 1,
+            placeName: "연습 장소",
+            practiceTypes: types,
+            status: .visited,
+            visitCount: 1,
+            lastActivityAt: .now,
+            hasReview: false,
+            isDeleted: false
         )
     }
 }

@@ -27,7 +27,6 @@ struct PracticeTrackingReducer: Reducer {
     enum Delegate {
         case reviewPromptRequested(PracticeReturnPrompt)
         case reviewPromptInteractionReady(PracticeReturnPromptInteraction)
-        case reviewPromptVisitSubmissionChanged(Bool)
         case reviewFlowFinishedWithoutReview(String)
         case showSnackbar(String)
     }
@@ -112,9 +111,6 @@ private extension PracticeTrackingReducer {
 
         case .reviewPromptInteraction(let interaction):
             return .send(.delegate(.reviewPromptInteractionReady(interaction)))
-
-        case .reviewPromptVisitSubmissionChanged(let isSubmitting):
-            return .send(.delegate(.reviewPromptVisitSubmissionChanged(isSubmitting)))
 
         case .finishedWithoutReview(let message):
             return .send(.delegate(.reviewFlowFinishedWithoutReview(message)))
