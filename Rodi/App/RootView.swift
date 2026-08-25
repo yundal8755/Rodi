@@ -18,13 +18,16 @@ struct RootView: View {
 
     init() {
         let onboardingProgressStore = OnboardingProgressStore()
+
         let dependencies = AppDependencies()
         self.dependencies = dependencies
+
         let reviewFlowReducer = ReviewFlowFactory.make(
             placeRepository: dependencies.placeRepository,
             practiceRepository: dependencies.practiceRepository,
             reviewRepository: dependencies.reviewRepository
         )
+
         let practiceTrackingReducer = PracticeTrackingReducer(
             practiceRepository: dependencies.practiceRepository,
             measurementStore: dependencies.practiceMeasurementStore,
@@ -43,7 +46,9 @@ struct RootView: View {
                 )
             )
         )
+
         let networkConnectionMonitor = NetworkConnectionMonitor()
+
         _networkConnectionMonitor = StateObject(wrappedValue: networkConnectionMonitor)
     }
 

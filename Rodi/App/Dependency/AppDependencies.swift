@@ -53,27 +53,34 @@ final class AppDependencies {
             tokenRefresher: tokenRefresher,
             recentLoginProviderStore: recentLoginProviderStore
         )
+
         memberRepository = MemberRepositoryImpl(
             remoteDataSource: MemberRemoteDataSource(networkManager: authenticatedNetworkManager)
         )
+
         placeRepository = PlaceRepositoryImpl(
             remoteDataSource: PlaceRemoteDataSource(
                 publicNetworkManager: unauthenticatedNetworkManager,
                 authenticatedNetworkManager: authenticatedNetworkManager
             )
         )
+
         practiceRepository = PracticeRepositoryImpl(
             remoteDataSource: PracticeRemoteDataSource(networkManager: authenticatedNetworkManager)
         )
+
         reviewRepository = ReviewRepositoryImpl(
             remoteDataSource: ReviewRemoteDataSource(networkManager: authenticatedNetworkManager)
         )
+
         recentSearchRepository = RecentSearchRepositoryImpl(
             remoteDataSource: RecentSearchRemoteDataSource(networkManager: authenticatedNetworkManager)
         )
+
         courseRepository = CourseRepositoryImpl(
             remoteDataSource: CourseRemoteDataSource(networkManager: authenticatedNetworkManager)
         )
+
         practiceTrackingService.configure(
             practiceRepository: practiceRepository,
             measurementStore: practiceMeasurementStore
