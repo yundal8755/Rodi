@@ -3,10 +3,27 @@
 ## Current
 
 - 브랜치: `main`
-- 작업 상태: 코스·주차장 연습 완료 정책 통일 구현·자동 검증 완료, 수동 확인 대기. 별도 부스용 오프라인 퀴즈 자산 교체 완료.
+- 작업 상태: Prod 1.4.3(2) TestFlight 내부 테스터 배포 완료. 개발자 평가 문서와 부스 방문자 FAQ 작성 완료, 연습기록 후기 상태의 수동 확인 대기.
 
 ## Recent Work
+- `RodiKakaoMapView`의 configuration·lifecycle·render recovery·카메라·마커·경로·chrome·사용자 위치 extension 구현을 한 파일로 통합하고 파생 파일 11개를 삭제했다. 내부는 `MARK`로 구획했으며 Rodi Dev Debug build를 통과했다.
+- `KakaoMapContainerView`의 nested `Coordinator`를 같은 파일로 합치고 분리된 `KakaoMapCoordinator.swift`를 삭제했다. Rodi Dev Debug build를 통과했다.
+- 실행 환경이 실제 토큰 사용량을 제공하지 않을 때 의미 없는 placeholder가 반복되지 않도록, AGENTS의 토큰 사용 요약을 정확한 수치 제공 시에만 출력하도록 변경했다.
+- 완료 보고의 `읽은 문서` 아래에 작업별 토큰 사용 요약을 최대 3줄로 남기도록 AGENTS 규칙을 추가했다. 실행 환경이 정확한 사용량을 제공하지 않으면 추정하지 않고 그 사실을 명시한다.
+- Kakao SDK key 확인·초기화·중복 초기화 방지를 `KakaoConfiguration`으로 합치고 `KakaoMapService`를 삭제했다. `RodiApp`은 `KakaoConfiguration.initializeSDK()`만 호출하며, Rodi Dev Debug build를 통과했다.
+- 부스 구현 심화 문서의 외부 길안내 설명을 Dynamic Link가 아닌 URL scheme·카카오내비 SDK URL 실행으로 바로잡고, GPS 판정은 정확도 60m·경로 corridor 150m·시간당 45m/s 상한을 통과한 위치 표본의 이동 거리를 누적하는 현재 정책으로 구체화했다.
+- 개발 경험이 있는 부스 방문자를 위해 폴더 구조·MVI 용어를 제외한 구현 심화 질문 25개를 개발자 평가 문서 앞에 추가했다. 지도 SDK 연결, cluster, 요청 최신성, 위치·경로 판정, Live Activity, 후기 수정, 재시도·중복 방지 흐름을 조금 더 자세히 설명한다.
+- 부스 방문자에게 바로 안내할 수 있도록 로그인·지도·검색·연습·Live Activity·후기·코스 등록·설정·오류를 다루는 일반 사용자용 FAQ 50문항을 별도 문서로 작성했다. 안전·도로·주차 가능 여부는 보장하지 않는다는 안내를 포함했다.
+- 부스 현장 우선 질문은 MVI·Reducer 같은 내부 구조 용어를 빼고, 사용자 입력부터 지도·API·화면 반영까지의 구현 흐름으로 다시 작성했다.
+- 개발자 부스에서 먼저 나올 가능성이 높은 cluster marker, 지도·검색 최신성, 코스 등록 핀, 외부 길안내, GPS·Live Activity, 후기 수정, 오류 상태 질문 15개를 문서 맨 앞에 빠른 답변으로 배치했다.
+- 개발자 평가 문서에 클러스터링 marker, viewport·cursor 목록, filter, 장소 선택, 코스 등록 핀·경로, 길안내, 후기·차단, 재시도 UI 같은 서비스 구현 심화 질문·답변 30개를 추가했다.
+- 개발자 평가용 내부 문서에 아키텍처, MVI, 동시성, Data 변환, 지도·위치, Live Activity, 보안, 배포, QA를 다루는 예상 질문·두괄식 답변 50개를 작성했다. 실기기 검증이 필요한 GPS·외부 앱·Live Activity 항목은 완료로 단정하지 않았다.
+- Prod 1.4.3(2) 아카이브·App Store Connect 처리·내부 테스터 배포를 완료했다. 배포 전 Release simulator build를 통과했고, 현재 `main`은 origin에 푸시된 상태다.
 - `/Users/mac/Desktop/rodiquiz`의 부스용 정적 퀴즈를 제공받은 경고표지·노면표시 원본에서 잘라낸 로컬 PNG 40개로 교체했다. 원본 설명 텍스트가 있는 하단 영역을 제외했고 워터마크·로고가 있는 자료는 사용하지 않았다. 서버·외부 요청 없이 `file://`로 동작한다.
+- 부스 퀴즈는 완료 카드를 비활성화하지 않아 반복 응시할 수 있게 했고, 상단은 Rodi 앱 로고로 교체하고 표지 이미지를 확대했다. 오답 수정 모드는 제거했다.
+- `/Users/mac/Downloads/퀴즈/완료`의 447~1000px 표지 6개를 파일명 기준 문항으로 교체했다. 기존 저해상도 크롭 자산은 더 이상 퀴즈에 참조하지 않는다.
+- `/Users/mac/Downloads/퀴즈/진행중`의 표지 17개를 추가해 총 23개 이미지·46문항으로 늘렸다. 각 이미지는 2개의 다른 질문 문구로 출제하며, 홈 복귀 때 카드 번호는 1~46 순서를 유지하고 번호별 문제만 다시 무작위 배정한다. 문제 화면의 동작 버튼은 `홈으로 이동` 하나로 통일했다. Kixx 로고가 있던 정차금지지대 이미지는 로고 영역만 제거한 새 로컬 자산으로 교체했다.
+- 퀴즈 이미지·CSS·JS를 모두 데이터 URL로 포함한 `Rodi_도로표지_퀴즈_단일파일.html`과 동일 내용의 ZIP을 만들었다. 전달받는 사람은 ZIP을 풀고 HTML 파일 하나만 열면 된다.
 - 연습기록의 후기 가능 여부는 `PARKING` 태그 포함 여부가 아니라 서버 계약의 단일 `[PARKING]` 배열로 판별하도록 수정했다. 따라서 주차 유형을 포함한 코스는 `후기 작성`, 주차장만 `작성 불가`로 표시된다.
 - Prod 연습 기록은 GPS 인증과 `register → recordVisit` 성공으로 통일했다. 코스만 인증 성공 뒤 후기 권유를 표시하며, 주차장은 후기 팝업 없이 연습기록 추가 안내·Home 갱신만 한다. Dev 코스는 외부 앱에서 5초 이상 체류 후 복귀할 때 테스트용 POST·후기 권유를 허용하며, 주차장의 시간 기반 self-report POST는 제거했다.
 - 홈 추천목록 필터는 선택 카테고리의 연습유형만 열고, 같은 카테고리 재탭 시 해당 영역을 접도록 변경했다. 연습유형과 주차 필터는 카테고리 전환 뒤에도 누적 선택값으로 유지한다. 코스 등록도 단일 카테고리 표시를 유지하면서 이전 카테고리의 선택 연습유형을 보존한다.
@@ -174,7 +191,7 @@
 - Presentation 리팩터링 backlog의 My Posts pagination·삭제 flow, Onboarding route host, MainTab intent, Home child ownership 항목을 순서대로 진행한다.
 
 ## Validation
-- 부스 퀴즈는 `node --check /Users/mac/Desktop/rodiquiz/app.js`, 40문항·40개 이미지 자산 존재 검증, 외부 URL·`fetch`·SVG 렌더러 잔여 없음 정적 검사를 통과했다. 브라우저 자동화의 `file://` 접근은 환경 URL 정책으로 실행되지 않아 실제 브라우저 수동 확인은 남아 있다.
+- 부스 퀴즈는 `node --check /Users/mac/Desktop/rodiquiz/app.js`, 현재 6문항·고해상도 이미지 6개 존재 검증, 외부 URL·`fetch`·저해상도 자산 참조 없음 정적 검사를 통과했다. 브라우저 자동화의 `file://` 접근은 환경 URL 정책으로 실행되지 않아 실제 브라우저 수동 확인은 남아 있다.
 - 연습기록 후기 가능 상태 수정 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 Pro(iOS 17.2) `PracticeTrackingRestorationDecisionTests` 9건 통과, `git diff --check` 통과. Dev 실제 코스·주차장 행 표시는 수동 확인 대기.
 - Dev 외부 앱 5초 체류 테스트 경로 추가 뒤 `Rodi Dev` Debug·`Rodi` Release generic simulator build 성공, iPhone 15 Pro(iOS 17.2) `PracticeTrackingRestorationDecisionTests` 7건 통과. Dev 코스의 실제 `register → recordVisit → 후기 권유 → 연습기록` 수동 확인이 남아 있다.
 - 코드리뷰 권장 묶음 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 (iOS 17.2) 전체 `RodiTests` 23건 통과. 이번 변경 범위 `git diff --check` 통과. 전체 검사에는 보호된 `Coordinator.swift` 기존 trailing whitespace 2건이 남아 있다.

@@ -100,6 +100,8 @@ MUST NOT create ad-hoc handoff files, nested `AGENTS.md`, temporary TODO documen
 - If a task required no additional project document, the line MUST say `읽은 문서: [AGENTS.md](AGENTS.md)`.
 - A skill instruction or non-Markdown resource MAY remain a compact plain-text path when it cannot be linked reliably in the final response.
 - The final response SHOULD keep this list compact and separate it from build, static-check, and manual-verification results.
+- A final response MAY place a compact `토큰 사용` summary immediately below `읽은 문서` only when the execution environment provides exact per-task token metrics.
+- The summary MUST use no more than three lines and group usage by work such as code inspection, implementation, or verification. It MUST NOT estimate or emit a placeholder when exact metrics are unavailable.
 
 ## Long-running Work Progress
 
