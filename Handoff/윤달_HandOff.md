@@ -2,8 +2,8 @@
 
 ## Current
 
-- 브랜치: `main`
-- 작업 상태: Prod 1.4.3(2) TestFlight 내부 테스터 배포 완료. 개발자 평가 문서와 부스 방문자 FAQ 작성 완료, 연습기록 후기 상태의 수동 확인 대기.
+- 브랜치: `refactor/1.4.4-kakao-map`
+- 작업 상태: `main`과 `dev`를 `93f5d7c`으로 동기화한 뒤 Kakao Map adapter 통합·평가 문서 변경을 분리 커밋했다. Rodi Dev Debug build 성공, 일부 XCTest 크래시 원인 확인 대기.
 
 ## Recent Work
 - `RodiKakaoMapView`의 configuration·lifecycle·render recovery·카메라·마커·경로·chrome·사용자 위치 extension 구현을 한 파일로 통합하고 파생 파일 11개를 삭제했다. 내부는 `MARK`로 구획했으며 Rodi Dev Debug build를 통과했다.
@@ -191,6 +191,7 @@
 - Presentation 리팩터링 backlog의 My Posts pagination·삭제 flow, Onboarding route host, MainTab intent, Home child ownership 항목을 순서대로 진행한다.
 
 ## Validation
+- Kakao Map adapter 통합 뒤 Rodi Dev Debug generic simulator build를 통과했다. iPhone SE (3rd generation, iOS 26.2)에서 실행한 전체 `RodiTests`는 33건 중 29건 통과·4건 크래시로 실패했으며, 실패는 코스 등록 주소 최신성·게스트 마커 테스트다.
 - 부스 퀴즈는 `node --check /Users/mac/Desktop/rodiquiz/app.js`, 현재 6문항·고해상도 이미지 6개 존재 검증, 외부 URL·`fetch`·저해상도 자산 참조 없음 정적 검사를 통과했다. 브라우저 자동화의 `file://` 접근은 환경 URL 정책으로 실행되지 않아 실제 브라우저 수동 확인은 남아 있다.
 - 연습기록 후기 가능 상태 수정 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 Pro(iOS 17.2) `PracticeTrackingRestorationDecisionTests` 9건 통과, `git diff --check` 통과. Dev 실제 코스·주차장 행 표시는 수동 확인 대기.
 - Dev 외부 앱 5초 체류 테스트 경로 추가 뒤 `Rodi Dev` Debug·`Rodi` Release generic simulator build 성공, iPhone 15 Pro(iOS 17.2) `PracticeTrackingRestorationDecisionTests` 7건 통과. Dev 코스의 실제 `register → recordVisit → 후기 권유 → 연습기록` 수동 확인이 남아 있다.
