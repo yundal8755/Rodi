@@ -3,6 +3,56 @@ import XCTest
 
 @MainActor
 final class HomeMapAndCourseRegistrationReducerTests: XCTestCase {
+    func testUserViewportChangeDuringInitialLoadingShowsResearchButtonBeforeCancelling() async {
+        let reducer = RecommendListBottomSheetReducer(
+            placeRepository: HomeMapPlaceRepositoryStub(),
+            hasActiveSession: { false }
+        )
+        var state = RecommendListBottomSheetReducer.State()
+        state.activeViewport = PlaceViewport(
+            southWestLatitude: 37.4,
+            southWestLongitude: 126.9,
+            northEastLatitude: 37.6,
+            northEastLongitude: 127.1
+        )
+        state.isInitialLoading = true
+
+        let effect = reducer.reduce(
+            &state,
+            with: .viewportChanged(
+                viewport: PlaceViewport(
+                    southWestLatitude: 37.5,
+                    southWestLongitude: 127.0,
+                    northEastLatitude: 37.7,
+                    northEastLongitude: 127.2
+                ),
+                center: .init(latitude: 37.6, longitude: 127.1),
+                isUserInitiated: true
+            )
+        )
+
+        XCTAssertTrue(state.needsResearch)
+        XCTAssertFalse(state.isInitialLoading)
+        guard case let .run(_, task) = effect.caseOf else {
+            return XCTFail("로딩 중 지도 이동은 버튼 상태 전달 뒤 기존 목록 요청을 취소해야 합니다.")
+        }
+
+        var emittedActions: [RecommendListBottomSheetReducer.Action] = []
+        await task { action in
+            emittedActions.append(action)
+        }
+
+        XCTAssertEqual(emittedActions.count, 2)
+        guard emittedActions.count == 2 else { return }
+        guard case let .delegate(.displayStateChanged(_, showsResearchButton)) = emittedActions[0] else {
+            return XCTFail("먼저 재검색 버튼 표시 상태를 전달해야 합니다.")
+        }
+        XCTAssertTrue(showsResearchButton)
+        guard case .placeListLoadingCancellationRequested = emittedActions[1] else {
+            return XCTFail("표시 상태 전달 뒤 기존 목록 요청을 취소해야 합니다.")
+        }
+    }
+
     func testGuestPlaceMarkerTapRequestsAuthenticationWithoutChangingMapSelection() {
         let reducer = HomeMapReducer(
             dependencies: .init(

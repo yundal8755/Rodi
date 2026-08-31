@@ -72,9 +72,8 @@ struct RootView: View {
                 .zIndex(2)
 
             PracticeTrackingView(
-                state: store.state.practiceTracking,
+                service: dependencies.practiceTrackingService, state: store.state.practiceTracking,
                 canPresentReviewPrompt: store.state.reviewFlow.review.route == .hidden,
-                service: dependencies.practiceTrackingService,
                 send: { store.send(.practiceTracking($0)) }
             )
                 .zIndex(3)

@@ -46,6 +46,7 @@ struct RecommendListBottomSheetReducer: Reducer {
         case reloadAfterRegionViewport(origin: RodiCoordinate)
         case reloadAfterFilter
         case loadNextPage
+        case placeListLoadingCancellationRequested
         case pageLoaded(
             page: PlaceCursorPage,
             viewport: PlaceViewport,
@@ -128,7 +129,7 @@ extension RecommendListBottomSheetReducer {
                 state.isInitialLoading = false
                 state.isManualResearchLoading = false
                 state.needsResearch = true
-                return .cancel(id: BottomSheetEffectID.placeListLoading)
+                return cancelPlaceListLoadingAndNotifyDisplay(state)
             }
 
             if isUserInitiated {
@@ -139,7 +140,7 @@ extension RecommendListBottomSheetReducer {
                     state.isNextPageLoading = false
                     state.isManualResearchLoading = false
                     state.needsResearch = true
-                    return .cancel(id: BottomSheetEffectID.placeListLoading)
+                    return cancelPlaceListLoadingAndNotifyDisplay(state)
                 }
                 if state.activeViewport != nil { state.needsResearch = true }
                 if state.activeViewport != nil { return displayStateEffect(state) }
@@ -194,6 +195,9 @@ extension RecommendListBottomSheetReducer {
             state.isNextPageLoading = true
             state.errorMessage = nil
             return loadPageEffect(viewport: viewport, origin: origin, cursor: cursor, revision: state.requestRevision, isAppending: true, isManualResearch: false)
+
+        case .placeListLoadingCancellationRequested:
+            return .cancel(id: BottomSheetEffectID.placeListLoading)
 
         case let .pageLoaded(page, viewport, revision, isAppending, isManualResearch):
             guard revision == state.requestRevision else { return .none }
@@ -290,5 +294,15 @@ extension RecommendListBottomSheetReducer {
             presentation: state.presentation,
             showsResearchButton: state.needsResearch
         )))
+    }
+
+    private func cancelPlaceListLoadingAndNotifyDisplay(_ state: State) -> Effect<Action> {
+        .run { send in
+            await send(.delegate(.displayStateChanged(
+                presentation: state.presentation,
+                showsResearchButton: state.needsResearch
+            )))
+            await send(.placeListLoadingCancellationRequested)
+        }
     }
 }

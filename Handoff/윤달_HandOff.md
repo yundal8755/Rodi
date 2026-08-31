@@ -6,6 +6,8 @@
 - 작업 상태: `main`과 `dev`를 `93f5d7c`으로 동기화한 뒤 Kakao Map adapter 통합·평가 문서 변경을 분리 커밋했다. Rodi Dev Debug build 성공, 일부 XCTest 크래시 원인 확인 대기.
 
 ## Recent Work
+- 홈 지도 재검색 버튼 누락을 수정했다. 추천 목록 로딩 중 사용자 viewport 이동은 버튼 표시 상태를 먼저 전달한 뒤 기존 목록 요청을 취소하며, 동일 순서를 검증하는 reducer XCTest를 추가했다. GPS·네트워크 주행 시나리오와 테스트 범위를 `Docs/Guides/GPS_REPLAY_TESTING.md`로 정리했다.
+- 홈 지도 viewport 이동 뒤 재검색 버튼이 누락될 수 있는 P0 QA 이슈를 등록했다. 로딩 취소 경로의 표시 상태 미전파와 Kakao camera callback의 사용자 이동 오분류 위험을 원인으로 기록했으며, iOS 16.1~26 실기기·reducer 회귀 검증을 다음 작업으로 남겼다.
 - `RodiKakaoMapView`의 configuration·lifecycle·render recovery·카메라·마커·경로·chrome·사용자 위치 extension 구현을 한 파일로 통합하고 파생 파일 11개를 삭제했다. 내부는 `MARK`로 구획했으며 Rodi Dev Debug build를 통과했다.
 - `KakaoMapContainerView`의 nested `Coordinator`를 같은 파일로 합치고 분리된 `KakaoMapCoordinator.swift`를 삭제했다. Rodi Dev Debug build를 통과했다.
 - 실행 환경이 실제 토큰 사용량을 제공하지 않을 때 의미 없는 placeholder가 반복되지 않도록, AGENTS의 토큰 사용 요약을 정확한 수치 제공 시에만 출력하도록 변경했다.
@@ -148,6 +150,8 @@
 - title 영역까지 넓힌 바텀시트 drag hit 영역은 기능 오류를 피하기 위해 기존 indicator 영역 방식으로 되돌렸다.
 
 ## Next
+- iOS 16.1~26 실기기에서 홈 지도 재검색 버튼의 초기 로딩·수동 재검색·마커/검색 이동 직후 drag·빠른 확대/축소를 검증하고, Kakao 프로그램 카메라 완료·사용자 gesture 경합이 남는지 확인한다.
+- GPS Replay 시나리오 GPS-01~06의 XCTest fixture와 repository stub을 순서대로 구현한다.
 - iPhone 12 Pro에서 같은 Snackbar를 연속 표시했을 때 최신 메시지만 유지되는지, Home 검색·코스 등록 지도 주소 최신성 및 오픈소스 라이선스 화면을 수동 QA한다.
 
 - Dev에서 외부 길안내 5초 이탈 뒤 자동 POST·후기 권유와 연습기록 표시를 수동 QA한다.
