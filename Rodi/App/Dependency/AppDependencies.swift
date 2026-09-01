@@ -19,13 +19,13 @@ final class AppDependencies {
     let courseRepository: CourseRepository
     let recentLoginProviderStore: RecentLoginProviderStore
     let practiceMeasurementStore: PracticeMeasurementStoring
-    let practiceTrackingService: PracticeTrackingService
+    let drivePracticeService: DrivePracticeService
     let levelUpPresentationStore: LevelUpPresentationStore
 
     init() {
         let tokenStore = KeychainTokenStore()
         let recentLoginProviderStore = RecentLoginProviderStore()
-        let practiceTrackingService = PracticeTrackingService.shared
+        let drivePracticeService = DrivePracticeService.shared
         let unauthenticatedNetworkManager = NetworkManager()
         let authRemoteDataSource = AuthRemoteDataSource(
             networkManager: unauthenticatedNetworkManager
@@ -44,7 +44,7 @@ final class AppDependencies {
         self.tokenStore = tokenStore
         self.recentLoginProviderStore = recentLoginProviderStore
         practiceMeasurementStore = PracticeMeasurementStore()
-        self.practiceTrackingService = practiceTrackingService
+        self.drivePracticeService = drivePracticeService
         levelUpPresentationStore = LevelUpPresentationStore(tokenStore: tokenStore)
 
         authRepository = AuthRepositoryImpl(
@@ -81,7 +81,7 @@ final class AppDependencies {
             remoteDataSource: CourseRemoteDataSource(networkManager: authenticatedNetworkManager)
         )
 
-        practiceTrackingService.configure(
+        drivePracticeService.configure(
             practiceRepository: practiceRepository,
             measurementStore: practiceMeasurementStore
         )

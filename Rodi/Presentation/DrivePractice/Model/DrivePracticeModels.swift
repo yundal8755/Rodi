@@ -1,11 +1,11 @@
 //
-//  PracticeTrackingModels.swift
+//  DrivePracticeModels.swift
 //  Rodi
 //
 
 import Foundation
 
-enum PracticeTrackingPhase: String, Codable, Equatable {
+enum DrivePracticePhase: String, Codable, Equatable {
     case headingToCourse
     case drivingCourse
     case completed
@@ -33,7 +33,7 @@ enum PracticeTrackingPhase: String, Codable, Equatable {
 
 /// 사용자의 원본 GPS 궤적은 저장하지 않는다.
 /// routePath는 완주 판단 기준이 되는 코스의 도로 polyline이다.
-struct PracticeTrackingSession: Codable, Equatable, Identifiable {
+struct DrivePracticeSession: Codable, Equatable, Identifiable {
     let id: UUID
     let courseID: Int
     let courseName: String
@@ -42,7 +42,7 @@ struct PracticeTrackingSession: Codable, Equatable, Identifiable {
     let routePath: [RodiCoordinate]
     let cumulativeRouteDistanceMeters: [Double]
     let startedAt: Date
-    var phase: PracticeTrackingPhase
+    var phase: DrivePracticePhase
     var drivingStartedAt: Date?
     var lastAcceptedLocationAt: Date?
     var courseProgress: Double
@@ -100,8 +100,14 @@ struct PracticeTrackingSession: Codable, Equatable, Identifiable {
     var requiredDirectionalAdvanceMeters: Double {
         0
     }
+    
+    var analyticsPlaceType: String {
+        placeType?.rawValue ?? "unknown"
+    }
 }
 
+
+// 토끼 에셋
 enum PracticeLiveActivityRabbitAsset {
     static let navigation = "img_rabbit_navigation"
 
@@ -116,22 +122,22 @@ enum PracticeLiveActivityRabbitAsset {
     }
 }
 
-enum PracticeTrackingStartResult: Equatable {
+// 시작 결과
+enum DrivePracticeStartResult: Equatable {
     case started
     case authorizationRequested
     case reducedAccuracyRequested
     case unavailable(String)
 }
 
-/// 앱 프로세스가 다시 시작된 뒤, 진행 중이던 측정 세션을 어떻게 다룰지 결정한다.
-/// GPS 연속성이 끊긴 주행은 재개하지 않고, 코스 진입 전 이동만 제한적으로 재개할 수 있다.
-enum PracticeTrackingRestorationDecision: Equatable {
+// active 상태가 됐을 때 진행 중인 측정 세션 어떻게 다룰 것인가
+enum DrivePracticeRestorationDecision: Equatable {
     case continueApproach
     case discardApproach
     case interruptDriving
 
     static func make(
-        session: PracticeTrackingSession,
+        session: DrivePracticeSession,
         measurement: PracticeMeasurement?,
         now: Date,
         approachGracePeriod: TimeInterval
@@ -148,8 +154,10 @@ enum PracticeTrackingRestorationDecision: Equatable {
             return now.timeIntervalSince(measurement.externalHandoffAt) <= approachGracePeriod
                 ? .continueApproach
                 : .discardApproach
+            
         case .drivingCourse:
             return .interruptDriving
+            
         case .completed, .cancelled, .interrupted:
             return .discardApproach
         }

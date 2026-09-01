@@ -51,7 +51,7 @@ struct CourseDetailBottomSheetReducer: Reducer {
     enum Delegate { case dismissed, routeOverlayChanged(RodiRouteOverlay?), requestAuthentication, showSnackbar(String), reviewWritingRequested(ReviewWriteRequest), reviewEditingRequested(Int) }
     private let placeRepository: PlaceRepository
     private let practiceMeasurementStore: PracticeMeasurementStoring
-    private let practiceTrackingService: PracticeTrackingService
+    private let drivePracticeService: DrivePracticeService
     private let hasActiveSession: () -> Bool
     private let directionsService: KakaoDirectionsService
     private let routeGuidanceReducer: RouteGuidanceReducer
@@ -64,7 +64,7 @@ struct CourseDetailBottomSheetReducer: Reducer {
         practiceRepository: PracticeRepository,
         reviewRepository: ReviewRepository,
         practiceMeasurementStore: PracticeMeasurementStoring,
-        practiceTrackingService: PracticeTrackingService,
+        drivePracticeService: DrivePracticeService,
         routeGuidanceService: RouteGuidanceService,
         hasActiveSession: @escaping () -> Bool,
         directionsService: KakaoDirectionsService = .init(),
@@ -72,13 +72,13 @@ struct CourseDetailBottomSheetReducer: Reducer {
     ) {
         self.placeRepository = placeRepository
         self.practiceMeasurementStore = practiceMeasurementStore
-        self.practiceTrackingService = practiceTrackingService
+        self.drivePracticeService = drivePracticeService
         self.hasActiveSession = hasActiveSession
         self.directionsService = directionsService
         routeGuidanceReducer = .init(
             flowService: .init(
                 memberRepository: memberRepository,
-                practiceTrackingService: practiceTrackingService,
+                drivePracticeService: drivePracticeService,
                 directionsService: directionsService,
                 routeGuidanceService: routeGuidanceService
             ),
@@ -209,7 +209,7 @@ private extension CourseDetailBottomSheetReducer {
                 externalHandoffAt: .now,
                 status: mode == .gpsTracking ? .tracking : .awaitingReturn
             ))
-            practiceTrackingService.synchronizeCompletedSessionCertificationIfNeeded()
+            drivePracticeService.synchronizeCompletedSessionCertificationIfNeeded()
 
         case let .openFinished(result, measurementID):
             if case .openedApp = result {

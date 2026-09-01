@@ -1,18 +1,18 @@
 //
-//  PracticeTrackingSessionStore.swift
+//  DrivePracticeSessionStore.swift
 //  Rodi
 //
 
 import Foundation
 
-struct PracticeTrackingSessionStore {
+struct DrivePracticeSessionStore {
     private enum Key {
         static let activeSession = "rodi.practiceTracking.activeSession"
     }
 
-    private let persistence = UserDefaultsCodableStore<PracticeTrackingSession>(key: Key.activeSession)
+    private let persistence = UserDefaultsCodableStore<DrivePracticeSession>(key: Key.activeSession)
 
-    func load() -> PracticeTrackingSession? {
+    func load() -> DrivePracticeSession? {
         do {
             return try persistence.decode()
         } catch {
@@ -22,7 +22,7 @@ struct PracticeTrackingSessionStore {
         }
     }
 
-    func save(_ session: PracticeTrackingSession) {
+    func save(_ session: DrivePracticeSession) {
         persistence.save(session)
     }
 

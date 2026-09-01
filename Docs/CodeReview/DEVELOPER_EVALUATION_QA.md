@@ -218,7 +218,7 @@
 
 ### 8. parent와 child reducer는 어떻게 통신하나요?
 
-**child는 typed Delegate로 결과와 의도만 내보내고 parent가 sibling 전환을 중재합니다.** child가 다른 child State를 직접 읽거나 수정하지 않게 해서 Home의 Map·Search·BottomSheet와 Review·PracticeTracking 사이의 결합을 낮췄습니다.
+**child는 typed Delegate로 결과와 의도만 내보내고 parent가 sibling 전환을 중재합니다.** child가 다른 child State를 직접 읽거나 수정하지 않게 해서 Home의 Map·Search·BottomSheet와 Review·DrivePractice 사이의 결합을 낮췄습니다.
 
 ### 9. reducer가 커지면 무조건 파일을 나누나요?
 
@@ -320,7 +320,7 @@
 
 ### 31. Live Activity를 앱 내부 상태와 어떻게 동기화하나요?
 
-**PracticeTracking session을 원본으로 두고 runtime service가 start·sync·end만 수행합니다.** Activity UI와 공유 Attributes는 extension target에 두고, 앱 전용 위치·세션 정책이 Widget에 섞이지 않도록 분리했습니다.
+**DrivePractice session을 원본으로 두고 runtime service가 start·sync·end만 수행합니다.** Activity UI와 공유 Attributes는 extension target에 두고, 앱 전용 위치·세션 정책이 Widget에 섞이지 않도록 분리했습니다.
 
 ### 32. Live Activity 업데이트를 자주 보내지 않는 이유는 무엇인가요?
 

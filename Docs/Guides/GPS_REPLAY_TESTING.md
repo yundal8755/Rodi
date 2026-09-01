@@ -17,7 +17,7 @@
 
 ## 현재 판정 기준
 
-`PracticeTrackingService`의 현재 정책은 다음과 같다.
+`DrivePracticeService`의 현재 정책은 다음과 같다.
 
 | 구분 | 현재 기준 | 테스트 관점 |
 | --- | --- | --- |
@@ -41,7 +41,7 @@ Scenario Timeline
        ↓
 Test Location Adapter / Test Repository
        ↓
-PracticeTrackingService · PracticeReturnReducer
+DrivePracticeService · DrivePracticeReducer
        ↓
 Session 상태 · 방문 기록 요청 · Live Activity 상태 검증
 ```
@@ -65,7 +65,7 @@ Xcode Simulator의 GPX 재생은 정상 이동 확인에 사용한다. 정확도
 
 ## 구현 순서
 
-1. `PracticeRouteMatcher`와 `PracticeTrackingService`에서 순수하게 검증 가능한 표본 처리부터 XCTest fixture로 고정한다.
+1. `PracticeRouteMatcher`와 `DrivePracticeService`에서 순수하게 검증 가능한 표본 처리부터 XCTest fixture로 고정한다.
 2. 테스트 전용 `LocationSample`과 시나리오 타임라인을 도입한다. 실제 `CLLocationManager` delegate를 직접 호출하는 방식은 test target에 한정한다.
 3. `PracticeRepository` stub에 online/offline/timeout/recovery 응답을 추가해 GPS-06의 인증 상태 전환을 검증한다.
 4. Simulator GPX로 GPS-01의 기본 이동을 확인하고, GPS-07·GPS-09는 최소 iOS 16.1·17·최신 지원 iOS 실기기에서 확인한다.

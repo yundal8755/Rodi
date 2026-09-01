@@ -4,8 +4,11 @@
 
 - 브랜치: `refactor/1.4.4-kakao-map`
 - 작업 상태: `main`과 `dev`를 `93f5d7c`으로 동기화한 뒤 Kakao Map adapter 통합·평가 문서 변경을 분리 커밋했다. Rodi Dev Debug build 성공, 일부 XCTest 크래시 원인 확인 대기.
+- 연습 측정 복귀 정책 reducer 병합을 완료했다. 위치 런타임 Service 분리는 다음 리팩터링 배치로 남긴다.
 
 ## Recent Work
+- `PracticeTracking` feature를 `DrivePractice`로 개명했다. 폴더·View·Reducer·Service·세션 모델과 Root/Home 의존성, 위치 권한 purpose key, 문서 경로를 함께 정리했고 기존 UserDefaults 키·analytics raw value는 호환성을 위해 유지했다.
+- `PracticeReturnReducer`를 `PracticeTrackingReducer`에 흡수해 단일 사용 child State·Action·Delegate 중계를 제거했다. 앱 복귀·측정 연속·방문 기록·후기 권유 정책과 기존 debug Effect의 request revision·취소 계약은 root reducer에 유지했다.
 - 홈 지도 재검색 버튼 누락을 수정했다. 추천 목록 로딩 중 사용자 viewport 이동은 버튼 표시 상태를 먼저 전달한 뒤 기존 목록 요청을 취소하며, 동일 순서를 검증하는 reducer XCTest를 추가했다. GPS·네트워크 주행 시나리오와 테스트 범위를 `Docs/Guides/GPS_REPLAY_TESTING.md`로 정리했다.
 - 홈 지도 viewport 이동 뒤 재검색 버튼이 누락될 수 있는 P0 QA 이슈를 등록했다. 로딩 취소 경로의 표시 상태 미전파와 Kakao camera callback의 사용자 이동 오분류 위험을 원인으로 기록했으며, iOS 16.1~26 실기기·reducer 회귀 검증을 다음 작업으로 남겼다.
 - `RodiKakaoMapView`의 configuration·lifecycle·render recovery·카메라·마커·경로·chrome·사용자 위치 extension 구현을 한 파일로 통합하고 파생 파일 11개를 삭제했다. 내부는 `MARK`로 구획했으며 Rodi Dev Debug build를 통과했다.
@@ -195,6 +198,8 @@
 - Presentation 리팩터링 backlog의 My Posts pagination·삭제 flow, Onboarding route host, MainTab intent, Home child ownership 항목을 순서대로 진행한다.
 
 ## Validation
+- `DrivePractice` 개명 뒤 Rodi Dev Debug generic simulator build와 iPhone 15 Pro(iOS 17.2) 전체 `RodiTests`를 통과했다. 호환성 예외를 제외한 `PracticeTracking` 코드 참조는 제거했다.
+- `PracticeReturnReducer` 병합 후 Dev Debug 빌드와 기존 `RodiTests`를 통과했다. 변경 파일 범위의 `git diff --check`도 통과했다.
 - Kakao Map adapter 통합 뒤 Rodi Dev Debug generic simulator build를 통과했다. iPhone SE (3rd generation, iOS 26.2)에서 실행한 전체 `RodiTests`는 33건 중 29건 통과·4건 크래시로 실패했으며, 실패는 코스 등록 주소 최신성·게스트 마커 테스트다.
 - 부스 퀴즈는 `node --check /Users/mac/Desktop/rodiquiz/app.js`, 현재 6문항·고해상도 이미지 6개 존재 검증, 외부 URL·`fetch`·저해상도 자산 참조 없음 정적 검사를 통과했다. 브라우저 자동화의 `file://` 접근은 환경 URL 정책으로 실행되지 않아 실제 브라우저 수동 확인은 남아 있다.
 - 연습기록 후기 가능 상태 수정 뒤 `Rodi Dev` Debug generic simulator build 성공, iPhone 15 Pro(iOS 17.2) `PracticeTrackingRestorationDecisionTests` 9건 통과, `git diff --check` 통과. Dev 실제 코스·주차장 행 표시는 수동 확인 대기.

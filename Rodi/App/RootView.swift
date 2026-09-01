@@ -28,10 +28,10 @@ struct RootView: View {
             reviewRepository: dependencies.reviewRepository
         )
 
-        let practiceTrackingReducer = PracticeTrackingReducer(
+        let drivePracticeReducer = DrivePracticeReducer(
             practiceRepository: dependencies.practiceRepository,
             measurementStore: dependencies.practiceMeasurementStore,
-            trackingService: dependencies.practiceTrackingService
+            drivePracticeService: dependencies.drivePracticeService
         )
 
         _store = StateObject(
@@ -42,7 +42,7 @@ struct RootView: View {
                     authRepository: dependencies.authRepository,
                     onboardingProgressStore: onboardingProgressStore,
                     reviewFlowReducer: reviewFlowReducer,
-                    practiceTrackingReducer: practiceTrackingReducer
+                    drivePracticeReducer: drivePracticeReducer
                 )
             )
         )
@@ -71,10 +71,10 @@ struct RootView: View {
             )
                 .zIndex(2)
 
-            PracticeTrackingView(
-                service: dependencies.practiceTrackingService, state: store.state.practiceTracking,
+            DrivePracticeView(
+                service: dependencies.drivePracticeService, state: store.state.drivePractice,
                 canPresentReviewPrompt: store.state.reviewFlow.review.route == .hidden,
-                send: { store.send(.practiceTracking($0)) }
+                send: { store.send(.drivePractice($0)) }
             )
                 .zIndex(3)
 

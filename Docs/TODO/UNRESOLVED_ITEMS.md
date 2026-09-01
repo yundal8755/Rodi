@@ -23,7 +23,7 @@
 현재 확인된 `Codable → Data → UserDefaults` 저장소:
 
 - `Data/Local/Onboarding/OnboardingDraftStore.swift`
-- `Presentation/PracticeTracking/Service/PracticeTrackingSessionStore.swift`
+- `Presentation/DrivePractice/Service/DrivePracticeSessionStore.swift`
 - `Data/Local/Practice/PracticeMeasurementStore.swift` — schema v1, legacy payload lazy migration, 손상 payload 제거를 적용했다.
 - `Presentation/CourseRegistration/Service/CourseRegistrationRecentSearchStore.swift`
 - `Presentation/Home/BottomSheet/Filter/Service/HomePracticeFilterStore.swift`
@@ -156,4 +156,4 @@ QA 중 발견한 “어떤 화면에서, 어떤 행동 후, 무엇이 잘못됐�
 
 ## 실기기 확인 후 해결 대기
 
-- [ ] Dev > 외부 길안내 복귀 — `GPS 측정 코스 → 외부 앱 10초 이상 이탈 → 복귀 → 측정 종료`에서 `register → recordVisit`와 후기 권유 팝업이 실제 기기에서 실행되지 않는다. 다음 작업에서는 `PracticeReturnReducer.activeMeasurementEnded` action 도달 여부, 저장된 측정의 모드·장소 유형·외부 이탈 시각, Debug 조건, POST 결과를 비식별 로그로 확인한 뒤 원인을 확정한다.
+- [ ] Dev > 외부 길안내 복귀 — `GPS 측정 코스 → 외부 앱 10초 이상 이탈 → 복귀 → 측정 종료`에서 `register → recordVisit`와 후기 권유 팝업이 실제 기기에서 실행되지 않는다. 다음 작업에서는 `DrivePracticeReducer.activeMeasurementEnded` action 도달 여부, 저장된 측정의 모드·장소 유형·외부 이탈 시각, Debug 조건, POST 결과를 비식별 로그로 확인한 뒤 원인을 확정한다.

@@ -1,12 +1,12 @@
 //
-//  PracticeReturnReducer.swift
+//  DrivePracticeReducer.swift
 //  Rodi
 //
 
 import Foundation
 
-/// 외부 길안내 복귀 뒤의 측정 연속·방문 기록·후기 권유 정책을 소유한다.
-struct PracticeReturnReducer: Reducer {
+/// 연습 측정과 외부 길안내 복귀 후 정책을 하나의 Feature State로 소유한다.
+struct DrivePracticeReducer: Reducer {
 
     struct State {
         var pendingMeasurement: PracticeMeasurement?
@@ -18,18 +18,19 @@ struct PracticeReturnReducer: Reducer {
     enum Action {
         case sceneBecameActive(canPresentPrompt: Bool)
         case sceneBecameInactive
+        case certificationRevisionChanged(canPresentPrompt: Bool)
         case activeMeasurementContinued
         case activeMeasurementEnded
-        case promptInteraction(PracticeReturnPromptInteraction)
+        case sessionEnded
+        case promptInteractionRequested(PracticeReturnPromptInteraction)
         case debugCourseVisitRecorded(revision: Int, Result<PracticeMeasurement, Error>)
-        case reset
         case delegate(Delegate)
     }
 
     enum Delegate {
-        case promptRequested(PracticeReturnPrompt)
-        case reviewPromptInteraction(PracticeReturnPromptInteraction)
-        case finishedWithoutReview(String)
+        case reviewPromptRequested(PracticeReturnPrompt)
+        case reviewPromptInteractionReady(PracticeReturnPromptInteraction)
+        case reviewFlowFinishedWithoutReview(String)
         case showSnackbar(String)
     }
 
@@ -39,16 +40,16 @@ struct PracticeReturnReducer: Reducer {
 
     private let practiceRepository: PracticeRepository
     private let measurementStore: PracticeMeasurementStoring
-    private let trackingService: PracticeTrackingService
+    private let drivePracticeService: DrivePracticeService
 
     init(
         practiceRepository: PracticeRepository,
         measurementStore: PracticeMeasurementStoring,
-        trackingService: PracticeTrackingService
+        drivePracticeService: DrivePracticeService
     ) {
         self.practiceRepository = practiceRepository
         self.measurementStore = measurementStore
-        self.trackingService = trackingService
+        self.drivePracticeService = drivePracticeService
     }
 
     #if DEBUG
@@ -63,14 +64,16 @@ struct PracticeReturnReducer: Reducer {
     #endif
 }
 
+
 // MARK: - Reduce
-extension PracticeReturnReducer {
+extension DrivePracticeReducer {
 
     func reduce(_ state: inout State, with action: Action) -> Effect<Action> {
         switch action {
-        case .sceneBecameActive(let canPresentPrompt):
-            let restorationDecision = trackingService.restoreIfNeeded()
-            trackingService.retryCertificationIfNeeded()
+        case .sceneBecameActive(let canPresentPrompt),
+             .certificationRevisionChanged(let canPresentPrompt):
+            let restorationDecision = drivePracticeService.restoreIfNeeded()
+            drivePracticeService.retryCertificationIfNeeded()
             if let restorationEffect = handleRestorationDecision(
                 restorationDecision,
                 canPresentPrompt: canPresentPrompt,
@@ -80,10 +83,10 @@ extension PracticeReturnReducer {
             }
             #if DEBUG
             if canPresentPrompt,
-               trackingService.isSessionFromCurrentProcess,
+               drivePracticeService.isSessionFromCurrentProcess,
                let measurement = measurementStore.load(),
                Self.shouldRecordDebugCourseVisit(measurement: measurement, now: .now) {
-                trackingService.cancel()
+                drivePracticeService.cancel()
                 state.activeMeasurementContinuation = nil
                 state.isDebugCourseVisitSubmitting = true
                 state.requestRevision += 1
@@ -101,7 +104,7 @@ extension PracticeReturnReducer {
 
         case .activeMeasurementContinued:
             guard let measurement = state.activeMeasurementContinuation else { return .none }
-            switch trackingService.continueTracking(sessionID: measurement.id) {
+            switch drivePracticeService.continueTracking(sessionID: measurement.id) {
             case .started:
                 state.activeMeasurementContinuation = nil
             case .authorizationRequested:
@@ -111,14 +114,21 @@ extension PracticeReturnReducer {
             case .unavailable(let message):
                 return .send(.delegate(.showSnackbar(message)))
             }
+            return .none
 
         case .activeMeasurementEnded:
-            trackingService.cancel()
+            drivePracticeService.cancel()
             state.activeMeasurementContinuation = nil
             measurementStore.clear()
             return .none
 
-        case .promptInteraction(let interaction):
+        case .sessionEnded:
+            drivePracticeService.endForSessionChange()
+            state.requestRevision += 1
+            state = .init(requestRevision: state.requestRevision)
+            return .cancel(id: EffectID.debugCourseVisit)
+
+        case .promptInteractionRequested(let interaction):
             return handlePromptInteraction(interaction, state: &state)
 
         case .debugCourseVisitRecorded(let revision, let result):
@@ -133,24 +143,18 @@ extension PracticeReturnReducer {
                 return .send(.delegate(.showSnackbar("연습 기록에 추가하지 못했어요. 다시 시도해 주세요.")))
             }
 
-        case .reset:
-            state.requestRevision += 1
-            state = .init(requestRevision: state.requestRevision)
-            return .cancel(id: EffectID.debugCourseVisit)
-
         case .delegate:
             return .none
         }
-
-        return .none
     }
 }
 
-// MARK: - Prompt Policy
-private extension PracticeReturnReducer {
+
+// MARK: - Return Policy
+private extension DrivePracticeReducer {
 
     func handleRestorationDecision(
-        _ decision: PracticeTrackingRestorationDecision?,
+        _ decision: DrivePracticeRestorationDecision?,
         canPresentPrompt: Bool,
         state: inout State
     ) -> Effect<Action>? {
@@ -185,7 +189,7 @@ private extension PracticeReturnReducer {
             return .none
         }
 
-        if measurement.isActiveTracking, trackingService.hasActiveMeasurement {
+        if measurement.isActiveTracking, drivePracticeService.hasActiveMeasurement {
             state.activeMeasurementContinuation = measurement
             return .none
         }
@@ -193,7 +197,7 @@ private extension PracticeReturnReducer {
         if measurement.isParking {
             guard measurement.status == .certified else { return .none }
             measurementStore.remove(measurement)
-            return .send(.delegate(.finishedWithoutReview("연습 기록에 추가되었습니다.")))
+            return .send(.delegate(.reviewFlowFinishedWithoutReview("연습 기록에 추가되었습니다.")))
         }
 
         return makePromptEffect(for: measurement, state: &state)
@@ -205,7 +209,7 @@ private extension PracticeReturnReducer {
     ) -> Effect<Action> {
         guard measurement.status == .certified else { return .none }
         state.pendingMeasurement = measurement
-        return .send(.delegate(.promptRequested(
+        return .send(.delegate(.reviewPromptRequested(
             .init(
                 placeID: measurement.placeID,
                 placeName: measurement.placeName,
@@ -221,18 +225,16 @@ private extension PracticeReturnReducer {
         state: inout State
     ) -> Effect<Action> {
         guard let measurement = state.pendingMeasurement else {
-            return .send(.delegate(.reviewPromptInteraction(interaction)))
+            return .send(.delegate(.reviewPromptInteractionReady(interaction)))
         }
 
-        // GPS 인증이 끝난 코스의 방문 기록은 이미 서버에 저장되어 있다.
-        // 미방문 사유로 상태를 바꾸지 않고 팝업만 닫는다.
         if measurement.status == .certified, interaction == .notVisited {
             removePendingMeasurement(state: &state)
-            return .send(.delegate(.reviewPromptInteraction(.closed)))
+            return .send(.delegate(.reviewPromptInteractionReady(.closed)))
         }
 
         removePendingMeasurement(state: &state)
-        return .send(.delegate(.reviewPromptInteraction(interaction)))
+        return .send(.delegate(.reviewPromptInteractionReady(interaction)))
     }
 
     #if DEBUG

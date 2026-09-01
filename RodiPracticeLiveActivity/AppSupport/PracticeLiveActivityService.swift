@@ -13,13 +13,13 @@ final class PracticeLiveActivityService {
 
     private var activity: Activity<PracticeLiveActivityAttributes>?
     private var lastUpdatedAt: Date?
-    private var lastPhase: PracticeTrackingPhase?
+    private var lastPhase: DrivePracticePhase?
     private var lastApproachProgress: Double?
     private var lastCourseProgress: Double?
 
     private init() {}
 
-    func start(for session: PracticeTrackingSession) {
+    func start(for session: DrivePracticeSession) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             RodiLogger.info("Practice Live Activity unavailable: disabled by user")
             return
@@ -57,7 +57,7 @@ final class PracticeLiveActivityService {
         }
     }
 
-    func sync(_ session: PracticeTrackingSession, force: Bool = false) {
+    func sync(_ session: DrivePracticeSession, force: Bool = false) {
         if activity == nil {
             activity = Activity<PracticeLiveActivityAttributes>.activities.first(where: {
                 $0.attributes.sessionID == session.id
@@ -82,7 +82,7 @@ final class PracticeLiveActivityService {
         }
     }
 
-    func finish(_ session: PracticeTrackingSession) {
+    func finish(_ session: DrivePracticeSession) {
         guard let activity else { return }
 
         let state = contentState(for: session)
@@ -131,7 +131,7 @@ final class PracticeLiveActivityService {
         case drivingCourseJustStarted
         case completed
 
-        var phase: PracticeTrackingPhase {
+        var phase: DrivePracticePhase {
             switch self {
             case .headingToCourse: .headingToCourse
             case .drivingCourse, .drivingCourseJustStarted: .drivingCourse
@@ -159,7 +159,7 @@ final class PracticeLiveActivityService {
             RodiCoordinate(latitude: 37.582, longitude: 126.984),
             RodiCoordinate(latitude: 37.586, longitude: 126.991)
         ]
-        let session = PracticeTrackingSession(
+        let session = DrivePracticeSession(
             id: UUID(),
             courseID: 0,
             courseName: "북악스카이웨이 드라이브",
@@ -188,7 +188,7 @@ final class PracticeLiveActivityService {
     }
     #endif
 
-    private func contentState(for session: PracticeTrackingSession) -> PracticeLiveActivityAttributes.ContentState {
+    private func contentState(for session: DrivePracticeSession) -> PracticeLiveActivityAttributes.ContentState {
         PracticeLiveActivityAttributes.ContentState(
             phaseRawValue: session.phase.rawValue,
             approachProgress: session.approachProgress,

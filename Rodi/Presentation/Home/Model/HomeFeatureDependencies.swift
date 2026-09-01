@@ -11,7 +11,7 @@ struct HomeFeatureDependencies {
     let reviewRepository: ReviewRepository
     let memberRepository: MemberRepository
     let practiceMeasurementStore: PracticeMeasurementStoring
-    let practiceTrackingService: PracticeTrackingService
+    let drivePracticeService: DrivePracticeService
     let snackbarService: SnackbarService
 
     init(appDependencies: AppDependencies) {
@@ -22,7 +22,7 @@ struct HomeFeatureDependencies {
         reviewRepository = appDependencies.reviewRepository
         memberRepository = appDependencies.memberRepository
         practiceMeasurementStore = appDependencies.practiceMeasurementStore
-        practiceTrackingService = appDependencies.practiceTrackingService
+        drivePracticeService = appDependencies.drivePracticeService
         snackbarService = appDependencies.snackbarService
     }
 }

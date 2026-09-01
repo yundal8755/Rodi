@@ -28,9 +28,9 @@
 - MUST `SubPage`에는 navigation destination, full-screen 단계, 독립 modal처럼 독립적으로 렌더링되는 화면을 둔다.
 - SHOULD 단일 화면의 시각 분해는 같은 파일의 `private extension`과 `// MARK: -`를 우선한다. 별도 파일이 필요하면 가장 가까운 화면 아래의 `SubView`에 둔다.
 - MUST NOT `SubView`, `Section`, `Enum`을 feature 최상위 분류로 사용한다. 독립 State·Action·Reducer를 가진 영역은 실제 기능 이름의 직접 폴더로 둔다.
-- MUST `PracticeTracking` root에는 `PracticeTrackingView`와 `PracticeTrackingReducer`만 두고, 앱 복귀 정책은 `Return`, lifecycle bridge는 `Adapter`, 측정·저장 구현은 `Service`에 둔다. Live Activity Widget UI와 app·extension 공유 `ActivityAttributes`는 `RodiPracticeLiveActivity/`에, 앱에서 start/sync/end를 수행하는 app-only runtime service는 `RodiPracticeLiveActivity/AppSupport`에 둔다.
+- MUST `DrivePractice` root에는 `DrivePracticeView`와 `DrivePracticeReducer`만 두고, 앱 복귀 정책은 `DrivePracticeReducer`, lifecycle bridge는 `Adapter`, 측정·저장 구현은 `Service`에 둔다. Live Activity Widget UI와 app·extension 공유 `ActivityAttributes`는 `RodiPracticeLiveActivity/`에, 앱에서 start/sync/end를 수행하는 app-only runtime service는 `RodiPracticeLiveActivity/AppSupport`에 둔다.
 - MUST `Review` root에는 `ReviewView`와 `ReviewReducer`만 두고, 전역 진입·완료 갱신·Snackbar 중재와 조립은 `Flow`, 재진입 권유는 `Prompt`, 후기 작성·수정은 `Writing`, 미방문 사유는 `SkipReason`에 둔다.
-- MUST Review와 PracticeTracking이 서로의 State를 읽지 않게 하고, 연습 복귀 후기 권유와 선택 결과는 Root가 typed Delegate로 중계하게 한다.
+- MUST Review와 DrivePractice가 서로의 State를 읽지 않게 하고, 연습 복귀 후기 권유와 선택 결과는 Root가 typed Delegate로 중계하게 한다.
 
 ## MUST NOT
 

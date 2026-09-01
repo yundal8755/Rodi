@@ -35,10 +35,10 @@
 
 상태: 완료 — `PracticeMeasurement` 계약은 `Domain/Practice`, UserDefaults schema·migration 구현은 `Data/Local/Practice`로 이동했다.
 
-- 대상: `Rodi/Domain/Practice/PracticeMeasurement.swift`, `Rodi/Data/Local/Practice/PracticeMeasurementStore.swift`, `Rodi/Presentation/PracticeTracking/Service/PracticeTrackingService.swift`
+- 대상: `Rodi/Domain/Practice/PracticeMeasurement.swift`, `Rodi/Data/Local/Practice/PracticeMeasurementStore.swift`, `Rodi/Presentation/DrivePractice/Service/DrivePracticeService.swift`
 - 근거: `PracticeMeasurement`는 코스·주차장·GPS 인증·방문 기록 상태라는 제품 모델이고, 동일 파일이 `UserDefaults` key, JSON encode/decode, legacy key 제거까지 소유한다. `load()`과 `save()`가 `try?`로 실패를 숨기므로 앱 업데이트·손상 payload·schema 변경 때 활성 측정이 조용히 사라질 수 있다.
 - 영향: 외부 길안내/앱 재시작 뒤 인증 재시도와 Live Activity 완료 전환에 필요한 상태를 복구하지 못할 수 있다. 현재 문제는 `Codable` 저장 자체가 아니라, schema·migration·decode 실패·보존 기간 정책이 불명확한 점이다.
-- 권장 조치: 먼저 저장 계약 표(소유 Feature, 민감도, retention, schema version, migration, decode 실패 처리)를 확정한다. 이후 사용자 승인을 받은 Data/Local 작업에서 persistence 표현만 `Data/Local`로 이동하고, `PracticeTracking`은 session 정책만 유지한다. 기존 key와 payload 호환 검증이 완료되기 전에는 삭제·형식 변경을 하지 않는다.
+- 권장 조치: 먼저 저장 계약 표(소유 Feature, 민감도, retention, schema version, migration, decode 실패 처리)를 확정한다. 이후 사용자 승인을 받은 Data/Local 작업에서 persistence 표현만 `Data/Local`로 이동하고, `DrivePractice`는 session 정책만 유지한다. 기존 key와 payload 호환 검증이 완료되기 전에는 삭제·형식 변경을 하지 않는다.
 - 검증: 기존 저장값으로 업데이트 설치, decode 실패 payload, 인증 대기 상태 앱 종료·재실행, 계정 전환을 각각 확인한다.
 
 ### P1-CR-1 — 테스트 타깃이 현재 계약과 불일치
@@ -112,8 +112,8 @@
 
 상태: 구현 완료·실기기 계측 대기 — 대용량 경로 매칭의 XCTest metric 기준을 추가했고, marker progressive rendering은 모든 prefix snapshot을 미리 보관하지 않도록 바꿨다. 실기기 연결이 복구되면 동일 테스트와 Instruments를 다시 실행한다.
 
-- 대상: `Rodi/Presentation/PracticeTracking/Service/PracticeTrackingService.swift`, `Rodi/Presentation/PracticeTracking/Service/PracticeRouteMatcher.swift`, `Rodi/Presentation/Home/Map/Service/MapMarkerRenderingService.swift`
-- 근거: `PracticeTrackingService`는 MainActor에서 위치 update마다 전체 route segment를 선형 탐색한다. marker progressive rendering은 누적 prefix snapshot 배열을 생성한다. 두 경우 모두 정적 비용은 보이지만 hitch·메모리 문제의 실측 근거는 없다.
+- 대상: `Rodi/Presentation/DrivePractice/Service/DrivePracticeService.swift`, `Rodi/Presentation/DrivePractice/Service/PracticeRouteMatcher.swift`, `Rodi/Presentation/Home/Map/Service/MapMarkerRenderingService.swift`
+- 근거: `DrivePracticeService`는 MainActor에서 위치 update마다 전체 route segment를 선형 탐색한다. marker progressive rendering은 누적 prefix snapshot 배열을 생성한다. 두 경우 모두 정적 비용은 보이지만 hitch·메모리 문제의 실측 근거는 없다.
 - 조치: 2,001개 좌표·20회 매칭을 사용하는 `PracticeRouteMatcherPerformanceTests`에 clock·memory metric을 추가했다. Simulator 기준 평균 0.006초·추가 physical memory 평균 약 262KB로, 정적 비용만으로 route index를 도입할 근거는 확인되지 않았다. marker는 기존 batch 크기·16ms cadence·최종 snapshot 계약을 유지하면서 batch 배열 전체를 사전 생성하지 않도록 바꿨다.
 - 검증: Simulator에서 성능 테스트와 1,000개 marker snapshot 계약 테스트를 실행한다. 실기기 Time Profiler/SwiftUI Instruments는 기기 보안 연결 복구 후 동일 긴 route·marker viewport로 다시 확인한다.
 
@@ -124,7 +124,7 @@
 - Domain은 UI·SDK·DTO import 없이 Entity와 Repository contract를 유지한다.
 - DataSource/RepositoryImpl/Mapper의 서버 변환 경계와 `ServerResponse` helper 구조는 유지한다.
 - Presentation은 backend `NetworkManager`를 직접 호출하지 않는다. 코스 등록의 Kakao Local private DTO와 URLSession은 RODI backend Swagger DTO가 아닌 feature 전용 외부 API adapter라 현재 Service 내부 유지가 적절하다.
-- Kakao Map Adapter, Home 위치 request ID/취소 구조, Review의 Prompt/Writing/SkipReason child 구조, PracticeTracking의 Return/Adapter/Service 분리는 정적 검토상 현 구조를 유지하는 편이 안전하다.
+- Kakao Map Adapter, Home 위치 request ID/취소 구조, Review의 Prompt/Writing/SkipReason child 구조, DrivePractice의 Adapter/Service 분리는 정적 검토상 현 구조를 유지하는 편이 안전하다.
 - `GeometryReader` 3건은 dropdown anchor 또는 튜토리얼 컨테이너 비율 계산이라는 실제 측정 책임이 있어, 재현된 SE/Max 레이아웃 결함 없이 제거하지 않는다.
 
 ## 권장 처리 순서

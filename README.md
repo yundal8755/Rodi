@@ -76,7 +76,7 @@ Rodi는 운전 연습이 막막한 초보 운전자에게 주변 연습 코스�
     |-- Presentation                # 화면 및 사용자 인터랙션 레이어
     |   |-- Home                    # 지도, BottomSheet, Search, 장소 상세
     |   |-- CourseRegistration      # 사용자 코스 등록, 장소 선택, 핀 수정
-    |   |-- PracticeTracking        # 위치 기반 연습 측정과 Live Activity
+    |   |-- DrivePractice           # 위치 기반 연습 측정과 Live Activity
     |   |-- Review                  # 후기 작성·수정, 미방문 사유
     |   |-- Login                   # 소셜 로그인, 둘러보기, 탈퇴 계정 복구
     |   |-- Onboarding              # 약관, 프로필, 권한 단계

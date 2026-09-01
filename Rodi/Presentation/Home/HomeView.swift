@@ -49,7 +49,7 @@ struct HomeView: View {
                     reviewRepository: dependencies.reviewRepository,
                     memberRepository: dependencies.memberRepository,
                     practiceMeasurementStore: dependencies.practiceMeasurementStore,
-                    practiceTrackingService: dependencies.practiceTrackingService
+                    drivePracticeService: dependencies.drivePracticeService
                 ),
                 delegateHandler: presentation.handleDelegate
             )

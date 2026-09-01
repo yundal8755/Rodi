@@ -13,6 +13,7 @@ struct PracticeReturnPrompt: Equatable {
     let visitedSnackbarMessage: String?
 }
 
+// 코스 잘 다녀왔는가?
 enum PracticeReturnPromptInteraction: Equatable {
     case visited
     case notVisited

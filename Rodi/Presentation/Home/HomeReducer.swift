@@ -18,7 +18,7 @@ struct HomeReducer: Reducer {
         let reviewRepository: ReviewRepository
         let memberRepository: MemberRepository
         let practiceMeasurementStore: PracticeMeasurementStoring
-        let practiceTrackingService: PracticeTrackingService
+        let drivePracticeService: DrivePracticeService
     }
 
     enum Action {
@@ -70,7 +70,7 @@ struct HomeReducer: Reducer {
                 reviewRepository: dependencies.reviewRepository,
                 memberRepository: dependencies.memberRepository,
                 practiceMeasurementStore: dependencies.practiceMeasurementStore,
-                practiceTrackingService: dependencies.practiceTrackingService,
+                drivePracticeService: dependencies.drivePracticeService,
                 routeGuidanceService: .init()
             )
         )

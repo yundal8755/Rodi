@@ -1,11 +1,11 @@
 //
-//  PracticeTrackingContinuationDialog.swift
+//  DrivePracticeContinuationDialog.swift
 //  Rodi
 //
 
 import SwiftUI
 
-struct PracticeTrackingContinuationDialog: View {
+struct DrivePracticeContinuationDialog: View {
     let courseName: String
     let continueAction: () -> Void
     let endAction: () -> Void

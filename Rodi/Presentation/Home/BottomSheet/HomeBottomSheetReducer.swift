@@ -36,7 +36,7 @@ struct HomeBottomSheetReducer: Reducer {
         let reviewRepository: ReviewRepository
         let memberRepository: MemberRepository
         let practiceMeasurementStore: PracticeMeasurementStoring
-        let practiceTrackingService: PracticeTrackingService
+        let drivePracticeService: DrivePracticeService
         let routeGuidanceService: RouteGuidanceService
     }
 
@@ -108,7 +108,7 @@ struct HomeBottomSheetReducer: Reducer {
             practiceRepository: dependencies.practiceRepository,
             reviewRepository: dependencies.reviewRepository,
             practiceMeasurementStore: dependencies.practiceMeasurementStore,
-            practiceTrackingService: dependencies.practiceTrackingService,
+            drivePracticeService: dependencies.drivePracticeService,
             routeGuidanceService: dependencies.routeGuidanceService,
             hasActiveSession: hasActiveSession
         )
@@ -116,7 +116,7 @@ struct HomeBottomSheetReducer: Reducer {
             placeRepository: dependencies.placeRepository,
             memberRepository: dependencies.memberRepository,
             practiceMeasurementStore: dependencies.practiceMeasurementStore,
-            practiceTrackingService: dependencies.practiceTrackingService,
+            drivePracticeService: dependencies.drivePracticeService,
             routeGuidanceService: dependencies.routeGuidanceService,
             hasActiveSession: hasActiveSession
         )
