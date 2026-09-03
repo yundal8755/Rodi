@@ -134,6 +134,7 @@ extension DrivePracticeService {
             )
             switch decision {
             case .continueApproach:
+                cancelLiveActivity(sessionID: session.id)
                 return decision
             case .discardApproach, .interruptDriving:
                 discardRestoredSession(session, decision: decision)
@@ -173,6 +174,7 @@ extension DrivePracticeService {
     }
 
     func endForSessionChange() {
+        let sessionID = session?.id
         certificationService?.cancel()
         locationAdapter.stopTracking()
         sessionStore.clear()
@@ -180,7 +182,9 @@ extension DrivePracticeService {
         session = nil
         didStartSessionInCurrentProcess = false
         lastInCourseLocation = nil
-        cancelLiveActivity()
+        if let sessionID {
+            cancelLiveActivity(sessionID: sessionID)
+        }
     }
 
     private func endActiveSession(
@@ -192,7 +196,7 @@ extension DrivePracticeService {
         if clearMeasurement, measurementStore?.load()?.id == session.id {
             measurementStore?.clear()
         }
-        cancelLiveActivity()
+        cancelLiveActivity(sessionID: session.id)
         locationAdapter.stopTracking()
         didStartSessionInCurrentProcess = false
         lastInCourseLocation = nil
@@ -371,7 +375,6 @@ extension DrivePracticeService {
         didStartSessionInCurrentProcess = true
         locationAdapter.startTracking(phase: session.phase, isParking: session.isParking)
         startLiveActivity(for: session)
-        syncLiveActivity(session, force: true)
     }
 
     private func startLiveActivity(for session: DrivePracticeSession) {
@@ -379,9 +382,9 @@ extension DrivePracticeService {
         PracticeLiveActivityService.shared.start(for: session)
     }
 
-    private func syncLiveActivity(_ session: DrivePracticeSession, force: Bool = false) {
+    private func syncLiveActivity(_ session: DrivePracticeSession) {
         guard #available(iOS 16.1, *) else { return }
-        PracticeLiveActivityService.shared.sync(session, force: force)
+        PracticeLiveActivityService.shared.sync(session)
     }
 
     private func finishLiveActivity(_ session: DrivePracticeSession) {
@@ -389,8 +392,8 @@ extension DrivePracticeService {
         PracticeLiveActivityService.shared.finish(session)
     }
 
-    private func cancelLiveActivity() {
+    private func cancelLiveActivity(sessionID: UUID) {
         guard #available(iOS 16.1, *) else { return }
-        PracticeLiveActivityService.shared.cancel()
+        PracticeLiveActivityService.shared.cancel(sessionID: sessionID)
     }
 }

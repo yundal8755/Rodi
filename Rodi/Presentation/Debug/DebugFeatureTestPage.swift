@@ -79,16 +79,16 @@ struct DebugFeatureTestPage: View {
             titleVisibility: .visible
         ) {
             Button("연습 코스로 이동중") {
-                PracticeLiveActivityService.shared.showPreview(state: .headingToCourse)
+                PracticeLiveActivityPreview.show(.headingToCourse)
             }
             Button("코스 주행중") {
-                PracticeLiveActivityService.shared.showPreview(state: .drivingCourse)
+                PracticeLiveActivityPreview.show(.drivingCourse)
             }
             Button("코스 주행중 - 방금 출발") {
-                PracticeLiveActivityService.shared.showPreview(state: .drivingCourseJustStarted)
+                PracticeLiveActivityPreview.show(.drivingCourseJustStarted)
             }
             Button("코스 주행 완료") {
-                PracticeLiveActivityService.shared.showPreview(state: .completed)
+                PracticeLiveActivityPreview.show(.completed)
             }
             Button("취소", role: .cancel) {}
         }
