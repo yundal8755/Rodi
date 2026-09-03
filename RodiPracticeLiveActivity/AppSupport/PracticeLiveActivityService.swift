@@ -17,6 +17,27 @@ final class PracticeLiveActivityService {
 
     private init() {}
 
+    /// 프로세스 종료 콜백이 반환되기 전에 시스템에 Live Activity 종료를 전달합니다.
+    /// `applicationWillTerminate`는 동기 콜백이므로 대기 시간을 짧게 제한합니다.
+    nonisolated static func endAllBeforeProcessTermination() {
+        let completion = DispatchSemaphore(value: 0)
+
+        Task.detached(priority: .userInitiated) {
+            defer { completion.signal() }
+
+            for activity in Activity<PracticeLiveActivityAttributes>.activities {
+                if #available(iOS 16.2, *) {
+                    await activity.end(nil, dismissalPolicy: .immediate)
+                } else {
+                    await activity.end(dismissalPolicy: .immediate)
+                }
+            }
+        }
+
+        // ponytail: UIKit에 async 종료 훅이 없어 최대 2초만 동기 대기한다.
+        _ = completion.wait(timeout: .now() + 2)
+    }
+
     func start(for session: DrivePracticeSession) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             RodiLogger.info("Practice Live Activity unavailable: disabled by user")
