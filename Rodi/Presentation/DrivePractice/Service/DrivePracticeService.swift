@@ -7,6 +7,9 @@ import Combine
 import CoreLocation
 
 @MainActor
+/// DrivePractice의 세션 정책을 조율한다.
+/// 경로 판정·세션 저장·완료 전환과 Live Activity 호출만 맡으며,
+/// 인증 재시도와 Core Location delegate·백그라운드 수명은 각각 전용 객체에 위임한다.
 final class DrivePracticeService: NSObject, ObservableObject {
     static let shared = DrivePracticeService()
 
@@ -17,35 +20,28 @@ final class DrivePracticeService: NSObject, ObservableObject {
         static let maximumSampleGap: TimeInterval = 60
         static let maximumForwardMetersPerSecond = 45.0
         static let forwardDistanceToleranceMeters = 80.0
-        static let approachDesiredAccuracy = kCLLocationAccuracyHundredMeters
-        static let approachDistanceFilter: CLLocationDistance = 100
-        static let drivingDesiredAccuracy = kCLLocationAccuracyNearestTenMeters
-        static let drivingDistanceFilter: CLLocationDistance = 20
     }
 
     @Published private(set) var session: DrivePracticeSession?
     @Published private(set) var certificationRevision = 0
 
-    private let locationManager = CLLocationManager()
     private let sessionStore: DrivePracticeSessionStore
     private var measurementStore: PracticeMeasurementStoring?
-    private var practiceRepository: PracticeRepository?
     private var lastInCourseLocation: CLLocation?
-    private var isCertificationRequestInFlight = false
-    private var certificationTask: Task<Void, Never>?
-    private var certificationRequestID = 0
-    private var backgroundActivitySession: AnyObject?
+    private var certificationService: DrivePracticeCertificationService?
     private var didStartSessionInCurrentProcess = false
+    private lazy var locationAdapter = DrivePracticeLocationAdapter(
+        onLocation: { [weak self] location in
+            self?.receive(location)
+        },
+        onFailure: { error in
+            RodiLogger.warning("Drive practice location failed: \(error.localizedDescription)")
+        }
+    )
 
     private override init() {
         sessionStore = DrivePracticeSessionStore()
         super.init()
-        locationManager.delegate = self
-        locationManager.activityType = .automotiveNavigation
-        locationManager.desiredAccuracy = Policy.approachDesiredAccuracy
-        locationManager.distanceFilter = Policy.approachDistanceFilter
-        locationManager.pausesLocationUpdatesAutomatically = false
-        locationManager.showsBackgroundLocationIndicator = true
         session = sessionStore.load()
     }
 }
@@ -58,8 +54,15 @@ extension DrivePracticeService {
         practiceRepository: PracticeRepository,
         measurementStore: PracticeMeasurementStoring
     ) {
-        self.practiceRepository = practiceRepository
         self.measurementStore = measurementStore
+        certificationService?.cancel()
+        certificationService = DrivePracticeCertificationService(
+            practiceRepository: practiceRepository,
+            measurementStore: measurementStore,
+            didCertify: { [weak self] in
+                self?.certificationRevision += 1
+            }
+        )
     }
 
     var hasActiveMeasurement: Bool {
@@ -75,7 +78,7 @@ extension DrivePracticeService {
         routePath: [RodiCoordinate],
         rabbitAssetName: String = "img_rabbit_navigation"
     ) -> DrivePracticeStartResult {
-        if let prerequisite = locationPrerequisite() { return prerequisite }
+        if let prerequisite = locationAdapter.locationPrerequisite() { return prerequisite }
 
         guard routePath.count >= 2 else {
             return .unavailable("코스 경로를 준비하지 못했어요. 잠시 후 다시 시도해주세요.")
@@ -138,9 +141,7 @@ extension DrivePracticeService {
             }
         }
 
-        guard locationManager.authorizationStatus == .authorizedWhenInUse
-                || locationManager.authorizationStatus == .authorizedAlways
-        else {
+        guard locationAdapter.hasGrantedLocationAuthorization else {
             return nil
         }
         activateTracking(for: session)
@@ -157,7 +158,7 @@ extension DrivePracticeService {
         if session.phase == .drivingCourse, didStartSessionInCurrentProcess {
             return .started
         }
-        if let prerequisite = locationPrerequisite() { return prerequisite }
+        if let prerequisite = locationAdapter.locationPrerequisite() { return prerequisite }
 
         lastInCourseLocation = nil
         activateTracking(for: session)
@@ -172,9 +173,8 @@ extension DrivePracticeService {
     }
 
     func endForSessionChange() {
-        cancelCertificationRequest()
-        stopLocationUpdates()
-        endBackgroundActivitySession()
+        certificationService?.cancel()
+        locationAdapter.stopTracking()
         sessionStore.clear()
         measurementStore?.clear()
         session = nil
@@ -193,11 +193,10 @@ extension DrivePracticeService {
             measurementStore?.clear()
         }
         cancelLiveActivity()
-        stopLocationUpdates()
-        endBackgroundActivitySession()
+        locationAdapter.stopTracking()
         didStartSessionInCurrentProcess = false
         lastInCourseLocation = nil
-        cancelCertificationRequest()
+        certificationService?.cancel()
     }
 
     private func discardRestoredSession(
@@ -252,7 +251,7 @@ extension DrivePracticeService {
             session.initialMatchedRouteDistanceMeters = match.distanceAlongRouteMeters
             session.furthestMatchedRouteDistanceMeters = match.distanceAlongRouteMeters
             session.courseProgress = 0
-            applyLocationPolicy(for: session)
+            locationAdapter.updateTrackingPolicy(phase: session.phase, isParking: session.isParking)
             RodiAnalytics.track(.drivePracticeEnteredCourse(placeType: session.analyticsPlaceType))
             RodiLogger.info(
                 "Practice tracking entered course sessionID=\(session.id.uuidString), progress=\(match.progress)"
@@ -263,8 +262,7 @@ extension DrivePracticeService {
             session.phase = .completed
             session.courseProgress = 1
             session.completedAt = location.timestamp
-            stopLocationUpdates()
-            endBackgroundActivitySession()
+            locationAdapter.stopTracking()
             didStartSessionInCurrentProcess = false
             finishLiveActivity(session)
             markCertificationPending(for: session)
@@ -280,8 +278,7 @@ extension DrivePracticeService {
            session.drivenRouteDistance >= session.requiredDrivingDistanceMeters {
             session.phase = .completed
             session.completedAt = location.timestamp
-            stopLocationUpdates()
-            endBackgroundActivitySession()
+            locationAdapter.stopTracking()
             didStartSessionInCurrentProcess = false
             finishLiveActivity(session)
             self.session = session
@@ -357,59 +354,7 @@ extension DrivePracticeService {
     }
 
     func retryCertificationIfNeeded() {
-        guard let repository = practiceRepository,
-              let measurementStore,
-              !isCertificationRequestInFlight,
-              let measurement = measurementStore.load(),
-              measurement.mode == .gpsTracking,
-              (measurement.status == .certificationPendingRegistration
-                  || measurement.status == .certificationPendingVisit)
-        else { return }
-
-        certificationTask?.cancel()
-        certificationRequestID += 1
-        let requestID = certificationRequestID
-        isCertificationRequestInFlight = true
-        certificationTask = Task { [weak self] in
-            guard let self else { return }
-            defer {
-                if self.certificationRequestID == requestID {
-                    self.isCertificationRequestInFlight = false
-                    self.certificationTask = nil
-                }
-            }
-            do {
-                var current = measurement
-                if current.status == .certificationPendingRegistration {
-                    let registration = try await repository.register(placeID: current.placeID)
-                    guard !Task.isCancelled, self.certificationRequestID == requestID else { return }
-                    current.practiceID = registration.practiceID
-                    current.status = .certificationPendingVisit
-                    measurementStore.save(current)
-                }
-                guard let practiceID = current.practiceID else { return }
-                _ = try await repository.recordVisit(
-                    practiceID: practiceID,
-                    certifiedDistanceMeters: current.certifiedDistanceMeters
-                )
-                guard !Task.isCancelled, self.certificationRequestID == requestID else { return }
-                current.status = .certified
-                measurementStore.save(current)
-                self.certificationRevision += 1
-            } catch is CancellationError {
-                return
-            } catch {
-                guard self.certificationRequestID == requestID else { return }
-                RodiLogger.warning("Practice certification pending")
-            }
-        }
-    }
-
-    private func cancelCertificationRequest() {
-        certificationRequestID += 1
-        certificationTask?.cancel()
-        certificationTask = nil
-        isCertificationRequestInFlight = false
+        certificationService?.retryIfNeeded()
     }
 
     func synchronizeCompletedSessionCertificationIfNeeded() {
@@ -422,71 +367,11 @@ extension DrivePracticeService {
         }
     }
 
-    private func stopLocationUpdates() {
-        locationManager.stopUpdatingLocation()
-        locationManager.allowsBackgroundLocationUpdates = false
-    }
-
-    private func locationPrerequisite() -> DrivePracticeStartResult? {
-        guard CLLocationManager.locationServicesEnabled() else {
-            return .unavailable("위치 서비스를 켠 뒤 연습 기록을 시작해주세요.")
-        }
-
-        switch locationManager.authorizationStatus {
-        case .notDetermined:
-            locationManager.requestWhenInUseAuthorization()
-            return .authorizationRequested
-        case .authorizedWhenInUse, .authorizedAlways:
-            break
-        case .denied, .restricted:
-            return .unavailable("위치 권한이 없어 이번 길안내에는 연습 기록이 포함되지 않아요.")
-        @unknown default:
-            return .unavailable("위치 권한 상태를 확인하지 못해 이번 길안내에는 연습 기록이 포함되지 않아요.")
-        }
-
-        guard locationManager.accuracyAuthorization == .fullAccuracy else {
-            locationManager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "DrivePractice")
-            return .reducedAccuracyRequested
-        }
-        return nil
-    }
-
     private func activateTracking(for session: DrivePracticeSession) {
         didStartSessionInCurrentProcess = true
-        beginBackgroundActivitySession()
-        applyLocationPolicy(for: session)
-        locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.startUpdatingLocation()
+        locationAdapter.startTracking(phase: session.phase, isParking: session.isParking)
         startLiveActivity(for: session)
         syncLiveActivity(session, force: true)
-    }
-
-    private func applyLocationPolicy(for session: DrivePracticeSession) {
-        if session.phase == .drivingCourse, !session.isParking {
-            locationManager.desiredAccuracy = Policy.drivingDesiredAccuracy
-            locationManager.distanceFilter = Policy.drivingDistanceFilter
-            return
-        }
-
-        locationManager.desiredAccuracy = Policy.approachDesiredAccuracy
-        locationManager.distanceFilter = Policy.approachDistanceFilter
-    }
-
-    private func beginBackgroundActivitySession() {
-        guard #available(iOS 17.0, *), backgroundActivitySession == nil else { return }
-        backgroundActivitySession = CLBackgroundActivitySession()
-    }
-
-    private func endBackgroundActivitySession() {
-        guard #available(iOS 17.0, *),
-              let session = backgroundActivitySession as? CLBackgroundActivitySession
-        else {
-            backgroundActivitySession = nil
-            return
-        }
-
-        session.invalidate()
-        backgroundActivitySession = nil
     }
 
     private func startLiveActivity(for session: DrivePracticeSession) {
@@ -507,21 +392,5 @@ extension DrivePracticeService {
     private func cancelLiveActivity() {
         guard #available(iOS 16.1, *) else { return }
         PracticeLiveActivityService.shared.cancel()
-    }
-}
-
-extension DrivePracticeService: CLLocationManagerDelegate {
-    
-    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
-        Task { @MainActor in
-            receive(location)
-        }
-    }
-
-    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        Task { @MainActor in
-            RodiLogger.warning("Practice tracking location failed: \(error.localizedDescription)")
-        }
     }
 }

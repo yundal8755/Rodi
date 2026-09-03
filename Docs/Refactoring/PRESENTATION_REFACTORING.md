@@ -51,7 +51,7 @@
 
 | ID | 상태 | 대상 | 관찰 근거 | 목표 ownership | 검증 시나리오 |
 | --- | --- | --- | --- | --- |
-| P1-10 | 완료 | `DrivePractice/Service/DrivePracticeService.swift` | 423줄 singleton이 위치 runtime, 인증 재시도 `Task`, Live Activity, session 저장과 background lifecycle을 소유한다. | 인증 재시도 Task를 service가 명시 소유하고, 취소·새 요청·늦은 응답을 request ID로 차단한다. | 앱 복귀, 측정 취소·완료, 인증 재시도, Live Activity start/sync/end, 늦은 응답 |
+| P1-10 | 완료 | `DrivePractice/Service/DrivePracticeService.swift`, `DrivePracticeCertificationService.swift`, `DrivePractice/Adapter/DrivePracticeLocationAdapter.swift` | session 정책, 인증 재시도 Task, Core Location·background lifecycle이 한 service에 섞여 있었다. | 인증 재시도 Task·request ID는 Certification Service가, Core Location delegate·background session은 Location Adapter가 소유하도록 분리했다. | 앱 복귀, 측정 취소·완료, 인증 재시도, Live Activity start/sync/end, 늦은 응답 |
 | P1-11 | 완료 | `Review/Flow/ReviewFlowRefreshService.swift`, `ReviewFlowCoordinatorReducer.swift` | refresh service가 조회 결과를 버리며, coordinator가 완료 refresh ID와 화면별 갱신 request ID를 중재한다. | 결과를 소비하지 않는 prefetch를 제거하고 기존 완료 request ID 갱신으로 최신화를 요청한다. | 홈·마이·내 게시글·코스 상세의 후기 완료/취소 후 최신화 |
 
 ### P2 — 레이아웃·유지보수

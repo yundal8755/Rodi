@@ -5,6 +5,8 @@
 
 import Foundation
 
+/// DrivePracticeSession의 UserDefaults 저장·복구만 담당한다.
+/// 기존 저장 키를 유지해 앱 재시작 뒤 진행 중인 측정을 복원할 수 있게 한다.
 struct DrivePracticeSessionStore {
     private enum Key {
         static let activeSession = "rodi.practiceTracking.activeSession"

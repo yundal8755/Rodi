@@ -12,6 +12,8 @@ struct PracticeRouteMatch: Equatable {
     let progress: Double
 }
 
+/// 위치 표본을 코스 polyline에 투영해 거리·진행률을 계산하는 순수 계산 도구다.
+/// 위치 권한, 세션 저장, 완료 판단 같은 런타임 정책은 소유하지 않는다.
 enum PracticeRouteMatcher {
     static func cumulativeDistance(for path: [RodiCoordinate]) -> [Double] {
         guard !path.isEmpty else { return [] }

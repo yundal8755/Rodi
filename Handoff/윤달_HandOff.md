@@ -4,9 +4,11 @@
 
 - 브랜치: `refactor/1.4.4-kakao-map`
 - 작업 상태: `main`과 `dev`를 `93f5d7c`으로 동기화한 뒤 Kakao Map adapter 통합·평가 문서 변경을 분리 커밋했다. Rodi Dev Debug build 성공, 일부 XCTest 크래시 원인 확인 대기.
-- 연습 측정 복귀 정책 reducer 병합을 완료했다. 위치 런타임 Service 분리는 다음 리팩터링 배치로 남긴다.
+- 연습 측정 복귀 정책 reducer 병합과 위치 런타임·인증 재시도 분리를 완료했다. 실제 외부 길안내·백그라운드 수동 QA가 다음 작업이다.
 
 ## Recent Work
+- DrivePractice Service·Adapter 각 파일에 소유 책임과 비소유 책임을 설명하는 타입 주석을 추가했다.
+- `DrivePracticeService`에서 인증 재시도 Task를 `DrivePracticeCertificationService`로, Core Location delegate·background activity session을 `DrivePracticeLocationAdapter`로 분리했다. 세션 정책·경로 판정·Live Activity 호출은 root service에 유지했고 인증 성공 revision, 취소·request ID 계약을 보존했다.
 - `PracticeTracking` feature를 `DrivePractice`로 개명했다. 폴더·View·Reducer·Service·세션 모델과 Root/Home 의존성, 위치 권한 purpose key, 문서 경로를 함께 정리했고 기존 UserDefaults 키·analytics raw value는 호환성을 위해 유지했다.
 - `PracticeReturnReducer`를 `PracticeTrackingReducer`에 흡수해 단일 사용 child State·Action·Delegate 중계를 제거했다. 앱 복귀·측정 연속·방문 기록·후기 권유 정책과 기존 debug Effect의 request revision·취소 계약은 root reducer에 유지했다.
 - 홈 지도 재검색 버튼 누락을 수정했다. 추천 목록 로딩 중 사용자 viewport 이동은 버튼 표시 상태를 먼저 전달한 뒤 기존 목록 요청을 취소하며, 동일 순서를 검증하는 reducer XCTest를 추가했다. GPS·네트워크 주행 시나리오와 테스트 범위를 `Docs/Guides/GPS_REPLAY_TESTING.md`로 정리했다.
@@ -198,6 +200,7 @@
 - Presentation 리팩터링 backlog의 My Posts pagination·삭제 flow, Onboarding route host, MainTab intent, Home child ownership 항목을 순서대로 진행한다.
 
 ## Validation
+- DrivePractice runtime 분리 뒤 Rodi Dev Debug generic simulator build, 전체 `RodiTests`, `DrivePracticeCertificationServiceTests` 3건을 통과했다. 외부 길안내·백그라운드 실기기 QA는 다음 작업이다.
 - `DrivePractice` 개명 뒤 Rodi Dev Debug generic simulator build와 iPhone 15 Pro(iOS 17.2) 전체 `RodiTests`를 통과했다. 호환성 예외를 제외한 `PracticeTracking` 코드 참조는 제거했다.
 - `PracticeReturnReducer` 병합 후 Dev Debug 빌드와 기존 `RodiTests`를 통과했다. 변경 파일 범위의 `git diff --check`도 통과했다.
 - Kakao Map adapter 통합 뒤 Rodi Dev Debug generic simulator build를 통과했다. iPhone SE (3rd generation, iOS 26.2)에서 실행한 전체 `RodiTests`는 33건 중 29건 통과·4건 크래시로 실패했으며, 실패는 코스 등록 주소 최신성·게스트 마커 테스트다.

@@ -78,10 +78,13 @@ struct RouteGuidanceFlowService {
         ) {
         case .started:
             return .started(measurementID: drivePracticeService.session?.id ?? UUID())
+            
         case .authorizationRequested:
             return .authorizationRequested
+            
         case .reducedAccuracyRequested:
             return .reducedAccuracyRequested
+            
         case .unavailable(let message):
             return .unavailable(message)
         }
