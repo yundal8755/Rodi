@@ -2,11 +2,25 @@
 
 ## Current
 
-- 브랜치: `refactor/1.4.4-kakao-map`
+- 브랜치: `refactor/1.4.4-live-activity`
+- 구현 탐색 백로그의 주행 경험에 코스 진입·완료 시 로컬 알림을 한 번 표시하는 후속 기능을 추가했다.
 - 작업 상태: `main`과 `dev`를 `93f5d7c`으로 동기화한 뒤 Kakao Map adapter 통합·평가 문서 변경을 분리 커밋했다. Rodi Dev Debug build 성공, 일부 XCTest 크래시 원인 확인 대기.
 - 연습 측정 복귀 정책 reducer 병합과 위치 런타임·인증 재시도 분리를 완료했다. 실제 외부 길안내·백그라운드 수동 QA가 다음 작업이다.
+- App Switcher 강제 종료 직전 Live Activity 정리와 콜드 런치 고아 Activity 정리를 구현했다. iOS 16.1 이상 실기기 강제 종료 QA가 남아 있다.
+- Live Activity의 생명주기·상태 변환·갱신 정책·Debug 프리뷰·Widget UI 책임을 분리했다. 코드 기반 기술 블로그 작성과 실기기 UI·종료 흐름 QA가 다음 작업이다.
 
 ## Recent Work
+- Live Activity 책임 분리, 앱 종료 직전 best-effort 정리, 위치·Live Activity 설정, 포트폴리오 백로그를 책임별 커밋으로 분리했다.
+- 기술 블로그 작성 범위를 Core Location·Live Activity 종합 글, Live Activity 종료 실험 글, 실제 오류 중심 Swift 6 Migration 글의 세 편으로 확정했다. GPS 판정은 첫 글에 포함하고 GPS Replay·세션 복구는 독립 글 목록에서 제외했다.
+- `PracticeLiveActivityService`는 ActivityKit 생명주기만 조정하고, 세션 매핑과 15초·3% 갱신 정책은 별도 타입으로 분리했다. 비동기 update/end는 단일 작업 체인으로 직렬화했고 iOS 16.2 `ActivityContent` API와 iOS 16.1 fallback을 함께 유지했다.
+- Lock Screen·Dynamic Island 콘텐츠와 경로 진행 컴포넌트를 Widget 진입점에서 분리했다. 표시 결과는 유지하면서 phase 문자열 비교와 미사용 attributes·content state·asset을 정리했다.
+- 개발용 Live Activity 세션 fixture를 Debug 영역으로 이동하고 갱신 정책 XCTest를 추가했다.
+- `Docs/Portfolio/FEATURE_EXPLORATION_BACKLOG.md`에 코스 진입·완료 시 Live Activity와 함께 중요 상태를 알리는 로컬 알림 TODO를 추가하고, 권한 거부·중복 알림 방지 검증을 명시했다.
+- 확정 로드맵과 분리된 `Docs/Portfolio/FEATURE_EXPLORATION_BACKLOG.md`를 추가해 TTS, CarPlay, watchOS·WatchConnectivity, WidgetKit, 광고·결제, 대규모 목록·이미지 캐시·미디어 탐색 항목과 구현 전 확인 기준을 기록했다.
+- 기술 블로그 백로그에 Swift 6가 데이터 레이스를 컴파일 단계에서 진단하게 된 배경부터 격리·소유권·컴파일러 보장의 한계까지 연결하는 Migration 글의 제목과 대주제 목차를 추가했다.
+- 기술 블로그 백로그에 GPS 오차를 걸러 polyline 진행률을 계산하는 글과 앱 재실행 시 주행 세션을 상태별로 복구하는 글의 작성 방향·검증 근거를 추가했다.
+- 기술 블로그 소재와 검증 상태를 모아 관리하는 `Docs/Portfolio/TECH_BLOG_BACKLOG.md`를 추가했다. 현재 주행 추적 글, Live Activity 강제 종료 글, GPS Replay 글감을 근거·검증 상태와 함께 기록했다.
+- `applicationWillTerminate` 에서 `Task.detached` 종료 작업을 최대 2초만 대기해 Rodi Live Activity를 즉시 종료하도록 연결했다. iOS 16.1은 기존 `end` API, 16.2 이상은 `ActivityContent` 오버로드로 분기했고, 프로세스 재실행 시 이전 sessionID의 Activity를 재개 선택 전에 정리하도록 보완했다.
 - DrivePractice Service·Adapter 각 파일에 소유 책임과 비소유 책임을 설명하는 타입 주석을 추가했다.
 - `DrivePracticeService`에서 인증 재시도 Task를 `DrivePracticeCertificationService`로, Core Location delegate·background activity session을 `DrivePracticeLocationAdapter`로 분리했다. 세션 정책·경로 판정·Live Activity 호출은 root service에 유지했고 인증 성공 revision, 취소·request ID 계약을 보존했다.
 - `PracticeTracking` feature를 `DrivePractice`로 개명했다. 폴더·View·Reducer·Service·세션 모델과 Root/Home 의존성, 위치 권한 purpose key, 문서 경로를 함께 정리했고 기존 UserDefaults 키·analytics raw value는 호환성을 위해 유지했다.
@@ -155,6 +169,9 @@
 - title 영역까지 넓힌 바텀시트 drag hit 영역은 기능 오류를 피하기 위해 기존 indicator 영역 방식으로 되돌렸다.
 
 ## Next
+- 첫 번째 Core Location·Live Activity 글을 완성한 뒤 지원 OS별 실기기 종료 결과를 확보해 Live Activity 종료 실험 글을 작성하고, Swift 6 글에는 Rodi에서 발생한 실제 오류만 선별한다.
+- 실기기에서 Live Activity 이동 중·주행 중·완료 화면, 완료·취소·App Switcher 강제 종료·콜드 런치 정리를 확인한 뒤 리팩터링된 실제 코드로 기술 블로그의 ActivityKit 부분을 작성한다.
+- 코스 진입·완료 로컬 알림을 구현하기 전에 알림 문구, 포그라운드 표시 정책, Live Activity 알림과의 중복 기준을 확정한다.
 - iOS 16.1~26 실기기에서 홈 지도 재검색 버튼의 초기 로딩·수동 재검색·마커/검색 이동 직후 drag·빠른 확대/축소를 검증하고, Kakao 프로그램 카메라 완료·사용자 gesture 경합이 남는지 확인한다.
 - GPS Replay 시나리오 GPS-01~06의 XCTest fixture와 repository stub을 순서대로 구현한다.
 - iPhone 12 Pro에서 같은 Snackbar를 연속 표시했을 때 최신 메시지만 유지되는지, Home 검색·코스 등록 지도 주소 최신성 및 오픈소스 라이선스 화면을 수동 QA한다.
@@ -200,6 +217,15 @@
 - Presentation 리팩터링 backlog의 My Posts pagination·삭제 flow, Onboarding route host, MainTab intent, Home child ownership 항목을 순서대로 진행한다.
 
 ## Validation
+- 분리된 각 커밋의 staged diff와 비밀정보 포함 여부를 확인했고 `Config/Info.plist` lint 및 `git diff --check`를 통과했다. 사용자 요청에 따라 build와 테스트는 다시 실행하지 않았다.
+- 기술 블로그 백로그가 확정된 세 편만 포함하고 GPS 판정이 첫 글의 범위로 이동했는지 정적으로 확인했다. 문서 전용 변경이므로 build와 테스트는 실행하지 않았다.
+- Live Activity 책임 분리 뒤 `Rodi Dev` Debug generic simulator build와 iPhone 15 Pro(iOS 17.5) 전체 `RodiTests`를 통과했다. Swift 5 complete concurrency build와 Live Activity Extension의 Swift 6 단독 build도 통과했으며, 전체 프로젝트 Swift 6 강제 build는 외부 `SwiftyBeaver`의 공유 mutable state 오류로 앱 코드 컴파일 전에 중단됐다.
+- 로컬 알림 TODO가 구현 탐색 백로그의 `주행 경험`에 포함됐고 권한·중복 검증 조건이 함께 기록됐는지 정적 확인했다. 문서 전용 변경이므로 build와 테스트는 실행하지 않았다.
+- 구현 탐색 백로그의 항목·체크박스와 문서 경로를 확인하고 `git diff --check`를 실행했다. 문서 전용 변경이므로 build와 테스트는 실행하지 않았다.
+- Swift 6 Migration 글의 제목·대주제 목차가 기술 블로그 백로그 표와 본문에 함께 등록됐는지 확인하고 `git diff --check`를 실행했다. 문서 전용 변경이므로 build와 테스트는 실행하지 않았다.
+- 기술 블로그 백로그에 추가한 GPS 필터·경로 투영·세션 복구 항목을 현재 DrivePractice 심볼과 대조하고 `git diff --check`를 실행했다. 문서 전용 변경이므로 build와 테스트는 실행하지 않았다.
+- 기술 블로그 백로그의 내부 링크와 관련 코드·검증 상태를 정적 확인했고 `git diff --check`를 실행했다. 문서 전용 변경이므로 추가 build는 실행하지 않았다.
+- Live Activity 종료 경계를 Apple Swift 6.2.3, `-swift-version 6`, `-strict-concurrency=complete`, iOS 16.1 target, warnings-as-errors로 정적 타입 검사해 통과했다. 요청에 따라 build·simulator·실기기 테스트는 실행하지 않았으며, App Switcher 강제 종료 수동 QA가 남아 있다.
 - DrivePractice runtime 분리 뒤 Rodi Dev Debug generic simulator build, 전체 `RodiTests`, `DrivePracticeCertificationServiceTests` 3건을 통과했다. 외부 길안내·백그라운드 실기기 QA는 다음 작업이다.
 - `DrivePractice` 개명 뒤 Rodi Dev Debug generic simulator build와 iPhone 15 Pro(iOS 17.2) 전체 `RodiTests`를 통과했다. 호환성 예외를 제외한 `PracticeTracking` 코드 참조는 제거했다.
 - `PracticeReturnReducer` 병합 후 Dev Debug 빌드와 기존 `RodiTests`를 통과했다. 변경 파일 범위의 `git diff --check`도 통과했다.
