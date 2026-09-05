@@ -65,11 +65,7 @@ Xcode Simulator의 GPX 재생은 정상 이동 확인에 사용한다. 정확도
 
 ## 구현 순서
 
-1. `PracticeRouteMatcher`와 `DrivePracticeService`에서 순수하게 검증 가능한 표본 처리부터 XCTest fixture로 고정한다.
-2. 테스트 전용 `LocationSample`과 시나리오 타임라인을 도입한다. 실제 `CLLocationManager` delegate를 직접 호출하는 방식은 test target에 한정한다.
-3. `PracticeRepository` stub에 online/offline/timeout/recovery 응답을 추가해 GPS-06의 인증 상태 전환을 검증한다.
-4. Simulator GPX로 GPS-01의 기본 이동을 확인하고, GPS-07·GPS-09는 최소 iOS 16.1·17·최신 지원 iOS 실기기에서 확인한다.
-5. 반복 재현이 확인된 시나리오만 Debug 화면의 수동 진입점으로 제공한다. 제품 화면이나 운영 로그에 테스트 좌표·상태를 노출하지 않는다.
+구현·검증 대기 상태는 [TODO](../TODO.md)의 `TEST-001`에서 관리한다. 이 문서는 입력 모델과 반복 가능한 시나리오의 원본만 유지한다.
 
 ## 완료 기준
 
@@ -77,14 +73,6 @@ Xcode Simulator의 GPX 재생은 정상 이동 확인에 사용한다. 정확도
 - MUST 시나리오마다 입력 표본, 예상 상태 전이, 예상 repository 호출 횟수를 명시한다.
 - MUST 네트워크 단절·취소·재시도 후 이전 요청 결과가 최신 상태를 덮어쓰지 않는지 검증한다.
 - MUST 위치 저장소와 로그에 원본 GPS 궤적을 남기지 않는다.
-- SHOULD GPS-07~10의 실기기 결과를 [QA 이슈 로그](../TODO/QA_ISSUES.md)에 기록한다.
+- SHOULD GPS-07~10의 실기기 결과를 [TODO](../TODO.md)의 관련 `QA` 항목에 기록한다.
 
-## 기술 블로그 소재
-
-이 작업은 다음 구조로 기술 블로그에 정리할 수 있다.
-
-1. 실제 기기 GPS만으로는 재현이 어려운 문제를 설명한다.
-2. 위치·네트워크·앱 수명주기를 하나의 타임라인으로 분리한 이유를 설명한다.
-3. 정상 주행, GPS 불안정, 네트워크 단절의 입력과 상태 전이를 비교한다.
-4. 자동 테스트가 보장하는 범위와 실기기 QA가 필요한 범위를 구분한다.
-5. 원본 위치 정보를 저장하지 않는 테스트 fixture 원칙을 함께 제시한다.
+기술 블로그 작성 상태는 [TODO](../TODO.md)의 `WRITE-001`에서 관리한다.

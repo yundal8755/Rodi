@@ -1,16 +1,18 @@
 # RODI API 연결 현황
 
-> 기준일: 2026-08-20
+> Archive: 2026-08-20 시점의 전체 점검 기록이다. 현재 API 계약은 Swagger와 활성 [API 가이드](../../API/API_SWAGGER.md)에서 다시 확인한다.
+
+> 마지막 전체 점검: 2026-08-20
 > Swagger: `https://api.stillstar.store/v3/api-docs`
 > 기준 환경: 현재 Swagger가 가리키는 API 환경 / 앱 구현: `Rodi/Data/Remote`
-> 이번 점검: Swagger endpoint 45개와 iOS API Target·DataSource·Repository·DTO 파일 인벤토리를 대조했다. endpoint별 field schema는 해당 API 변경 작업에서 다시 확인한다.
+> 이력 범위: Swagger endpoint 45개와 iOS API Target·DataSource·Repository·DTO 파일 인벤토리를 대조했다. endpoint별 field schema와 실제 실행은 해당 API 변경 작업에서 다시 확인한다.
 
-이 문서는 Swagger 계약과 iOS 앱의 API·DTO·Repository 연결 여부를 함께 관리한다. `연결됨`은 API Target → RemoteDataSource → Repository → Domain/Presentation 호출 경로가 존재하고, endpoint method·path가 현재 Swagger와 대조되었음을 뜻한다. field schema는 서버 변경이 발생한 endpoint부터 같은 작업에서 다시 검증한다.
+이 문서는 API Target → RemoteDataSource → Repository → Domain/Presentation의 코드 연결 상태를 관리한다. 이 문서의 표는 마지막 점검 시점의 기록이며, 현재 Swagger schema 또는 실제 서버 실행을 자동으로 보증하지 않는다.
 
 ## 관리 규칙
 
 - API를 추가·변경·삭제할 때 이 문서의 해당 행을 **같은 PR/커밋에서** 갱신한다.
-- 확인 전에는 상태를 `확인 필요`로 두고, Swagger의 환경·버전·요청/응답 schema를 확인한 뒤 `연결됨`으로 바꾼다.
+- 확인 전에는 상태를 `확인 필요`로 두고, Swagger의 환경·버전·method·path를 확인한 뒤 `연결됨`으로 바꾼다.
 - DTO에 Swagger 응답 field가 추가되면 DTO뿐 아니라 Mapper와 Domain 전달 여부까지 점검한다.
 - 관리자·운영 전용 API는 일반 앱 연결 대상에서 제외하되, 제외 사유를 남긴다.
 - Swagger가 실제 응답과 다르거나 request schema가 없으면 앱에서 추정하지 않고 `서버 문서 보완 필요`에 기록한다.
@@ -19,13 +21,20 @@
 
 | 상태 | 의미 |
 | --- | --- |
-| 연결됨 | 앱에서 사용 가능한 API Target·DTO·Repository 경로가 있음 |
+| 연결됨 | 마지막 점검 시 앱에서 사용 가능한 API Target·DTO·Repository 경로가 있었음 |
 | 제외 | 관리자/운영 전용이거나 일반 iOS 앱 범위 밖 |
 | 확인 필요 | Swagger 또는 실제 응답 변경 뒤 재점검 필요 |
 
-## DTO·계층 인벤토리
+`연결됨`은 다음을 뜻하지 않는다.
 
-| 항목 | 개수 | 기준 |
+- 최신 Swagger의 모든 field가 DTO·Mapper·Domain까지 검증됐다는 보장
+- 실제 서버 응답, 인증, 오류 처리, UI 흐름을 실행 검증했다는 보장
+
+API 변경 작업에서는 해당 endpoint 행에 method·path 확인, field 전달 확인, 실행 검증 여부와 기준일을 함께 기록한다.
+
+## 2026-08-20 인벤토리 기록
+
+| 항목 | 당시 개수 | 기준 |
 | --- | ---: | --- |
 | Swagger endpoint | 45 | 일반 사용자 44개 + 관리자 전용 1개 |
 | Remote API Target | 7 | `Auth`, `Course`, `Member`, `Place`, `Practice`, `RecentSearch`, `Review` |

@@ -1,0 +1,188 @@
+# RODI TODO
+
+## 목적
+
+이 문서는 RODI에서 앞으로 처리할 결함, 검증, 구조·성능 개선, API 계약 확인, 기능 후보와 글쓰기·회고 작업의 단일 원본이다. 목록에 있다는 사실은 구현 또는 배포 승인을 뜻하지 않는다.
+
+## 운영 규칙
+
+- MUST 새 작업에 영역별 안정적인 ID를 부여한다: `QA`, `ARCH`, `API`, `TEST`, `IDEA`, `WRITE`.
+- MUST 각 항목에 상태, 다음 행동과 완료 조건을 기록한다. 간단한 항목은 한 줄로 유지한다.
+- MUST 상태를 `확인 필요`, `조사 중`, `검증 대기`, `수정 완료·검증 대기`, `후보`, `작성 중` 중에서 선택한다.
+- MUST 필요한 검증까지 끝난 항목을 이 문서에서 삭제한다. 별도의 완료 목록이나 완료 Archive를 만들지 않는다.
+- MUST 같은 문제의 요약·재현·원인·다음 행동을 하나의 ID에서 관리한다.
+- MUST NOT TODO 항목을 근거로 제품 정책, 서버 계약, 사용자 UI 또는 보호 영역을 임의로 변경한다.
+- SHOULD 일반 작업에서는 대상 ID나 Feature 구간만 검색하고, 우선순위 감사에서만 전체 문서를 읽는다.
+
+기본 수동 QA 환경은 iPhone 12 Pro, iOS 18.7.8이다. 결과에 영향을 주는 로그인·권한·네트워크·외부 앱 조건만 항목에 추가한다.
+
+## 결함·검증
+
+- [ ] `QA-001` · 검증 대기 · 코스 등록 튜토리얼의 좌우 전환 완료 시점에만 4pt stepper가 갱신되고, 단계별 뒤로가기와 마지막 단계 완료 아이콘이 일치하는지 확인한다.
+- [ ] `QA-002` · 검증 대기 · 코스 등록 지도에서 중앙 핀 주소 preview, 출발지 확정 뒤 도착지 전환, 경로 준비 뒤 최종 완료 활성화를 확인한다.
+- [ ] `QA-003` · 검증 대기 · 코스 등록 검색의 행정구역·최근 행정구역 선택 시 지도 이동, 중앙 핀 주소 갱신과 빈 결과 화면을 확인한다.
+- [ ] `QA-004` · 검증 대기 · 홈 검색의 최근 검색·지역 결과 divider가 전체 너비이고, 결과 없음 화면이 중앙에 표시되는지 확인한다.
+- [ ] `QA-005` · 검증 대기 · 홈 검색·마커 선택 뒤 코스/주차장 active marker, 검색창 이름과 상세 시트가 같은 장소를 가리키는지 확인한다.
+- [ ] `QA-006` · 검증 대기 · 상세 시트가 열린 상태에서 지역 검색하면 기존 상세를 정리한 뒤 추천 목록으로 전환되는지 확인한다.
+- [ ] `QA-007` · 검증 대기 · 코스·주차장 상세 하단 행동 바의 full-width divider와 10pt 간격을 확인한다.
+- [ ] `QA-008` · 검증 대기 · 추천 목록·코스 상세에서 drag indicator를 제외한 상단 앱바가 56pt인지 확인한다.
+- [ ] `QA-009` · 검증 대기 · non-expanded sheet의 불필요한 상단 여백 제거와 expanded 코스 소개·경로 정보의 24pt 간격을 확인한다.
+- [ ] `QA-010` · 검증 대기 · 코스 등록 주소 선택 중 경유지 삭제가 가능하고, 지도 이동 중 기존 주소를 유지한 뒤 최신 주소로 교체하는지 확인한다.
+- [ ] `QA-011` · 검증 대기 · 출발지·도착지 경로가 있는 상태에서 경유지를 삭제해도 남은 지점 기준 polyline을 다시 표시하는지 확인한다.
+- [ ] `QA-012` · 검증 대기 · 코스 등록 최근 검색어가 없으면 홈 검색과 같은 중앙 empty state가 표시되는지 확인한다.
+- [ ] `QA-013` · 검증 대기 · 홈 검색의 최근 검색 header 간격 8pt, `전체삭제`, 특별시·광역시 생략 표기가 일관적인지 확인한다.
+- [ ] `QA-014` · 검증 대기 · 행정구역 선택 뒤 camera callback 순서와 무관하게 `GET /api/v1/places`가 1회 실행되고, 빈 배열이면 추천 목록의 빈 결과가 sheet 중앙에 표시되는지 확인한다.
+- [ ] `QA-015` · 검증 대기 · 전역 `다시 시도`가 8pt 내부 여백, 6pt radius, 흰색 body2의 primary 공통 버튼인지 확인한다.
+- [ ] `QA-016` · 검증 대기 · 전역 네트워크 오류 문구가 `네트워크 연결을 확인해주세요.`로 통일됐는지 확인한다.
+- [ ] `QA-017` · 검증 대기 · 마이 저장목록에서 코스·주차장 선택 뒤 Home 검색창의 뒤로가기·장소명, 상세 시트와 선택 마커가 일치하는지 확인한다.
+- [ ] `QA-018` · 검증 대기 · 마이 내 활동에서 빈 후기 본문에 텍스트 컨테이너가 표시되지 않는지 확인한다.
+- [ ] `QA-019` · 검증 대기 · 코스 등록 지도에서 연결 단절 시 공통 스낵바가 즉시 표시되고 3초 뒤 지도 대체 화면이 지도 단계에서만 표시되는지 확인한다.
+- [ ] `QA-020` · 검증 대기 · 마이 프로필의 레벨 게이지가 도장 이미지에 비치지 않고, 면허증 카드 그라데이션과 운전 목표 자동 포커스가 유지되는지 확인한다.
+- [ ] `QA-021` · 검증 대기 · 마이 설정 데이터 출처 화면의 문구, 24pt 본문 여백과 스크롤을 확인한다.
+- [ ] `QA-022` · 검증 대기 · 마이 연습기록·내 활동에서 후기 작성/불가/완료 상태와 목록 drag 시 dropdown 닫힘을 확인한다.
+- [ ] `QA-023` · 검증 대기 · 주차장 연습 복귀에서 GPS 인증·방문 기록 성공 뒤 후기 팝업 없이 연습기록 안내와 Home 갱신만 발생하는지 확인한다.
+- [ ] `QA-024` · 검증 대기 · 네트워크 단절 시 공통 스낵바를 먼저 표시하고 Home에서만 3초 뒤 지도 대체 화면을 표시하는지 확인한다.
+- [ ] `QA-025` · 검증 대기 · 홈·코스 등록 검색의 debounce·페이지 추가 로딩에서 spinner 대신 목록 밀도의 skeleton 행이 표시되는지 확인한다.
+- [ ] `QA-026` · 검증 대기 · 홈 지도에서 마지막 성공 위치를 유지하고 60초 이상 위치 갱신 실패 시 안내를 한 번만 표시한 뒤 성공 시 재설정되는지 확인한다.
+- [ ] `QA-027` · 검증 대기 · 경유지 생성 직후 `경유지 입력`을 유지하고 지도 이동 뒤 중앙 핀 주소로 교체하는지 확인한다.
+- [ ] `QA-028` · 검증 대기 · 코스 등록 검색창 초기값과 출발지→도착지→경유지 검색 순서, 도로 경로 실패 뒤 마지막 중앙 핀 유지를 확인한다.
+- [ ] `QA-029` · 검증 대기 · 홈 추천 필터에서 카테고리별 연습유형 표시·접힘과 카테고리 이동 뒤 누적 선택·주차 필터 보존을 확인한다.
+- [ ] `QA-030` · 검증 대기 · 코스 등록 상세 입력에서 서버 정렬 첫 카테고리 기본 선택, 카테고리 전환 뒤 유형 보존과 필수 `*` 표시를 확인한다.
+- [ ] `QA-031` · 검증 대기 · 코스 등록 핀 수정에서 출발지·경유지·도착지 선택 확정 전 완료가 비활성이고 확정 뒤에만 저장되는지 확인한다.
+- [ ] `QA-032` · 검증 대기 · 한줄 소개가 첫 입력 뒤 10자 미만이면 오류 UI를 표시하고 다시 0자로 지워도 안내 상태가 유지되는지 확인한다.
+- [ ] `QA-033` · 검증 대기 · 추천 목록·코스·주차장 sheet의 indicator와 제목 영역 모두 drag로 확장·축소·닫기가 되고 내부 control이 유지되는지 확인한다.
+- [ ] `QA-034` · 검증 대기 · 추천 목록 empty state의 indicator 아래 48pt 영역에서 drag가 동작하고 문구·Debug 이미지 탭·필터가 유지되는지 확인한다.
+- [ ] `QA-035` · 검증 대기 · 코스 marker 선택 시 polyline이 지도 영역을 충분히 채우고 추천 목록 선택 즉시 검색창에 뒤로가기와 장소명이 표시되는지 확인한다.
+- [ ] `QA-036` · 검증 대기 · 둘러보기 지도에서 단일 장소 marker는 로그인 안내만 표시하고 cluster marker는 기존 확대 동작을 유지하는지 확인한다.
+- [ ] `QA-037` · 검증 대기 · 홈·코스 등록의 모든 route polyline에 `#2600B1` 외곽선이 일관되게 표시되는지 확인한다.
+- [ ] `QA-038` · 검증 대기 · 코스 연습 복귀에서 GPS 인증·방문 기록 성공 시점에만 후기 팝업을 표시하고, 인증된 코스에서 `X`·`안 했어요`를 눌러도 연습기록을 유지하는지 확인한다.
+- [ ] `QA-039` · 검증 대기 · Prod의 GPS 인증 전 측정 종료는 POST·후기 권유 없이 세션만 정리하고, Dev 코스는 외부 앱 5초 체류 뒤 테스트용 POST·후기 권유가 표시되는지 확인한다.
+- [ ] `QA-040` · 검증 대기 · Dev 연습기록에서 주차 유형을 포함한 코스는 `후기 작성`, 주차장(`practiceTypes = [PARKING]`)만 `작성 불가`인지 확인한다.
+- [ ] `QA-041` · 검증 대기 · 앱 강제 종료 뒤 진행·완료 Live Activity 카드를 탭하면 해당 Activity만 사라지고 앱이 정상 진입하는지 확인한다.
+- [ ] `QA-042` · 검증 대기 · Live Activity의 이동·주행·완료 Dynamic Island, compact·minimal과 잠금 화면 카드가 잘리지 않는지 확인한다.
+
+### `QA-043` · 수정 완료·검증 대기 · 홈 지도 이동 뒤 재검색 버튼 누락
+
+- 재현: 장소 목록 조회 중 지도 이동, 프로그램 camera 이동 직후 drag, 빠른 연속 확대·축소에서 `재검색` 노출을 확인한다.
+- 확인된 원인: 로딩 중 `viewportChanged`가 `needsResearch`만 바꾸고 표시 상태를 전달하기 전에 반환했다. 프로그램 camera 이동을 시간 기반 표식으로 판별하는 흐름에도 사용자 gesture 오분류 위험이 있다.
+- 적용된 처리: 취소 전에 버튼 표시 delegate를 전달하고 늦은 응답은 request revision으로 차단한다.
+- 다음 행동: iOS 16.1·17·18·26 실기기와 reducer 회귀 테스트에서 사용자 이동, callback 순서, 요청 1회와 stale 응답 차단을 확인한다.
+- 완료 조건: 모든 지원 환경에서 재검색 진입점과 최신 viewport 요청이 일관되고, 프로그램 camera와 사용자 gesture가 구분된다.
+
+- [ ] `QA-044` · 검증 대기 · 이동 중 위치 버튼을 여러 번 탭했을 때 매번 최신 위치로 카메라가 갱신되는지 실기기에서 확인한다.
+- [ ] `QA-045` · 검증 대기 · 지하철·터널 등에서 20초 안에 위치를 받지 못하면 위치 확인 불가 스낵바가 표시되는지 실기기에서 확인한다.
+- [ ] `QA-046` · 검증 대기 · 출발지 확정 뒤 도착지 선택 단계에서 시작 핀을 탭해 `핀 수정하기`에 진입하고, 완료 뒤 도착지 선택 상태가 유지되는지 실기기에서 확인한다.
+
+### `QA-047` · 확인 필요 · Dev 외부 길안내 복귀 뒤 방문 기록·후기 권유 누락
+
+- 재현: `GPS 측정 코스 → 외부 앱에서 현재 Dev 체류 조건 충족 → 앱 복귀 → 측정 종료` 순서로 진행한다.
+- 다음 행동: `DrivePracticeReducer.activeMeasurementEnded` Action 도달 여부, 저장된 측정의 mode·장소 유형·외부 이탈 시각, Debug 조건과 `register → recordVisit` 결과를 비식별 로그로 확인해 원인을 확정한다.
+- 완료 조건: Dev 정책의 체류 조건을 만족하면 방문 기록 요청과 후기 권유가 각각 정해진 횟수로 실행되고, 실패·재시도·중복 실행 여부를 실기기에서 검증한다.
+
+## 구조·성능 개선
+
+### `ARCH-001` · 확인 필요 · UserDefaults Codable 저장 경계와 복구 정책
+
+- 다음 행동: 저장 데이터별 소유 Feature, 민감도, 유지 기간, schema version·migration·decode 실패 정책을 표로 확정한다.
+- 완료 조건: 장기 제품 데이터와 화면 임시 상태를 구분하고 공통 실패 처리·key namespace를 정한다. `Data/Local` 변경 전 사용자 승인을 받고 기존 key·payload 호환성을 검증한다.
+- 현재 확인 경로: `OnboardingDraftStore`, `PracticeMeasurementStore`, `CourseRegistrationRecentSearchStore`, `HomePracticeFilterStore`, `LevelUpPresentationStore`, `DrivePracticeSessionStore`.
+
+### `ARCH-002` · 확인 필요 · Snackbar 표시 소유권과 렌더링 비용
+
+- 다음 행동: 빠른 연속 표시·중첩 overlay·dismiss 뒤 늦은 Task와 SwiftUI update 비용을 재현하거나 측정한다.
+- 완료 조건: Root 또는 Feature 중 표시 owner를 확정하고 Task 취소·최신 메시지·접근성 표현을 iOS 16.1에서 검증한다.
+
+### `ARCH-003` · 후보 · Core Components와 Design System 분리
+
+- 다음 행동: token·font 등록·공통 UI 사용처와 실제 공유 범위를 분류한다.
+- 완료 조건: 기존 public API와 화면 표현을 유지하며 `RodiColor`, `RodiTypography`, `RodiFont`와 공통 Component 책임을 분리한다. 보호 Core 영역은 변경하지 않는다.
+
+### `ARCH-004` · 확인 필요 · Presentation 대형 파일 책임 재판정
+
+2026-09-05 현재 500줄 이상인 파일은 다음과 같다. 줄 수만으로 분리하지 않고 State·Action·Effect·UI·SDK bridge 책임이 실제로 충돌하는지 먼저 확인한다.
+
+| 줄 수 | 파일 | 우선 확인 책임 |
+| ---: | --- | --- |
+| 1,561 | `Presentation/Shared/KakaoMap/Adapter/RodiKakaoMapView.swift` | Kakao SDK lifecycle·marker·polyline·camera event adapter 경계 |
+| 766 | `Presentation/Home/HomeView.swift` | root 조립·지도 control·sheet/dialog·full-screen route |
+| 533 | `Presentation/Home/Search/HomeSearchReducer.swift` | debounce·region/place 결과·최근 검색 Effect owner |
+| 532 | `Presentation/Home/BottomSheet/HomeBottomSheetView.swift` | drag/settle gesture·route별 sheet rendering·dialog overlay |
+| 532 | `Presentation/CourseRegistration/SubPage/MapSelection/CourseRegistrationMapSelectionReducer.swift` | 지도 후보·주소 조회·route Effect owner |
+| 527 | `Presentation/Home/Map/HomeMapReducer.swift` | 지도 위치·camera·marker·viewport 상태 전이 |
+| 519 | `Presentation/Home/BottomSheet/HomeBottomSheetReducer.swift` | route·상세 child teardown·delegate 중재 |
+
+- 다음 행동: 대상 하나를 선택해 인접 View·Reducer·Adapter와 호출 흐름을 확인하고, 독립 수명·상태·행동 계약이 있을 때만 별도 책임으로 분리한다.
+- 완료 조건: 사용자 동작과 API 호출을 유지하고 child 간 전달은 typed Delegate를 사용하며, 구조 이동과 기능 변경을 별도 작업으로 검증한다.
+
+### `ARCH-005` · 확인 필요 · GeometryReader 범위 제한
+
+현재 사용처는 `MyPostsView`, `CourseRegistrationTutorialView`, `CourseReviewDropdownOverlay` 세 곳이다.
+
+- 다음 행동: 각각 menu anchor, tutorial image 크기, review dropdown 위치 계산에 필요한 실제 범위를 확인하고 SE·Max 화면과 safe area·hit testing을 비교한다.
+- 완료 조건: 제거 가능한 사용처는 iOS 16.1 호환 layout으로 교체하고, 유지해야 하는 anchor 측정은 가장 작은 Component 범위에 격리해 이유를 기록한다. 새 `UIScreen.main` 또는 기기 전체 고정 frame을 추가하지 않는다.
+
+## API 계약 확인
+
+- [ ] `API-001` · 확인 필요 · Swagger의 전역 Bearer 표기와 소셜 로그인·토큰 갱신·로그아웃의 실제 인증 요구를 환경별로 확인한다.
+- [ ] `API-002` · 확인 필요 · `POST /api/v1/courses`의 필수·nullable·길이·배열 제약을 machine-readable request schema로 확인한다.
+
+## 테스트 기반 개선
+
+### `TEST-001` · 후보 · GPS Replay와 네트워크 시나리오 자동화
+
+- 근거: [GPS Replay·주행 시나리오 테스트 가이드](Tests/GPS_REPLAY_TESTING.md)
+- 다음 행동: 합성 `LocationSample` timeline과 Test Adapter·Repository stub으로 GPS-01~06을 구현한다.
+- 완료 조건: 입력 표본, 상태 전이, repository 호출 횟수, 취소·재시도 뒤 stale 응답 차단을 XCTest로 검증한다. GPS-07~10은 관련 `QA` 항목의 실기기 결과로 확인한다.
+
+## 기능 후보
+
+- [ ] `IDEA-001` · 후보 · 코스 진입·완료 시 중복 방지와 권한 거부를 고려한 로컬 알림.
+- [ ] `IDEA-002` · 후보 · 외부 길안내 음성과 겹치지 않는 코스 진입·10%·50%·완료 TTS 안내. 같은 진행 구간의 중복 발화와 background·화면 잠금 상태를 함께 검증한다.
+- [ ] `IDEA-003` · 후보 · RODI 사용자 가치와 Entitlement·template 제약을 먼저 확인하는 CarPlay.
+- [ ] `IDEA-004` · 후보 · 진행 확인·햅틱·iPhone 동기화 중 역할을 정한 watchOS·WatchConnectivity.
+- [ ] `IDEA-005` · 후보 · Live Activity와 역할이 겹치지 않는 WidgetKit.
+- [ ] `IDEA-006` · 후보 · 운전 중 흐름을 피하는 광고 위치·빈도 검토.
+- [ ] `IDEA-007` · 후보 · 판매 대상에 맞는 결제 방식 검토.
+- [ ] `IDEA-008` · 후보 · 대규모 목록 pagination·중복 제거·취소·prefetch·메모리 시나리오.
+- [ ] `IDEA-009` · 후보 · 이미지 메모리·디스크·HTTP cache, eviction과 동일 요청 병합.
+- [ ] `IDEA-010` · 후보 · 원격 영상 buffering·thumbnail·재생 복구 및 AVFoundation 처리 범위.
+
+기능 후보를 시작하기 전 사용자 문제, 기존 기능과의 차이, 권한·Entitlement·서버 변경, iOS 16.1, 개인정보·운전 중 방해 가능성과 검증 기준을 확정한다.
+
+## 글쓰기·회고
+
+### 기술 블로그
+
+- [ ] `WRITE-001` · 작성 중 · **Core Location과 Live Activity로 백그라운드 주행 현황 파악하기**. 외부 길안내·백그라운드·GPS 필터·경로 주변 판정·완료 조건의 실기기 결과를 근거로 보완한다.
+- [ ] `WRITE-002` · 검증 대기 · **앱이 종료될 때 Live Activity도 같이 종료시키기**. OS·종료 직전 상태·반복 횟수별 결과와 종료 callback 미호출 사례를 먼저 확보한다.
+- [ ] `WRITE-003` · 후보 · **Swift 6는 왜 동시성 버그를 컴파일 에러로 만들었을까?**. 실제 migration 오류, 수정 전후 코드와 Strict Concurrency 결과를 확보한다.
+
+`WRITE-001`은 위치 정확도·표본 시각·비정상 이동·경로 corridor·유효 이동거리 완료 기준과 실제 정상 주행·이탈·재진입 결과를 포함한다.
+
+`WRITE-002`는 다음 내용을 보존한다.
+
+1. 위치 수집이 멈춘 뒤에도 Activity가 진행 중으로 남는 정합성 오류를 문제로 정의한다.
+2. 앱 process와 Activity 수명이 분리된 이유와 `staleDate`가 즉시 종료 기능이 아닌 점을 설명한다.
+3. 종료 직전 일반 `Task`가 끝나지 못하는 흐름과 MainActor 교착을 피한 종료 경계를 연결한다.
+4. 제한된 동기 대기가 Apple이 보장하는 해법이 아닌 best-effort 처리임을 명시한다.
+5. crash·watchdog·suspended 상태와 다음 실행 시 session ID로 고아 Activity를 정리하는 복구 정책을 다룬다.
+6. `@MainActor` 상태 미캡처, `Sendable`, Strict Concurrency 검사를 구분한다.
+7. OS·종료 직전 상태·반복 횟수·즉시 제거 결과를 기록하고 측정하지 않은 버전은 추정하지 않는다.
+
+`WRITE-003`은 다음 구성으로 작성한다.
+
+1. Swift가 동시성 안전성을 언어가 책임지도록 한 배경
+2. Swift 6가 컴파일 단계에서 검사하는 범위
+3. compiler가 isolation과 ownership을 판단하는 방식
+4. migration 오류가 드러낸 기존 설계 문제
+5. 실제 대응 사례로 이해하는 격리 경계
+6. 컴파일 오류 제거와 동시성 문제 해결의 차이
+7. Swift 6가 잡지 못하는 동시성 문제
+8. thread 처리보다 상태 ownership 설계가 핵심이었던 이유
+
+### 포트폴리오·AI 활용 회고
+
+- [ ] `WRITE-004` · 검증 대기 · 후기 작성·수정 flow의 child reducer, prefill과 완료 뒤 목록 refresh를 작성·수정·취소·실패 QA 결과로 정리한다.
+- [ ] `WRITE-005` · 검증 대기 · 코스 상세 후기의 level cache, cursor pagination과 신고·차단 뒤 즉시 숨김을 level 전환·늦은 응답 QA로 정리한다.
+- [ ] `WRITE-006` · 검증 대기 · 코스 등록의 지도 선택, 경유지 편집, 장소 검색과 route 생성을 출발·경유·도착·삭제·제출 QA로 정리한다.
+- [ ] `WRITE-007` · 검증 대기 · 연습 추적·Live Activity의 위치 session, 앱 복귀와 상태 동기화를 권한·background·종료 실기기 결과로 정리한다.

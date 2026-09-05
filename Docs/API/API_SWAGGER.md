@@ -2,7 +2,7 @@
 
 RODI backend API 작업의 계약과 Data 흐름을 정의한다. 현재 코드는 사실의 원본이고 API 계약은 작업 대상 환경의 Swagger를 원본으로 삼는다.
 
-현재 연결 현황과 DTO 점검 결과는 [API_CONNECTION_STATUS.md](API_CONNECTION_STATUS.md)에서 관리한다. API를 추가·변경·제거하는 작업은 해당 문서도 같은 변경에서 갱신한다.
+API를 추가·변경·제거하는 작업은 이 문서의 최근 검증 기록과 [TODO.md](../TODO.md)의 대상 계약만 함께 갱신한다. 과거 전체 인벤토리는 기본 컨텍스트로 읽지 않는다.
 
 ## Source Of Truth
 
@@ -102,6 +102,25 @@ traceId: String?
 - `Rodi Dev`/Debug와 `Rodi`/Release 각각에서 Swagger 환경과 앱 endpoint가 같은지 확인한다.
 - URL 누락 시 다른 환경이나 운영 URL로 자동 fallback한다고 가정하지 않는다.
 - secret, OAuth token, local xcconfig 값은 문서, diff, 로그에 복사하지 않는다.
+
+## Connection Status And Verification
+
+`연결됨`은 API Target·DTO·Mapper·Domain·호출 경로가 존재한다는 뜻이다. 최신 Swagger field, 인증과 실제 실행까지 확인했다는 의미가 아니다.
+
+- MUST 실제 계약을 확인한 경우 검증일, 환경, Method·Endpoint와 schema·decoding·인증·실행 중 확인한 범위를 함께 기록한다.
+- MUST 대상 endpoint 행만 추가하거나 갱신하고 과거 전체 개수나 파일 수를 현재 계약의 근거로 사용하지 않는다.
+- MUST 관리자·운영 전용 API를 앱 연결 대상에서 제외하고 사유를 기록한다.
+- MUST 해결되지 않은 서버 계약을 [TODO.md](../TODO.md)의 `API` 항목에서 관리한다.
+
+| 검증일 | 환경 | Method·Endpoint | 코드 경로 | 검증 범위 | 상태 |
+| --- | --- | --- | --- | --- | --- |
+| 2026-08-20 | 당시 Swagger 환경 | 전체 45개 endpoint | API Target·DTO·Repository 인벤토리 | 경로 존재 여부 중심, field·실행 전체 검증 아님 | [과거 전체 점검](../Archive/API/API_CONNECTION_STATUS_2026-08-20.md) |
+
+새 기록은 다음 형식을 사용한다.
+
+```md
+| YYYY-MM-DD | Dev 또는 Prod | METHOD `/path` | Target → DTO → Mapper → Domain → Presentation | schema / decoding / 인증 / 실제 실행 중 확인한 범위 | 연결됨 또는 확인 필요 |
+```
 
 ## Non-Swagger SDK Boundary
 

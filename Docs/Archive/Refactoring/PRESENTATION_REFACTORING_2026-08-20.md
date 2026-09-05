@@ -1,8 +1,10 @@
 # Presentation 리팩터링 백로그
 
+> Archive: 2026-08-19~20에 완료한 감사·리팩터링 기록이다. 현재 후보는 [TODO](../../TODO.md)에서 관리한다.
+
 ## 목적
 
-이 문서는 `Presentation`의 실제 코드 감사를 바탕으로, 사용자 기능·문구·Figma UI·API 계약을 바꾸지 않는 구조 리팩터링 범위를 관리한다. 장기 규칙의 원본은 [PRESENTATION.md](../Architecture/Layers/PRESENTATION.md)이며, 이 문서는 개별 대상의 근거·우선순위·진행 상태만 기록한다.
+이 문서는 `Presentation`의 실제 코드 감사를 바탕으로, 사용자 기능·문구·Figma UI·API 계약을 바꾸지 않는 구조 리팩터링 범위를 관리했다. 현재 장기 규칙의 원본은 [ARCHITECTURE.md](../../Architecture/ARCHITECTURE.md)다.
 
 ## 운영 규칙
 

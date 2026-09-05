@@ -3,7 +3,7 @@
 이 문서는 Dev/Prod 환경, TestFlight, 관측 SDK, 개인정보 및 App Store 출시 게이트를 다루며, 변동값은 아래 live source에서 확인한다.
 
 빌드 설정은 `Config/Dev.xcconfig`·`Config/Prod.xcconfig`, 배포 명령은 `fastlane/Fastfile`,
-관측·개인정보·공개 URL은 `Rodi/Core/Analytics`, `Rodi/App/Configuration/ClarityConfiguration.swift`,
+관측·개인정보·공개 URL은 `Rodi/Core/Analytics`, `Rodi/Presentation/Shared/Analytics`, `Rodi/App/Configuration/ClarityConfiguration.swift`,
 `Rodi/Resources/PrivacyInfo.xcprivacy`, `Rodi/Presentation/Shared/Model/LegalDocument.swift`가 원본이다.
 
 ## Environment Contract
@@ -145,35 +145,3 @@ bundle exec fastlane prod_beta
 | Legal | 공개본 접근 smoke test | 승인 원문·공개본·metadata 일치 |
 
 누락된 Firebase 설정, 잘못된 callback, secret 포함, 민감한 Release log, Clarity 미마스킹, Privacy Label 불일치, 접근 불가하거나 승인 여부를 확인할 수 없는 법무·지원 문서는 모두 출시 차단이다.
-
-## 2차 업데이트 심사 제출 체크리스트
-
-### Live Activity와 위치 측정
-
-- `연습하러 가기`를 사용자가 선택한 경우에만 GPS 측정과 Live Activity가 시작되는지 확인한다.
-- 코스는 경로선 150m 이내의 인정 이동거리로 `min(코스 전체 거리 × 40%, 5km)`에 도달하면 완료한다.
-  주차장은 장소 범위 150m 진입 시 완료하며, 완료·취소·프로세스 중단 뒤에는 위치 업데이트와 Live Activity를 종료한다.
-- 실기기에서 Live Activity·위치 권한 허용/거부·정밀 위치 거부·외부 길안내 앱 미설치·재진입·측정 종료를 확인한다.
-  시뮬레이터는 Live Activity와 GPS 최종 검증에 사용하지 않는다.
-- `NSSupportsLiveActivities`, `UIBackgroundModes=location`, extension embedding, iOS 16.1 availability를 Release archive에서 확인한다.
-  빈번한 Live Activity 업데이트 entitlement는 사용하지 않으며, 현재 갱신은 단계 변경·15초 경과·진행률 3% 변화로 제한된다.
-
-### App Review Notes 초안
-
-아래 영문은 App Store Connect의 Notes for Review에 맞춰, 실제 동작을 바꾸지 않고 사용한다.
-
-> Rodi is a driving-practice course and parking-location discovery app for Korea. Reviewers can sign in with their own Apple ID and complete onboarding.
->
-> To test Live Activities and location-based practice measurement: Home > select a course or parking location > Practice > choose Kakao Map or Kakao Navi. With Location and Live Activities enabled, the app starts measurement only after the user starts a practice session. The Live Activity shows the selected session's current state and ends when the session is completed or ended by the user.
->
-> Rodi uses background location only while an active practice measurement is running. Location is used to verify the selected practice session and update its progress; it stops after completion or cancellation. If Live Activities or precise location are not enabled, the user can still view the route without starting measurement. Kakao Map/Kakao Navi are Korean external navigation integrations; please use the route-only fallback if an external navigation app is unavailable.
-
-### 제출 전 사람 확인 항목
-
-- App Store Connect Privacy Label을 Privacy Manifest와 별개로 확인한다. Firebase Analytics/Crashlytics/Performance,
-  Clarity session replay, Kakao SDK, 계정·후기·정확/대략 위치 처리의 실제 수집 목적·연결 여부·추적 여부와 일치해야 한다.
-- 개인정보처리방침·위치기반서비스 이용약관·지원 URL에 운영 주체, 시행일, 문의 수단, 계정 삭제, 활성 연습 중
-  백그라운드 위치 사용, 원본 GPS 궤적 미저장, 분석·session replay 제3자 처리를 반영한다.
-- UGC 신고·차단·문의·운영 대응 책임자를 확인한다. 신고나 차단은 실제 서버 요청과 차단목록 반영까지 실기기에서 검증한다.
-- App Store Connect의 설명, 새 기능, 스크린샷, 지원 URL, 개인정보처리방침 URL, 연령 등급, 암호화 여부,
-  심사 연락처를 실제 Release 바이너리와 맞춘다.
