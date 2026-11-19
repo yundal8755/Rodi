@@ -308,7 +308,7 @@ private struct PlaceListEmptyResultView: View {
                     emptyContent
                     Spacer(minLength: 0)
                 }
-                .padding(.top, 68)
+                .padding(.top, 16)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: isExpanded || isCentered ? .infinity : nil)
@@ -319,7 +319,7 @@ private struct PlaceListEmptyResultView: View {
             emptyImage
 
             VStack(spacing: 8) {
-                Text("추천할 수 있는 연습 코스를 찾지 못했어요.")
+                Text("연습 코스를 찾지 못했어요")
                     .rodiTypography(.headline1)
                     .foregroundStyle(RodiColor.gray600)
                     .multilineTextAlignment(.center)
