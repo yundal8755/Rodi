@@ -15,6 +15,6 @@ enum RodiMapEvent {
         viewport: PlaceViewport,
         isUserInitiated: Bool
     )
-    case cameraMoveFinished(requestID: Int)
+    case cameraMoveFinished(requestID: Int, viewport: PlaceViewport?)
     case failed(String)
 }

@@ -7,6 +7,7 @@ import SwiftUI
 
 struct RecommendListBottomSheetView: View {
     let state: RecommendListBottomSheetReducer.State
+    let isFilterUpdating: Bool
     let send: (RecommendListBottomSheetReducer.Action) -> Void
     let debugReviewTestAction: () -> Void
     let debugHardWithdrawAction: () async throws -> Void
@@ -16,6 +17,7 @@ struct RecommendListBottomSheetView: View {
 
     init(
         state: RecommendListBottomSheetReducer.State,
+        isFilterUpdating: Bool,
         send: @escaping (RecommendListBottomSheetReducer.Action) -> Void,
         debugReviewTestAction: @escaping () -> Void,
         debugHardWithdrawAction: @escaping () async throws -> Void,
@@ -24,6 +26,7 @@ struct RecommendListBottomSheetView: View {
         titlePanEnded: @escaping (CGFloat) -> Void = { _ in }
     ) {
         self.state = state
+        self.isFilterUpdating = isFilterUpdating
         self.send = send
         self.debugReviewTestAction = debugReviewTestAction
         self.debugHardWithdrawAction = debugHardWithdrawAction
@@ -51,6 +54,8 @@ struct RecommendListBottomSheetView: View {
                 isExpanded: state.presentation == .expanded,
                 selectAction: { send(.select($0)) },
                 reloadAction: { send(.reloadCurrentViewport(origin: nil)) },
+                resetFilterAction: { send(.resetFilter) },
+                isFilterUpdating: isFilterUpdating,
                 loadNextPageAction: { send(.loadNextPage) },
                 debugReviewTestAction: debugReviewTestAction,
                 debugHardWithdrawAction: debugHardWithdrawAction
@@ -115,6 +120,7 @@ struct RecommendListBottomSheetView: View {
                 .modifier(FilterButtonStyle(isExpanded: state.presentation == .expanded))
         }
         .buttonStyle(.plain)
+        .disabled(isFilterUpdating)
         .contentShape(Rectangle())
         .accessibilityLabel("필터 열기")
     }

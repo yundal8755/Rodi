@@ -22,7 +22,8 @@ struct HomeMapReducer: Reducer {
         case viewportChanged(center: RodiCoordinate, zoomLevel: Int, viewport: PlaceViewport, isUserInitiated: Bool)
         case markerTapped(String)
         case savedPlaceSelected(PlaceListItem)
-        case cameraMoveFinished(Int)
+        case cameraMoveFinished(Int, viewport: PlaceViewport?)
+        case nationwideBrowseRequested
         case currentLocationRequested
         case markerRetryRequested
         case recommendationResearchButtonTapped
@@ -145,6 +146,7 @@ struct HomeMapReducer: Reducer {
             }
             var delegates: [Action] = [.delegate(.viewportChanged(viewport, center: center, isUserInitiated: isUserInitiated))]
             if !isUserInitiated, viewport.isValidForPlaceQuery,
+               state.cameraFocus != .koreaOverview,
                state.pendingRegionCameraRequestID == state.cameraRequestID,
                let origin = state.pendingRegionViewportReloadOrigin {
                 state.pendingRegionCameraRequestID = nil
@@ -196,10 +198,34 @@ struct HomeMapReducer: Reducer {
             selectMarker(id: markerID(for: place.type, id: place.id), coordinate: .init(latitude: place.latitude, longitude: place.longitude), focus: .closeSingleLocation, state: &state)
             return effects([.delegate(.bottomTabBarVisibilityChanged(false)), .delegate(.resolveSavedPlace(place))], cancellation: .progressiveMarkerRendering)
 
-        case .cameraMoveFinished(let requestID):
+        case let .cameraMoveFinished(requestID, viewport):
             guard state.animatedCameraRequestID == requestID else { return .none }
             state.animatedCameraRequestID = nil
+            if state.cameraFocus == .koreaOverview,
+               state.pendingRegionCameraRequestID == requestID,
+               let origin = state.pendingRegionViewportReloadOrigin, let viewport {
+                state.pendingRegionCameraRequestID = nil
+                state.pendingRegionViewportReloadOrigin = nil
+                state.visibleLongitudeSpan = viewport.longitudeSpan
+                return .send(.delegate(.reloadAfterRegionViewport(viewport: viewport, origin: origin)))
+            }
             return .none
+
+        case .nationwideBrowseRequested:
+            state.routeOverlay = nil
+            state.selectedMarkerID = nil
+            state.selectedSearchResultName = nil
+            state.isCurrentLocationButtonActive = false
+            state.isListResearchButtonVisible = false
+            state.didClusterRefreshFail = false
+            state.clusterRequestRevision += 1
+            rebuildMarkers(&state)
+            state.cameraTarget = .southKoreaCenter
+            state.cameraFocus = .koreaOverview
+            requestCamera(&state)
+            state.pendingRegionViewportReloadOrigin = state.cameraTarget
+            state.pendingRegionCameraRequestID = state.cameraRequestID
+            return .cancel(id: CancellationID.clusterLoading)
 
         case .currentLocationRequested:
             guard state.mapLifecycle == .ready, state.locationState != .requesting else { return .none }

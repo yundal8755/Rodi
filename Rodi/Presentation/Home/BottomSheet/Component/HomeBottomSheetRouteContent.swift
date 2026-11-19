@@ -54,6 +54,7 @@ private extension HomeBottomSheetRouteContent {
                 VStack(spacing: 0) {
                     RecommendListBottomSheetView(
                         state: state.recommendList,
+                        isFilterUpdating: state.filter.isApplying,
                         send: sendRecommendation,
                         debugReviewTestAction: debugReviewTestAction,
                         debugHardWithdrawAction: debugHardWithdrawAction,
@@ -78,6 +79,7 @@ private extension HomeBottomSheetRouteContent {
                         )
                         RecommendListBottomSheetView(
                             state: state.recommendList,
+                            isFilterUpdating: state.filter.isApplying,
                             send: sendRecommendation,
                             debugReviewTestAction: debugReviewTestAction,
                             debugHardWithdrawAction: debugHardWithdrawAction,

@@ -509,8 +509,8 @@ extension HomeView {
                         isUserInitiated: isUserInitiated
                     )))
 
-                case .cameraMoveFinished(let requestID):
-                    store.send(.map(.cameraMoveFinished(requestID)))
+                case let .cameraMoveFinished(requestID, viewport):
+                    store.send(.map(.cameraMoveFinished(requestID, viewport: viewport)))
 
                 case .failed:
                     break

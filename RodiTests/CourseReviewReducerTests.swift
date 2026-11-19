@@ -3,6 +3,42 @@ import XCTest
 
 @MainActor
 final class CourseReviewReducerTests: XCTestCase {
+    func testFilterResetSendsEmptyTagsWithoutCommittingBeforeSuccess() async {
+        var sentTags: [PlacePracticeType]?
+        let reducer = FilterBottomSheetReducer(
+            memberRepository: MemberRepositoryStub(onSortTagsUpdate: { sentTags = $0 }),
+            hasActiveSession: { true }
+        )
+        var state = FilterBottomSheetReducer.State()
+        state.appliedSelection = .default
+        state.appliedSelection.toggleType(.merging)
+        state.draftSelection = state.appliedSelection
+
+        let effect = reducer.reduce(&state, with: .resetForNationwideBrowse)
+        XCTAssertTrue(state.isApplying)
+        XCTAssertEqual(state.appliedSelection.filterTags, [.merging])
+        guard case .none = reducer.reduce(&state, with: .reset).caseOf else {
+            return XCTFail("초기화 중에는 재요청하지 않아야 합니다.")
+        }
+        guard case let .run(_, task) = effect.caseOf else { return XCTFail("초기화 요청이 필요합니다.") }
+        var completion: FilterBottomSheetReducer.Action?
+        await task { completion = $0 }
+        XCTAssertEqual(sentTags, [])
+        guard let completion, case .applied(let selection, true) = completion else { return XCTFail("전국 조회 초기화 성공 결과가 필요합니다.") }
+        XCTAssertTrue(selection.filterTags.isEmpty)
+        XCTAssertNil(selection.category)
+    }
+
+    func testGuestCannotSaveFilterReset() {
+        let reducer = FilterBottomSheetReducer(memberRepository: MemberRepositoryStub(), hasActiveSession: { false })
+        var state = FilterBottomSheetReducer.State()
+        let effect = reducer.reduce(&state, with: .reset)
+        guard case .send(.delegate(.requestAuthentication)) = effect.caseOf else {
+            return XCTFail("비로그인 초기화는 인증 안내만 전달해야 합니다.")
+        }
+        XCTAssertFalse(state.isApplying)
+    }
+
     func testFilterSaveFailureDoesNotCommitSelection() async {
         let reducer = FilterBottomSheetReducer(
             memberRepository: MemberRepositoryStub(sortTagsError: .networkUnavailable),
@@ -93,6 +129,7 @@ private struct ReviewRepositoryStub: ReviewRepository {
 
 private struct MemberRepositoryStub: MemberRepository {
     var sortTagsError: NetworkError? = nil
+    var onSortTagsUpdate: (([PlacePracticeType]) -> Void)? = nil
     func fetchOnboardingForm() async throws(NetworkError) -> MemberOnboardingForm { fatalError() }
     func fetchMyProfile() async throws(NetworkError) -> MemberProfile { fatalError() }
     func withdraw() async throws(NetworkError) {}
@@ -104,6 +141,7 @@ private struct MemberRepositoryStub: MemberRepository {
     func updateNickname(_ nickname: String) async throws(NetworkError) -> String { nickname }
     func updatePlaceFilterTags(_ tags: [PlacePracticeType]) async throws(NetworkError) {
         if let sortTagsError { throw sortTagsError }
+        onSortTagsUpdate?(tags)
     }
     func submitOnboarding(_ submission: MemberOnboardingSubmission) async throws(NetworkError) {}
     func completeCourseTutorial() async throws(NetworkError) -> CourseTutorialCompletion { fatalError() }

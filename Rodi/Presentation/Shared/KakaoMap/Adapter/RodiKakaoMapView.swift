@@ -407,24 +407,25 @@ final class RodiKakaoMapView: UIView {
         programmaticViewportResetWorkItem?.cancel()
         programmaticViewportResetWorkItem = nil
         let centerPoint = map.getPosition(CGPoint(x: bounds.midX, y: bounds.midY))
-        let southWestPoint = map.getPosition(CGPoint(x: bounds.minX, y: bounds.maxY))
-        let northEastPoint = map.getPosition(CGPoint(x: bounds.maxX, y: bounds.minY))
         let coordinate = RodiCoordinate(
             latitude: centerPoint.wgsCoord.latitude,
             longitude: centerPoint.wgsCoord.longitude
-        )
-        let viewport = PlaceViewport(
-            southWestLatitude: southWestPoint.wgsCoord.latitude,
-            southWestLongitude: southWestPoint.wgsCoord.longitude,
-            northEastLatitude: northEastPoint.wgsCoord.latitude,
-            northEastLongitude: northEastPoint.wgsCoord.longitude
         )
         viewportChangeGeneration += 1
         coordinator?.reportViewportChange(
             center: coordinate,
             zoomLevel: map.zoomLevel,
-            viewport: viewport,
+            viewport: visibleViewport(on: map),
             isUserInitiated: !isProgrammaticMove
+        )
+    }
+
+    private func visibleViewport(on map: KakaoMap) -> PlaceViewport {
+        let southWest = map.getPosition(CGPoint(x: bounds.minX, y: bounds.maxY)).wgsCoord
+        let northEast = map.getPosition(CGPoint(x: bounds.maxX, y: bounds.minY)).wgsCoord
+        return .init(
+            southWestLatitude: southWest.latitude, southWestLongitude: southWest.longitude,
+            northEastLatitude: northEast.latitude, northEastLongitude: northEast.longitude
         )
     }
 
@@ -575,6 +576,12 @@ final class RodiKakaoMapView: UIView {
         RodiLogger.debug("Kakao map moveCamera requestID=\(requestID), center=\(RodiLogger.coordinate(cameraTarget)), original=\(RodiLogger.coordinate(coordinate)), level=\(level), currentLevel=\(map.zoomLevel), animated=\(animated), focus=\(latestCameraFocus), bottomInset=\(latestCameraBottomInset)")
         let point = MapPoint(longitude: cameraTarget.longitude, latitude: cameraTarget.latitude)
         let update = CameraUpdate.make(target: point, zoomLevel: level, mapView: map)
+        let shouldReportViewport = latestCameraFocus == .koreaOverview
+        let completion: () -> Void = { [weak self] in
+            guard let self, lastAppliedCameraRequestID == requestID else { return }
+            let viewport = shouldReportViewport ? kakaoMap.map { self.visibleViewport(on: $0) } : nil
+            coordinator?.reportCameraMoveFinished(requestID, viewport: viewport)
+        }
 
         if animated {
             let options = CameraAnimationOptions(
@@ -582,13 +589,9 @@ final class RodiKakaoMapView: UIView {
                 consecutive: false,
                 durationInMillis: Constants.focusAnimationDurationMillis
             )
-            map.animateCamera(cameraUpdate: update, options: options) { [weak self] in
-                self?.coordinator?.reportCameraMoveFinished(requestID)
-            }
+            map.animateCamera(cameraUpdate: update, options: options) { completion() }
         } else {
-            map.moveCamera(update) { [weak self] in
-                self?.coordinator?.reportCameraMoveFinished(requestID)
-            }
+            map.moveCamera(update) { completion() }
         }
     }
 

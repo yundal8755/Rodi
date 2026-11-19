@@ -30,15 +30,16 @@ struct FilterBottomSheetReducer: Reducer {
         case toggleType(PlacePracticeType)
         case selectAll
         case reset
+        case resetForNationwideBrowse
         case apply
-        case applied(HomePracticeFilterSelection)
+        case applied(HomePracticeFilterSelection, browseNationwide: Bool)
         case authenticationRequired
         case failed(String)
         case delegate(Delegate)
     }
 
     enum Delegate {
-        case applied
+        case applied(browseNationwide: Bool)
         case dismissed
         case requestAuthentication
         case showSnackbar(String)
@@ -92,10 +93,14 @@ extension FilterBottomSheetReducer {
             guard !state.isApplying else { return .none }
             state.draftSelection.selectAll()
 
-        case .reset:
+        case .reset, .resetForNationwideBrowse:
             guard !state.isApplying else { return .none }
+            guard hasActiveSession() else { return .send(.delegate(.requestAuthentication)) }
             state.isApplying = true
             RodiAnalytics.track(.practiceFilterReset)
+            if case .resetForNationwideBrowse = action {
+                return updateFilterEffect(selection: .default, browseNationwide: true)
+            }
             return updateFilterEffect(selection: .default)
 
         case .apply:
@@ -103,13 +108,13 @@ extension FilterBottomSheetReducer {
             state.isApplying = true
             return updateFilterEffect(selection: state.draftSelection)
 
-        case .applied(let selection):
+        case let .applied(selection, browseNationwide):
             state.appliedSelection = selection
             state.draftSelection = selection
             state.isApplying = false
             filterStore.save(selection)
             RodiAnalytics.track(.practiceFilterApplied(category: selection.category?.rawValue ?? "none", selectedTagCount: selection.filterTags.count, isAll: selection.isAllSelected))
-            return .send(.delegate(.applied))
+            return .send(.delegate(.applied(browseNationwide: browseNationwide)))
 
         case .authenticationRequired:
             state.isApplying = false
@@ -126,15 +131,17 @@ extension FilterBottomSheetReducer {
         return .none
     }
 
-    private func updateFilterEffect(selection: HomePracticeFilterSelection) -> Effect<Action> {
+    private func updateFilterEffect(selection: HomePracticeFilterSelection, browseNationwide: Bool = false) -> Effect<Action> {
         let repository = memberRepository
         return .run { send in
             do {
                 try await repository.updatePlaceFilterTags(selection.filterTags)
-                await send(.applied(selection))
+                guard !Task.isCancelled else { return }
+                await send(.applied(selection, browseNationwide: browseNationwide))
             } catch is CancellationError {
                 return
             } catch {
+                guard !Task.isCancelled else { return }
                 if requiresAuthentication(error) {
                     await send(.authenticationRequired)
                 } else {

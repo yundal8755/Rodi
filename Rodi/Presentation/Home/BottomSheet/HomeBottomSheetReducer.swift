@@ -65,6 +65,7 @@ struct HomeBottomSheetReducer: Reducer {
     }
 
     enum Delegate {
+        case mapNationwideBrowseRequested
         case mapClusterQueryRequested(PlaceClusterQuery, revision: Int)
         case mapPlaceResolved(PlaceDetail)
         case mapSearchSelectionRequested(String)
@@ -315,6 +316,9 @@ extension HomeBottomSheetReducer {
                 .showFilter
             ])
 
+        case .resetFilter:
+            return filterReducer.reduce(&state.filter, with: .resetForNationwideBrowse).map(Action.filter)
+
         case .requestAuthentication:
             return .send(.delegate(.requestAuthentication))
 
@@ -345,7 +349,18 @@ extension HomeBottomSheetReducer {
         _ delegate: FilterBottomSheetReducer.Delegate, state: inout State
     ) -> Effect<Action> {
         switch delegate {
-        case .applied:
+        case .applied(true):
+            guard state.route == .recommendList else { return .none }
+            _ = recommendListReducer.reduce(&state.recommendList, with: .regionViewportReloadStarted(
+                origin: .southKoreaCenter, isRegionSearchResult: false
+            ))
+            return actions([
+                .recommendList(.placeListLoadingCancellationRequested),
+                .recommendList(.present),
+                .delegate(.mapNationwideBrowseRequested)
+            ])
+
+        case .applied(false):
             state.route = .recommendList
             return actions([
                 .recommendList(.reloadAfterFilter),

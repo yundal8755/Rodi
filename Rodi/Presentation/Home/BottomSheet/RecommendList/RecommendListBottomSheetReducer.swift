@@ -43,7 +43,7 @@ struct RecommendListBottomSheetReducer: Reducer {
         case present
         case collapse
         case expand
-        case regionViewportReloadStarted(origin: RodiCoordinate)
+        case regionViewportReloadStarted(origin: RodiCoordinate, isRegionSearchResult: Bool = true)
         case viewportChanged(viewport: PlaceViewport, center: RodiCoordinate, isUserInitiated: Bool)
         case prepareInitialSearch(origin: RodiCoordinate)
         case reloadCurrentViewport(origin: RodiCoordinate?)
@@ -61,6 +61,7 @@ struct RecommendListBottomSheetReducer: Reducer {
         case pageFailed(message: String, revision: Int, isAppending: Bool, isManualResearch: Bool)
         case select(PlaceListItem)
         case openFilter
+        case resetFilter
         case delegate(Delegate)
     }
 
@@ -68,6 +69,7 @@ struct RecommendListBottomSheetReducer: Reducer {
         case firstPageRequested(PlaceClusterQuery, revision: Int)
         case resolvePlace(PlaceListItem)
         case presentFilter
+        case resetFilter
         case requestAuthentication
         case showSnackbar(String)
         case collapsedByUser
@@ -108,7 +110,7 @@ extension RecommendListBottomSheetReducer {
             state.presentation = .expanded
             return displayStateEffect(state)
 
-        case .regionViewportReloadStarted(let origin):
+        case let .regionViewportReloadStarted(origin, isRegionSearchResult):
             state.requestRevision += 1
             state.items = []
             state.activeViewport = nil
@@ -119,7 +121,7 @@ extension RecommendListBottomSheetReducer {
             state.isManualResearchLoading = false
             state.pendingInitialSearchOrigin = origin
             state.isAwaitingRegionViewport = true
-            state.isRegionSearchResult = true
+            state.isRegionSearchResult = isRegionSearchResult
             state.errorMessage = nil
             state.needsResearch = false
             return .none
@@ -165,25 +167,24 @@ extension RecommendListBottomSheetReducer {
             }
 
         case .reloadCurrentViewport(let origin):
-            guard let viewport = state.latestViewport,
-                  let center = state.latestViewportCenter,
-                  !state.isInitialLoading,
+            guard !state.isInitialLoading,
                   !state.isNextPageLoading else { return .none }
-            state.isRegionSearchResult = false
-            return loadFirstPage(viewport: viewport, origin: origin ?? center, state: &state, isManualResearch: true)
+            return researchCurrentViewport(origin: origin, state: &state)
 
         case let .reloadAfterRegionViewport(viewport, origin):
             guard state.isAwaitingRegionViewport,
                   state.pendingInitialSearchOrigin == origin,
                   !state.isInitialLoading,
                   !state.isNextPageLoading else { return .none }
+            if !state.isRegionSearchResult {
+                state.latestViewport = viewport
+                state.latestViewportCenter = origin
+            }
             return loadFirstPage(viewport: viewport, origin: origin, state: &state, isManualResearch: false)
 
         case .reloadAfterFilter:
-            guard !state.isAwaitingRegionViewport,
-                  let viewport = state.latestViewport,
-                  let origin = state.requestOrigin ?? state.latestViewportCenter else { return .none }
-            return loadFirstPage(viewport: viewport, origin: origin, state: &state, isManualResearch: false)
+            guard !state.isAwaitingRegionViewport else { return .none }
+            return researchCurrentViewport(origin: nil, state: &state)
 
         case .loadNextPage:
             guard !state.needsResearch,
@@ -247,11 +248,22 @@ extension RecommendListBottomSheetReducer {
             guard hasActiveSession() else { return .send(.delegate(.requestAuthentication)) }
             return .send(.delegate(.presentFilter))
 
+        case .resetFilter:
+            guard hasActiveSession() else { return .send(.delegate(.requestAuthentication)) }
+            return .send(.delegate(.resetFilter))
+
         case .delegate(let delegate):
             onDelegate(delegate)
         }
 
         return .none
+    }
+
+    private func researchCurrentViewport(origin: RodiCoordinate?, state: inout State) -> Effect<Action> {
+        guard let viewport = state.latestViewport,
+              let center = state.latestViewportCenter else { return .none }
+        state.isRegionSearchResult = false
+        return loadFirstPage(viewport: viewport, origin: origin ?? center, state: &state, isManualResearch: true)
     }
 
     private func loadFirstPage(viewport: PlaceViewport, origin: RodiCoordinate, state: inout State, isManualResearch: Bool) -> Effect<Action> {

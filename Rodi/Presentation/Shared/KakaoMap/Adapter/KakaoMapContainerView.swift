@@ -154,8 +154,8 @@ struct KakaoMapContainerView: UIViewRepresentable {
             eventRelay.accept(.ready)
         }
 
-        func reportCameraMoveFinished(_ requestID: Int) {
-            eventRelay.accept(.cameraMoveFinished(requestID: requestID))
+        func reportCameraMoveFinished(_ requestID: Int, viewport: PlaceViewport? = nil) {
+            eventRelay.accept(.cameraMoveFinished(requestID: requestID, viewport: viewport))
         }
 
         func reportMarkerTap(_ markerID: String) {

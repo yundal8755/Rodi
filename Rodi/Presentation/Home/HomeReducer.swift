@@ -158,6 +158,8 @@ private extension HomeReducer {
             return bottomSheetReducer.reduce(&state.bottomSheet, with: action).map(Action.bottomSheet)
         }
         switch delegate {
+        case .mapNationwideBrowseRequested:
+            return .send(.map(.nationwideBrowseRequested))
         case let .mapClusterQueryRequested(query, revision):
             return .send(.map(.clusterQueryRequested(query, listRevision: revision)))
         case .mapPlaceResolved(let detail):

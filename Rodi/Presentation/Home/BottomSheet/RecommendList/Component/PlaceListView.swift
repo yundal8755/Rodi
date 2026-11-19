@@ -17,6 +17,8 @@ struct PlaceListView: View {
     let isExpanded: Bool
     let selectAction: (PlaceListItem) -> Void
     let reloadAction: () -> Void
+    let resetFilterAction: () -> Void
+    let isFilterUpdating: Bool
     let loadNextPageAction: () -> Void
     let debugReviewTestAction: () -> Void
     let debugHardWithdrawAction: () async throws -> Void
@@ -32,6 +34,8 @@ struct PlaceListView: View {
                 PlaceListEmptyResultView(
                     isExpanded: isExpanded,
                     isCentered: isRegionSearchResult,
+                    resetFilterAction: resetFilterAction,
+                    isFilterUpdating: isFilterUpdating,
                     debugReviewTestAction: debugReviewTestAction,
                     debugHardWithdrawAction: debugHardWithdrawAction
                 )
@@ -261,17 +265,23 @@ private struct PlaceListMessageView: View {
 private struct PlaceListEmptyResultView: View {
     let isExpanded: Bool
     let isCentered: Bool
+    let resetFilterAction: () -> Void
+    let isFilterUpdating: Bool
     let debugReviewTestAction: () -> Void
     let debugHardWithdrawAction: () async throws -> Void
 
     init(
         isExpanded: Bool,
         isCentered: Bool,
+        resetFilterAction: @escaping () -> Void,
+        isFilterUpdating: Bool,
         debugReviewTestAction: @escaping () -> Void,
         debugHardWithdrawAction: @escaping () async throws -> Void
     ) {
         self.isExpanded = isExpanded
         self.isCentered = isCentered
+        self.resetFilterAction = resetFilterAction
+        self.isFilterUpdating = isFilterUpdating
         self.debugReviewTestAction = debugReviewTestAction
         self.debugHardWithdrawAction = debugHardWithdrawAction
     }
@@ -329,8 +339,29 @@ private struct PlaceListEmptyResultView: View {
                     .foregroundStyle(RodiColor.gray600)
                     .multilineTextAlignment(.center)
             }
+
+            Button(action: resetFilterAction) {
+                Text("더 많은 코스 둘러보기")
+                    .rodiTypography(.body3Medium)
+                    .foregroundStyle(RodiColor.primary)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 7)
+                    .background(RodiColor.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(RodiColor.primary, lineWidth: 1)
+                            .allowsHitTesting(false)
+                    }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(isFilterUpdating)
+            .accessibilityHint("필터를 초기화하고 전국 지도와 추천 목록을 불러옵니다.")
         }
         .frame(maxWidth: .infinity)
+        .padding(.horizontal, 16)
     }
 
     @ViewBuilder
