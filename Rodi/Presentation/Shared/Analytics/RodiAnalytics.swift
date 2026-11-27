@@ -9,6 +9,17 @@ import Foundation
 /// 원문 검색어, 좌표, 장소 식별자, 토큰 등 개인·고카디널리티 값은 정의하지 않는다.
 enum RodiAnalytics {
 
+    enum ReviewAction: String {
+        case formLoadFailed = "review_form_load_failed"
+        case formRetried = "review_form_retried"
+        case recommendationChanged = "review_recommendation_changed"
+        case issueSelectionChanged = "review_issue_selection_changed"
+        case secondStepReached = "review_second_step_reached"
+        case backToFirstStep = "review_back_to_first_step"
+        case methodChanged = "review_method_changed"
+        case discarded = "review_draft_discarded"
+    }
+
     enum Event {
         case onboardingStarted(entryMode: String)
         case onboardingStepCompleted(step: String, entryMode: String)
@@ -28,9 +39,21 @@ enum RodiAnalytics {
         case practiceFilterApplied(category: String, selectedTagCount: Int, isAll: Bool)
         case practiceFilterReset
         case bookmarkUpdated(isBookmarked: Bool, source: String, placeType: String)
+        case bookmarkResult(added: Bool, source: String, placeType: String)
+        case measurementRequested(placeType: String)
+        case measurementBlocked(reason: String, placeType: String)
+        case guidanceLaunched(mode: PracticeMeasurementMode, placeType: String)
+        case courseDistanceCompleted
+        case visitSaved(place: PracticeMeasurementPlaceType, certified: Bool)
+        case visitSaveFailed(place: PracticeMeasurementPlaceType, stage: String)
+        case reviewAction(ReviewAction, mode: String)
         case routeGuidanceOpened(navigationProvider: String, placeType: String, source: String)
         case routeGuidanceLaunchFailed(navigationProvider: String, placeType: String)
         case courseRegistrationOpened
+        case courseReportOpened
+        case courseReportSubmitted
+        case courseReportCompleted
+        case courseReportFailed(stage: String)
         case courseRegistrationWaypointChanged(action: String, waypointCount: Int)
         case courseRegistrationPointSelected(inputType: String, source: String)
         case courseRegistrationRoutePrepared(waypointCount: Int)
@@ -52,7 +75,8 @@ enum RodiAnalytics {
         case drivePracticeStarted(placeType: String)
         case drivePracticeEnteredCourse(placeType: String)
         case drivePracticeCompleted(placeType: String)
-        case drivePracticeCancelled(placeType: String)
+        case drivePracticeCancelled(placeType: String, phase: DrivePracticePhase)
+        case drivePracticeInterrupted(placeType: String, phase: DrivePracticePhase)
         case myOpened
         case savedPlacesOpened
         case savedPlaceSelected
@@ -83,9 +107,21 @@ enum RodiAnalytics {
             case .practiceFilterApplied: "practice_filter_applied"
             case .practiceFilterReset: "practice_filter_reset"
             case .bookmarkUpdated: "bookmark_updated"
+            case .bookmarkResult(let added, _, _): added ? "place_saved" : "place_unsaved"
+            case .measurementRequested: "practice_start_requested"
+            case .measurementBlocked: "practice_tracking_blocked"
+            case .guidanceLaunched: "practice_navigation_launched"
+            case .courseDistanceCompleted: "course_distance_completed"
+            case .visitSaved(let place, _): place == .course ? "course_visit_saved" : "parking_visit_saved"
+            case .visitSaveFailed: "practice_visit_save_failed"
+            case .reviewAction(let action, _): action.rawValue
             case .routeGuidanceOpened: "route_guidance_opened"
             case .routeGuidanceLaunchFailed: "external_navigation_launch_failed"
             case .courseRegistrationOpened: "course_registration_opened"
+            case .courseReportOpened: "course_report_opened"
+            case .courseReportSubmitted: "course_report_submitted"
+            case .courseReportCompleted: "course_report_completed"
+            case .courseReportFailed: "course_report_failed"
             case .courseRegistrationWaypointChanged: "course_registration_waypoint_changed"
             case .courseRegistrationPointSelected: "course_registration_point_selected"
             case .courseRegistrationRoutePrepared: "course_registration_route_prepared"
@@ -104,6 +140,7 @@ enum RodiAnalytics {
             case .drivePracticeEnteredCourse: "practice_tracking_entered_course"
             case .drivePracticeCompleted: "practice_tracking_completed"
             case .drivePracticeCancelled: "practice_tracking_cancelled"
+            case .drivePracticeInterrupted: "practice_tracking_interrupted"
             case .myOpened: "my_opened"
             case .savedPlacesOpened: "saved_places_opened"
             case .savedPlaceSelected: "saved_place_selected"
@@ -154,12 +191,30 @@ enum RodiAnalytics {
                 [:]
             case .bookmarkUpdated(let isBookmarked, let source, let placeType):
                 ["is_bookmarked": isBookmarked ? 1 : 0, "source": source, "place_type": placeType]
+            case .bookmarkResult(_, let source, let placeType):
+                ["source": source, "place_type": placeType]
+            case .measurementRequested(let placeType):
+                ["place_type": placeType]
+            case .measurementBlocked(let reason, let placeType):
+                ["reason": reason, "place_type": placeType]
+            case .guidanceLaunched(let mode, let placeType):
+                ["measurement_mode": mode.rawValue, "place_type": placeType]
+            case .courseDistanceCompleted:
+                [:]
+            case .visitSaved(_, let certified):
+                ["is_certified_now": certified ? 1 : 0]
+            case .visitSaveFailed(let place, let stage):
+                ["place_type": place.rawValue.uppercased(), "stage": stage]
+            case .reviewAction(_, let mode):
+                ["mode": mode]
             case .routeGuidanceOpened(let navigationProvider, let placeType, let source):
                 ["navigation_provider": navigationProvider, "place_type": placeType, "source": source]
             case .routeGuidanceLaunchFailed(let navigationProvider, let placeType):
                 ["navigation_provider": navigationProvider, "place_type": placeType]
-            case .courseRegistrationOpened:
+            case .courseRegistrationOpened, .courseReportOpened, .courseReportSubmitted, .courseReportCompleted:
                 [:]
+            case .courseReportFailed(let stage):
+                ["stage": stage]
             case .courseRegistrationWaypointChanged(let action, let waypointCount):
                 ["action": action, "waypoint_count": waypointCount]
             case .courseRegistrationPointSelected(let inputType, let source):
@@ -194,9 +249,11 @@ enum RodiAnalytics {
                 ["mode": mode]
             case .drivePracticeStarted(let placeType),
                  .drivePracticeEnteredCourse(let placeType),
-                 .drivePracticeCompleted(let placeType),
-                 .drivePracticeCancelled(let placeType):
+                 .drivePracticeCompleted(let placeType):
                 ["place_type": placeType]
+            case let .drivePracticeCancelled(placeType, phase),
+                 let .drivePracticeInterrupted(placeType, phase):
+                ["place_type": placeType, "tracking_phase": phase.rawValue]
             case .myOpened, .savedPlacesOpened, .savedPlaceSelected, .logoutCompleted, .withdrawalRequested, .withdrawalRestored:
                 [:]
             case .drivingGoalSaved(let goalLengthBucket):
@@ -211,6 +268,10 @@ enum RodiAnalytics {
 
     static func track(_ event: Event) {
         FirebaseAnalyticsTracker.track(name: event.name, parameters: event.parameters)
+        if case let .bookmarkUpdated(added, source, placeType) = event {
+            let result = Event.bookmarkResult(added: added, source: source, placeType: placeType)
+            FirebaseAnalyticsTracker.track(name: result.name, parameters: result.parameters)
+        }
     }
 
     static func setUserContext(

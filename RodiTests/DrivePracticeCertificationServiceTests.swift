@@ -7,10 +7,12 @@ final class DrivePracticeCertificationServiceTests: XCTestCase {
         let store = MeasurementStoreStub(measurement: makeMeasurement())
         let repository = PracticeRepositoryStub()
         var certificationCount = 0
+        var events: [RodiAnalytics.Event] = []
         let certified = expectation(description: "certified")
         let service = DrivePracticeCertificationService(
             practiceRepository: repository,
             measurementStore: store,
+            track: { events.append($0) },
             didCertify: {
                 certificationCount += 1
                 certified.fulfill()
@@ -23,16 +25,23 @@ final class DrivePracticeCertificationServiceTests: XCTestCase {
         XCTAssertEqual(store.measurement?.status, .certified)
         XCTAssertEqual(store.measurement?.practiceID, 101)
         XCTAssertEqual(certificationCount, 1)
+        service.retryIfNeeded()
+        XCTAssertEqual(events.count, 1)
+        guard case .visitSaved(.course, true)? = events.first else {
+            return XCTFail("코스 방문 저장 성공 이벤트가 필요합니다.")
+        }
     }
 
     func testFailureKeepsPendingMeasurementAndDoesNotNotify() {
         let store = MeasurementStoreStub(measurement: makeMeasurement())
         let repository = PracticeRepositoryStub(registerError: .networkUnavailable)
+        var events: [RodiAnalytics.Event] = []
         let certified = expectation(description: "not certified")
         certified.isInverted = true
         let service = DrivePracticeCertificationService(
             practiceRepository: repository,
             measurementStore: store,
+            track: { events.append($0) },
             didCertify: { certified.fulfill() }
         )
 
@@ -40,6 +49,10 @@ final class DrivePracticeCertificationServiceTests: XCTestCase {
 
         wait(for: [certified], timeout: 0.1)
         XCTAssertEqual(store.measurement?.status, .certificationPendingRegistration)
+        XCTAssertEqual(events.count, 1)
+        guard case .visitSaveFailed(.course, "registration")? = events.first else {
+            return XCTFail("등록 실패 단계가 필요합니다.")
+        }
     }
 
     func testCancelledRequestCannotUpdateMeasurementOrNotify() {
@@ -54,6 +67,7 @@ final class DrivePracticeCertificationServiceTests: XCTestCase {
         let service = DrivePracticeCertificationService(
             practiceRepository: repository,
             measurementStore: store,
+            track: { _ in XCTFail("취소된 요청의 결과는 집계할 수 없습니다.") },
             didCertify: { certified.fulfill() }
         )
 

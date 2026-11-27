@@ -29,7 +29,7 @@ struct RouteGuidanceReducer: Reducer {
             RouteGuidanceResult,
             request: RouteGuidanceFlowRequest,
             measurementID: UUID,
-            cancelTrackingOnFailure: Bool,
+            mode: PracticeMeasurementMode,
             requestID: Int
         )
         case installFinished(RouteGuidanceResult, requestID: Int)
@@ -61,9 +61,11 @@ struct RouteGuidanceReducer: Reducer {
         switch action {
         case let .start(detail, userLocation, hasLocationPermission):
             guard hasLocationPermission else {
+                RodiAnalytics.track(.measurementBlocked(reason: "location_permission", placeType: detail?.type.rawValue ?? "unknown"))
                 return snackbar("위치 권한을 허용한 뒤 다시 시도해주세요.")
             }
             guard let detail, let userLocation else {
+                RodiAnalytics.track(.measurementBlocked(reason: "missing_location_or_detail", placeType: detail?.type.rawValue ?? "unknown"))
                 return snackbar("현재 위치를 확인한 뒤 다시 시도해주세요.")
             }
 
@@ -77,6 +79,7 @@ struct RouteGuidanceReducer: Reducer {
                 state.request = .init(app: .kakaoMap, detail: detail, userLocation: userLocation)
                 state.presentation = .chooseApp
             case .install:
+                RodiAnalytics.track(.measurementBlocked(reason: "navigation_app_missing", placeType: detail.type.rawValue))
                 state.request = .init(app: .kakaoMap, detail: detail, userLocation: userLocation)
                 state.presentation = .installApp
             }
@@ -117,7 +120,6 @@ struct RouteGuidanceReducer: Reducer {
                 request: request,
                 mode: .routeOnly,
                 measurementID: UUID(),
-                cancelTrackingOnFailure: false,
                 state: &state
             )
 
@@ -131,7 +133,6 @@ struct RouteGuidanceReducer: Reducer {
                 request: request,
                 mode: .routeOnly,
                 measurementID: UUID(),
-                cancelTrackingOnFailure: false,
                 state: &state
             )
 
@@ -155,18 +156,20 @@ struct RouteGuidanceReducer: Reducer {
                     request: request,
                     mode: .gpsTracking,
                     measurementID: measurementID,
-                    cancelTrackingOnFailure: true,
                     state: &state
                 )
             case .authorizationRequested:
+                RodiAnalytics.track(.measurementBlocked(reason: "authorization_requested", placeType: request.detail.type.rawValue))
                 return finish("위치 권한을 허용한 뒤 다시 연습하러 가기를 눌러주세요.", state: &state)
             case .reducedAccuracyRequested:
+                RodiAnalytics.track(.measurementBlocked(reason: "reduced_accuracy", placeType: request.detail.type.rawValue))
                 return openRouteOnly(
                     request,
                     message: "정확한 위치를 허용하면 다음 길안내부터 연습 기록을 시작할 수 있어요.",
                     state: &state
                 )
             case .unavailable(let message):
+                RodiAnalytics.track(.measurementBlocked(reason: "tracking_unavailable", placeType: request.detail.type.rawValue))
                 return openRouteOnly(request, message: message, state: &state)
             }
 
@@ -178,7 +181,7 @@ struct RouteGuidanceReducer: Reducer {
             }
             return .send(.delegate(.willOpen(request, mode: mode, measurementID: measurementID)))
 
-        case let .openFinished(result, request, measurementID, cancelTrackingOnFailure, requestID):
+        case let .openFinished(result, request, measurementID, mode, requestID):
             guard requestID == state.requestID,
                   state.request?.detail.id == request.detail.id
             else {
@@ -186,9 +189,12 @@ struct RouteGuidanceReducer: Reducer {
             }
             state.isLaunching = false
             state.request = nil
-            if cancelTrackingOnFailure, case .openedApp = result {
-                // 외부 앱 열기가 성공한 경우만 측정 session을 유지한다.
-            } else if cancelTrackingOnFailure {
+            if case .openedApp = result {
+                RodiAnalytics.track(.guidanceLaunched(
+                    mode: mode,
+                    placeType: request.detail.type.rawValue
+                ))
+            } else if mode == .gpsTracking {
                 flowService.cancelActiveMeasurement()
             }
             return .run { send in
@@ -225,6 +231,7 @@ private extension RouteGuidanceReducer {
         }
 
         guard flowService.areLiveActivitiesEnabled else {
+            RodiAnalytics.track(.measurementBlocked(reason: "live_activity_disabled", placeType: request.detail.type.rawValue))
             state.presentation = .liveActivityPermission
             return .none
         }
@@ -253,7 +260,6 @@ private extension RouteGuidanceReducer {
             request: request,
             mode: .routeOnly,
             measurementID: UUID(),
-            cancelTrackingOnFailure: false,
             initialSnackbarMessage: message,
             state: &state
         )
@@ -263,7 +269,6 @@ private extension RouteGuidanceReducer {
         request: RouteGuidanceFlowRequest,
         mode: PracticeMeasurementMode,
         measurementID: UUID,
-        cancelTrackingOnFailure: Bool,
         initialSnackbarMessage: String? = nil,
         state: inout State
     ) -> Effect<Action> {
@@ -287,7 +292,7 @@ private extension RouteGuidanceReducer {
                 await flowService.open(request),
                 request: request,
                 measurementID: measurementID,
-                cancelTrackingOnFailure: cancelTrackingOnFailure,
+                mode: mode,
                 requestID: requestID
             ))
         }

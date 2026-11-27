@@ -169,7 +169,7 @@ extension DrivePracticeService {
     func cancel() {
         guard let session, !session.phase.isTerminal else { return }
         endActiveSession(session, clearMeasurement: false)
-        RodiAnalytics.track(.drivePracticeCancelled(placeType: session.analyticsPlaceType))
+        RodiAnalytics.track(.drivePracticeCancelled(placeType: session.analyticsPlaceType, phase: session.phase))
         RodiLogger.info("Practice tracking cancelled")
     }
 
@@ -208,6 +208,7 @@ extension DrivePracticeService {
         decision: DrivePracticeRestorationDecision
     ) {
         endActiveSession(session, clearMeasurement: true)
+        RodiAnalytics.track(.drivePracticeInterrupted(placeType: session.analyticsPlaceType, phase: session.phase))
         RodiLogger.info(
             decision == .interruptDriving
                 ? "Practice tracking interrupted after process restart"
@@ -287,6 +288,7 @@ extension DrivePracticeService {
             finishLiveActivity(session)
             self.session = session
             sessionStore.save(session)
+            RodiAnalytics.track(.courseDistanceCompleted)
             markCertificationPending(for: session, retryImmediately: false)
             retryCertificationIfNeeded()
             RodiLogger.info(

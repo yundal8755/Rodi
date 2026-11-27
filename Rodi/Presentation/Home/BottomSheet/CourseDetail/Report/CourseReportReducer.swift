@@ -57,6 +57,7 @@ struct CourseReportReducer: Reducer {
             guard state.courseID == nil else { return .none }
             guard hasActiveSession() else { return .send(.delegate(.requestAuthentication)) }
             state = .init(courseID: courseID)
+            RodiAnalytics.track(.courseReportOpened)
             return loadForm(courseID: courseID, revision: state.revision)
 
         case .retryTapped:
@@ -72,6 +73,7 @@ struct CourseReportReducer: Reducer {
             case .success(let form): state.formState = .loaded(form)
             case .failure(let error):
                 state.formState = .failed
+                RodiAnalytics.track(.courseReportFailed(stage: "form"))
                 if needsAuthentication(error) { return .send(.delegate(.requestAuthentication)) }
             }
 
@@ -91,6 +93,7 @@ struct CourseReportReducer: Reducer {
                   !state.isSubmitting, !state.isCompletionPresented else { return .none }
             guard hasActiveSession() else { return .send(.delegate(.requestAuthentication)) }
             state.isSubmitting = true
+            RodiAnalytics.track(.courseReportSubmitted)
             state.revision = UUID()
             return submit(submission, courseID: courseID, revision: state.revision)
 
@@ -99,8 +102,10 @@ struct CourseReportReducer: Reducer {
             state.isSubmitting = false
             switch result {
             case .success:
+                RodiAnalytics.track(.courseReportCompleted)
                 state.isCompletionPresented = true
             case .failure(let error):
+                RodiAnalytics.track(.courseReportFailed(stage: "submission"))
                 if needsAuthentication(error) { return .send(.delegate(.requestAuthentication)) }
                 if case .apiError(code: "COURSE_400_1", message: _, httpStatusCode: _) = error {
                     return .send(.delegate(.showSnackbar("직접 등록한 코스는 신고할 수 없어요.")))

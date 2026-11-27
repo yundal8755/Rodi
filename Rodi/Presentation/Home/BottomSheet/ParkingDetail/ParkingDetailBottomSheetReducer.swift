@@ -171,6 +171,7 @@ extension ParkingDetailBottomSheetReducer {
             return .send(.delegate(.showSnackbar(message)))
 
         case .routeGuidanceTapped(let userLocation, let hasLocationPermission):
+            RodiAnalytics.track(.measurementRequested(placeType: PlaceType.parking.rawValue))
             return reduceRouteGuidance(
                 &state,
                 action: .start(

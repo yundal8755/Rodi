@@ -98,6 +98,10 @@ struct ReviewWritingReducer: Reducer {
 // MARK: - Reduce
 extension ReviewWritingReducer {
 
+    private func track(_ action: RodiAnalytics.ReviewAction, mode: State.Mode) {
+        if tracksAnalytics { RodiAnalytics.track(.reviewAction(action, mode: mode.analyticsName)) }
+    }
+
     func reduce(_ state: inout State, with action: Action) -> Effect<Action> {
         switch action {
         case .start(let request):
@@ -113,6 +117,7 @@ extension ReviewWritingReducer {
 
         case .retryLoading:
             guard case .loadFailed = state.page else { return .none }
+            track(.formRetried, mode: state.mode)
             state.page = .loading
             state.requestID += 1
             return loadEffect(state: state)
@@ -132,6 +137,7 @@ extension ReviewWritingReducer {
                 if let detail = loaded.detail { state.draft = .init(detail: detail) }
                 state.page = .first
             case .failure(let message):
+                track(.formLoadFailed, mode: state.mode)
                 if !service.usesServerForm { return .send(.delegate(.editingFailed(message))) }
                 state.page = .loadFailed(message)
             }
@@ -148,6 +154,7 @@ extension ReviewWritingReducer {
                     state.draft.caution = ""
                 }
             }
+            if state.draft.isRecommended != value { track(.recommendationChanged, mode: state.mode) }
             state.draft.isRecommended = value
 
         case .difficultySelected(let value):
@@ -167,6 +174,7 @@ extension ReviewWritingReducer {
             guard state.page == .first, state.draft.isRecommended == false,
                   state.form?[.courseIssues]?.options.contains(where: { $0.code == code }) == true else { return .none }
             if state.draft.courseIssues.remove(code) == nil { state.draft.courseIssues.insert(code) }
+            track(.issueSelectionChanged, mode: state.mode)
             if state.issueTextOption == nil { state.draft.courseIssueDetail = "" }
 
         case .courseIssueDetailChanged(let value):
@@ -176,14 +184,17 @@ extension ReviewWritingReducer {
 
         case .nextTapped:
             guard state.page == .first, state.canProceedToSecondPage else { return .none }
+            track(.secondStepReached, mode: state.mode)
             state.page = .second
 
         case .backTapped:
             guard state.page == .second, !state.isSubmitting else { return .none }
+            track(.backToFirstStep, mode: state.mode)
             state.page = .first
 
         case .practiceMethodSelected(let value):
             guard state.page == .second else { return .none }
+            if state.draft.practiceMethod != value { track(.methodChanged, mode: state.mode) }
             state.draft.practiceMethod = value
 
         case .contentChanged(let value):
@@ -201,6 +212,7 @@ extension ReviewWritingReducer {
 
         case .discardConfirmed:
             guard state.isDiscardConfirmationPresented else { return .none }
+            track(.discarded, mode: state.mode)
             state.requestID += 1
             return .run { send in
                 await send(.cancelLoading)

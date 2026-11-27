@@ -11,6 +11,7 @@ import Foundation
 final class DrivePracticeCertificationService {
     private let practiceRepository: PracticeRepository
     private let measurementStore: PracticeMeasurementStoring
+    private let track: (RodiAnalytics.Event) -> Void
     private let didCertify: () -> Void
 
     private var isRequestInFlight = false
@@ -20,10 +21,12 @@ final class DrivePracticeCertificationService {
     init(
         practiceRepository: PracticeRepository,
         measurementStore: PracticeMeasurementStoring,
+        track: @escaping (RodiAnalytics.Event) -> Void = { RodiAnalytics.track($0) },
         didCertify: @escaping () -> Void
     ) {
         self.practiceRepository = practiceRepository
         self.measurementStore = measurementStore
+        self.track = track
         self.didCertify = didCertify
     }
 
@@ -49,8 +52,9 @@ final class DrivePracticeCertificationService {
                 }
             }
 
+            var current = measurement
+            let place = current.placeType ?? .course
             do {
-                var current = measurement
                 if current.status == .certificationPendingRegistration {
                     let registration = try await practiceRepository.register(placeID: current.placeID)
                     guard !Task.isCancelled, requestID == activeRequestID else { return }
@@ -60,18 +64,23 @@ final class DrivePracticeCertificationService {
                 }
 
                 guard let practiceID = current.practiceID else { return }
-                _ = try await practiceRepository.recordVisit(
+                let visit = try await practiceRepository.recordVisit(
                     practiceID: practiceID,
                     certifiedDistanceMeters: current.certifiedDistanceMeters
                 )
                 guard !Task.isCancelled, requestID == activeRequestID else { return }
                 current.status = .certified
                 measurementStore.save(current)
+                track(.visitSaved(place: place, certified: visit.isCertifiedNow))
                 didCertify()
             } catch is CancellationError {
                 return
             } catch {
-                guard requestID == activeRequestID else { return }
+                guard !Task.isCancelled, requestID == activeRequestID else { return }
+                track(.visitSaveFailed(
+                    place: place,
+                    stage: current.status == .certificationPendingRegistration ? "registration" : "visit"
+                ))
                 RodiLogger.warning("Drive practice certification pending")
             }
         }

@@ -154,6 +154,7 @@ extension CourseDetailBottomSheetReducer {
             guard state.routeOverlay?.courseID == courseID else { return .none }; state.isRouteLoading = false; state.routeStatusMessage = message
             return .send(.delegate(.routeOverlayChanged(state.routeOverlay)))
         case .routeGuidanceTapped(let userLocation, let hasLocationPermission):
+            RodiAnalytics.track(.measurementRequested(placeType: PlaceType.course.rawValue))
             return reduceRouteGuidance(
                 &state,
                 action: .start(
