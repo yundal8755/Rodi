@@ -134,9 +134,6 @@ struct HomeView: View {
             .onChange(of: presentation.listPresentationRequestID) { requestID in
                 handleListPresentationRequest(requestID)
             }
-            .onChange(of: presentation.filterRecoveryRequestID) { _ in
-                store.send(.bottomSheet(.recommendList(.openFilter)))
-            }
             .onChange(of: presentation.placeSelectionRequest) { request in
                 handlePlaceSelection(request)
             }

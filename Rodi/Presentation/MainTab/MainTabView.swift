@@ -37,7 +37,6 @@ struct MainTabView: View {
                 presentation: .init(
                     isHomeTabSelected: store.state.selectedTab == .home,
                     listPresentationRequestID: homeListPresentationRequestID,
-                    filterRecoveryRequestID: store.state.homeFilterRecoveryRequestID,
                     placeSelectionRequest: store.state.homePlaceSelectionRequest,
                     reviewFlowFinishedRequestID: presentation.homeReviewFlowFinishedRequestID,
                     courseDetailReviewPresentation: presentation.courseDetailReviewPresentation,
@@ -62,7 +61,6 @@ struct MainTabView: View {
                 isMyTabSelected: store.state.selectedTab == .my,
                 dataRefreshRequestID: store.state.myDataRefreshRequestID,
                 navigate: { store.send(.navigationRequested($0)) },
-                openHomeFilterRecovery: { store.send(.homeFilterRecoveryRequested) },
                 onLogoutCompleted: presentation.onLogoutCompleted,
                 onReviewTestRequested: presentation.onReviewTestRequested,
                 onReviewRequested: {
