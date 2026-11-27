@@ -21,7 +21,7 @@ struct PlaceListView: View {
     let isFilterUpdating: Bool
     let loadNextPageAction: () -> Void
     let debugReviewTestAction: () -> Void
-    let debugHardWithdrawAction: () async throws -> Void
+    let debugHardWithdrawAction: @MainActor () async throws -> Void
 
     var body: some View {
         Group {
@@ -39,6 +39,9 @@ struct PlaceListView: View {
                     debugReviewTestAction: debugReviewTestAction,
                     debugHardWithdrawAction: debugHardWithdrawAction
                 )
+            } else if items.isEmpty {
+                // 첫 조회가 지도 이동으로 취소된 경우: 빈 결과가 아니며 재검색이 가능하다.
+                PlaceListMessageView(message: "이 지역의 추천 목록을 확인해 보세요.", action: reloadAction)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
@@ -268,7 +271,7 @@ private struct PlaceListEmptyResultView: View {
     let resetFilterAction: () -> Void
     let isFilterUpdating: Bool
     let debugReviewTestAction: () -> Void
-    let debugHardWithdrawAction: () async throws -> Void
+    let debugHardWithdrawAction: @MainActor () async throws -> Void
 
     init(
         isExpanded: Bool,
@@ -276,7 +279,7 @@ private struct PlaceListEmptyResultView: View {
         resetFilterAction: @escaping () -> Void,
         isFilterUpdating: Bool,
         debugReviewTestAction: @escaping () -> Void,
-        debugHardWithdrawAction: @escaping () async throws -> Void
+        debugHardWithdrawAction: @escaping @MainActor () async throws -> Void
     ) {
         self.isExpanded = isExpanded
         self.isCentered = isCentered

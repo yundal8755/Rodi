@@ -10,7 +10,7 @@ struct RecommendListBottomSheetView: View {
     let isFilterUpdating: Bool
     let send: (RecommendListBottomSheetReducer.Action) -> Void
     let debugReviewTestAction: () -> Void
-    let debugHardWithdrawAction: () async throws -> Void
+    let debugHardWithdrawAction: @MainActor () async throws -> Void
     let titlePanEnabled: Bool
     let titlePanChanged: (CGFloat) -> Void
     let titlePanEnded: (CGFloat) -> Void
@@ -20,7 +20,7 @@ struct RecommendListBottomSheetView: View {
         isFilterUpdating: Bool,
         send: @escaping (RecommendListBottomSheetReducer.Action) -> Void,
         debugReviewTestAction: @escaping () -> Void,
-        debugHardWithdrawAction: @escaping () async throws -> Void,
+        debugHardWithdrawAction: @escaping @MainActor () async throws -> Void,
         titlePanEnabled: Bool = false,
         titlePanChanged: @escaping (CGFloat) -> Void = { _ in },
         titlePanEnded: @escaping (CGFloat) -> Void = { _ in }

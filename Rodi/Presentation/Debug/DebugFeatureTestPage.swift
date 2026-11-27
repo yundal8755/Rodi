@@ -18,11 +18,11 @@ struct DebugFeatureTestPage: View {
     @State private var hardWithdrawalErrorMessage: String?
 
     let reviewPromptAction: () -> Void
-    let hardWithdrawAction: () async throws -> Void
+    let hardWithdrawAction: @MainActor () async throws -> Void
 
     init(
         reviewPromptAction: @escaping () -> Void,
-        hardWithdrawAction: @escaping () async throws -> Void
+        hardWithdrawAction: @escaping @MainActor () async throws -> Void
     ) {
         self.reviewPromptAction = reviewPromptAction
         self.hardWithdrawAction = hardWithdrawAction
