@@ -80,6 +80,14 @@ Clarity가 환경별 프로젝트로 전송되는지 확인한다.
 - Prod Clarity를 켜기 전에 세션 replay, masking, 제3자 처리 사실이 공개 개인정보처리방침과
   Privacy Label에 반영되어야 한다. 현재 Prod flag가 켜져 있으므로 미확인 상태는 출시 차단이다.
 
+### iOS 운영 퍼널 해석
+
+- 새 이벤트를 포함한 첫 배포 버전부터 같은 기간·앱 버전으로 비교한다. GA4 닫힌 유입경로에서 각 단계 이후에 다음 행동을 한 **사용자 수**를 본다. 여러 연습이나 재시도가 있는 사용자는 여러 세션에 걸쳐 단계를 채울 수 있다.
+- 코스 측정은 `practice_tracking_started` → `practice_tracking_entered_course` → `course_distance_completed` → `course_visit_saved` 순서로 본다. 앞 두 단계의 코스 조건은 기존 iOS 측정 이벤트의 `place_type=course`다. 거리 완료는 앱의 측정 기준 충족, 방문 저장은 서버의 성공 응답을 앱이 수신한 시점이다. `parking_visit_saved`는 주차 연습을 집계한다.
+- 상세 조회 후 저장 또는 연습 시작은 `place_saved`와 `practice_tracking_started`를 OR 조건으로 묶는다. 기존 `bookmark_updated`는 저장과 해제를 모두 포함한다.
+- 후기 작성은 `review_writing_opened` → `review_second_step_reached` → `review_submitted` → `review_completed` 순서로 본다. 이전 단계 복귀·폐기·폼 로딩 실패와 제출 실패를 함께 보면 작성이 멈춘 지점을 구분할 수 있다.
+- 차단 사유나 실패 단계를 세분화할 때는 GA4에 이벤트 범위 측정기준(`reason`, `stage`, `tracking_phase`, `measurement_mode`, `mode`, `place_type`)이 등록된 시점과 수집 기간을 확인한다.
+
 ## Secrets And Release Logs
 
 - Release log에 전체 API key, OAuth/access/refresh token, authorization code, 이메일, 닉네임,

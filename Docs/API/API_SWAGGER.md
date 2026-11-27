@@ -151,6 +151,8 @@ Dev·Prod 모두 `/places/coordinates`는 deprecated다. 홈 지도는 `/places/
 
 장소 목록·검색·클러스터의 `practiceTypes`는 조회 결과를 제한하는 query이며 회원 정렬 기준 저장과 별개다. 홈 필터는 `/sort-tags`만 호출한다. 홈 자동완성은 기존 `/related-search`를 유지하며 `/search` helper를 새로 호출하지 않는다.
 
+2026-11-19 Dev·Prod OpenAPI를 다시 대조했다. 후기 폼 GET `/api/v1/places/{placeId}/review-form`, 코스 신고 폼 GET `/api/v1/courses/report-form`, 코스 신고 POST `/api/v1/courses/{courseId}/report`는 여전히 Dev에만 있다. Prod 후기 요청에는 `courseIssues`·`courseIssueDetail`이 없고 난이도·혼잡도가 필수여서, 앱의 Dev 전용 분기는 유지한다. 인증된 실제 호출·신고 제출·서버 배포 여부는 확인하지 않았다.
+
 새 기록은 다음 형식을 사용한다.
 
 ```md
