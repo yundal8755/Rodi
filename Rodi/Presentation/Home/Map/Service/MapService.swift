@@ -24,7 +24,7 @@ enum MapServiceOutAction {
 
 /// 위치 요청, 장소 좌표
 @MainActor
-final class MapService {
+struct MapService {
     private let placeRepository: PlaceRepository
     private let locationService: MapLocationService
 

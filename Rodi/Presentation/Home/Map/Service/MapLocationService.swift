@@ -28,6 +28,10 @@ final class MapLocationService: NSObject {
         locationManager.headingFilter = 5
     }
 
+    // 센서 정리는 MainActor의 finish 경로에서 한다. 빈 소멸자는 Swift 6.2의
+    // 암시적 actor 격리 해제 경로를 피한다 (swiftlang/swift#87316).
+    nonisolated deinit {}
+
     var authorizationState: LocationAuthorizationState {
         authorizationState(for: locationManager.authorizationStatus)
     }

@@ -6,7 +6,7 @@
 import Foundation
 
 @MainActor
-final class MapMarkerRenderingService {
+struct MapMarkerRenderingService {
 
     func progressiveSnapshots(for markers: [RodiMapMarker]) -> AsyncStream<[RodiMapMarker]> {
         return AsyncStream { continuation in

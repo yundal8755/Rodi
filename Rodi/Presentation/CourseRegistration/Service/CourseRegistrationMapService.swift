@@ -1,7 +1,7 @@
 import Foundation
 
 @MainActor
-final class CourseRegistrationMapService {
+struct CourseRegistrationMapService {
     enum CurrentLocationResult {
         case resolved(RodiCoordinate)
         case unavailable
