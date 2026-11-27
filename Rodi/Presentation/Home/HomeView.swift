@@ -274,56 +274,66 @@ extension HomeView {
 
     private var core: some View {
         ZStack(alignment: .bottom) {
-            if store.state.map.mapLifecycle != .inactive {
+            if store.state.map.mapLifecycle == .activating || store.state.map.mapLifecycle == .ready {
                 kakaoMapView()
             }
 
-            if isInitialMapPresentationReady {
-                mapControls()
-
-                if isFilterPresented {
-                    RodiColor.black
-                        .opacity(0.5)
-                        .ignoresSafeArea()
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            store.send(.bottomSheet(.filter(.dismiss)))
-                        }
-                        .accessibilityHidden(true)
+            if store.state.map.mapLifecycle == .failed {
+                VStack(spacing: 12) {
+                    Text("지도를 불러올 수 없어요")
+                        .rodiTypography(.body1SemiBold)
+                    RodiRetryButton { store.send(.map(.engineRetryRequested)) }
                 }
-
-                HomeBottomSheetView(
-                    state: store.state.bottomSheet,
-                    send: { store.send(.bottomSheet($0)) },
-                    userLocation: store.state.map.userLocation,
-                    hasLocationPermission: store.state.map.locationAuthorizationState == .authorized,
-                    bottomTabBarHeight: bottomTabBarHeight,
-                    onCourseDetailHeightChanged: { height in
-                        guard abs(courseBottomSheetHeight - height) > 0.5 else { return }
-                        courseBottomSheetHeight = height
-                    },
-                    onParkingDetailHeightChanged: { height in
-                        guard abs(parkingBottomSheetHeight - height) > 0.5 else { return }
-                        parkingBottomSheetHeight = height
-                    },
-                    onVisibleHeightChanged: { height, isTransient in
-                        transientBottomSheetHeight = isTransient ? height : nil
-                    },
-                    onCourseExpansionSettled: presentExpandedCourseDetail,
-                    requestLocationPermission: {
-                        store.send(.presentation(.setLocationSettingsAlertPresented(true)))
-                    },
-                    debugReviewTestAction: debugReviewTestAction,
-                    debugHardWithdrawAction: {
-                        try await dependencies.memberRepository.hardWithdraw()
-                    }
-                )
-            } else {
-                initialMapLoadingView
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(RodiColor.white)
             }
+
+            mapControls()
+
+            if isFilterPresented {
+                RodiColor.black
+                    .opacity(0.5)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        store.send(.bottomSheet(.filter(.dismiss)))
+                    }
+                    .accessibilityHidden(true)
+            }
+
+            HomeBottomSheetView(
+                state: store.state.bottomSheet,
+                send: { store.send(.bottomSheet($0)) },
+                userLocation: store.state.map.userLocation,
+                hasLocationPermission: store.state.map.locationAuthorizationState == .authorized,
+                bottomTabBarHeight: bottomTabBarHeight,
+                onCourseDetailHeightChanged: { height in
+                    guard abs(courseBottomSheetHeight - height) > 0.5 else { return }
+                    courseBottomSheetHeight = height
+                },
+                onParkingDetailHeightChanged: { height in
+                    guard abs(parkingBottomSheetHeight - height) > 0.5 else { return }
+                    parkingBottomSheetHeight = height
+                },
+                onVisibleHeightChanged: { height, isTransient in
+                    transientBottomSheetHeight = isTransient ? height : nil
+                },
+                onCourseExpansionSettled: presentExpandedCourseDetail,
+                requestLocationPermission: {
+                    store.send(.presentation(.setLocationSettingsAlertPresented(true)))
+                },
+                debugReviewTestAction: debugReviewTestAction,
+                debugHardWithdrawAction: {
+                    try await dependencies.memberRepository.hardWithdraw()
+                }
+            )
 
             if isSavedPlaceLoading {
                 savedPlaceLoadingOverlay
+            }
+
+            if let stage = store.state.map.initialLoadingStage {
+                Self.initialLoadingView(message: stage.rawValue)
             }
 
             if isMapNetworkUnavailableScreenPresented {
@@ -406,16 +416,6 @@ extension HomeView {
         screenBounds?.height ?? 0
     }
 
-    private var isInitialMapPresentationReady: Bool {
-        let map = store.state.map
-        let hasRenderedMarkers = map.markerState == .failed
-            || (map.markerState == .loaded && map.hasCompletedInitialMarkerRendering)
-
-        return map.mapLifecycle == .ready
-            && map.hasCompletedInitialLocationResolution
-            && hasRenderedMarkers
-    }
-
     private var isFilterPresented: Bool {
         store.state.bottomSheet.route == .filter
     }
@@ -451,13 +451,13 @@ extension HomeView {
         .zIndex(2)
     }
 
-    private var initialMapLoadingView: some View {
+    static func initialLoadingView(message: String) -> some View {
         VStack(spacing: 10) {
             ProgressView()
                 .controlSize(.regular)
                 .tint(RodiColor.primary)
 
-            Text("지도를 불러오고 있어요")
+            Text(message)
                 .rodiTypography(.body1Medium)
                 .foregroundStyle(RodiColor.black)
 
@@ -485,12 +485,15 @@ extension HomeView {
             mapMarkers: store.state.map.routeOverlay == nil ? store.state.map.markers : [],
             logoBottomInset: 0,
             cameraBottomInset: mapCameraBottomInset,
-            isInteractionEnabled: store.state.map.isMapInteractive,
+            isInteractionEnabled: store.state.map.isMapInteractive && store.state.map.mapLifecycle == .ready,
             visibilityState: store.state.map.isMapInteractive ? .interactive : .covered,
             onEvent: { event in
                 switch event {
                 case .ready:
                     store.send(.map(.becameReady))
+
+                case .userCameraGesture:
+                    store.send(.map(.userBeganExploring))
 
                 case .markerTap(let markerID):
                     store.send(.map(.markerTapped(markerID)))
@@ -510,7 +513,7 @@ extension HomeView {
                     store.send(.map(.cameraMoveFinished(requestID, viewport: viewport)))
 
                 case .failed:
-                    break
+                    store.send(.map(.engineFailed))
                 }
             }
         )

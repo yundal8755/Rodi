@@ -105,8 +105,6 @@ final class RodiKakaoMapView: UIView {
     var routePointIDsByPoiID: [String: Int] = [:]
     var mapEventHandlers: [DisposableEventHandler] = []
     var viewportChangeGeneration = 0
-    var pendingProgrammaticViewportRequestID: Int?
-    var programmaticViewportResetWorkItem: DispatchWorkItem?
     var didRegisterUserLocationStyle = false
     var didRegisterHomeMarkerStyles = false
     var didRegisterRouteStyles = false
@@ -392,20 +390,23 @@ final class RodiKakaoMapView: UIView {
 
     func registerMapEventHandlers(on map: KakaoMap) {
         mapEventHandlers.removeAll()
+        let gestureStarted = map.addCameraWillMovedEventHandler(target: self) { target in
+            { event in
+                if event.by != .notUserAction { target.coordinator?.reportUserCameraGesture() }
+            }
+        }
+        mapEventHandlers.append(gestureStarted)
         let cameraStoppedHandler = map.addCameraStoppedEventHandler(target: self) { target in
-            { _ in
-                target.reportCurrentViewport()
+            { event in
+                target.reportCurrentViewport(isUserInitiated: event.by != .notUserAction)
             }
         }
         mapEventHandlers.append(cameraStoppedHandler)
     }
 
-    func reportCurrentViewport() {
+    func reportCurrentViewport(isUserInitiated: Bool) {
         guard let map = kakaoMap else { return }
-        let isProgrammaticMove = pendingProgrammaticViewportRequestID != nil
-        pendingProgrammaticViewportRequestID = nil
-        programmaticViewportResetWorkItem?.cancel()
-        programmaticViewportResetWorkItem = nil
+        guard !bounds.isEmpty else { return }
         let centerPoint = map.getPosition(CGPoint(x: bounds.midX, y: bounds.midY))
         let coordinate = RodiCoordinate(
             latitude: centerPoint.wgsCoord.latitude,
@@ -416,7 +417,7 @@ final class RodiKakaoMapView: UIView {
             center: coordinate,
             zoomLevel: map.zoomLevel,
             viewport: visibleViewport(on: map),
-            isUserInitiated: !isProgrammaticMove
+            isUserInitiated: isUserInitiated
         )
     }
 
@@ -564,7 +565,6 @@ final class RodiKakaoMapView: UIView {
     func moveCamera(to coordinate: RodiCoordinate, requestID: Int, animated: Bool) {
         guard let map = kakaoMap else { return }
         lastAppliedCameraRequestID = requestID
-        markProgrammaticViewportChange(requestID: requestID)
 
         if case let .cluster(coordinates) = latestCameraFocus {
             focusClusterArea(coordinates, requestID: requestID, animated: animated)
@@ -576,7 +576,7 @@ final class RodiKakaoMapView: UIView {
         RodiLogger.debug("Kakao map moveCamera requestID=\(requestID), center=\(RodiLogger.coordinate(cameraTarget)), original=\(RodiLogger.coordinate(coordinate)), level=\(level), currentLevel=\(map.zoomLevel), animated=\(animated), focus=\(latestCameraFocus), bottomInset=\(latestCameraBottomInset)")
         let point = MapPoint(longitude: cameraTarget.longitude, latitude: cameraTarget.latitude)
         let update = CameraUpdate.make(target: point, zoomLevel: level, mapView: map)
-        let shouldReportViewport = latestCameraFocus == .koreaOverview
+        let shouldReportViewport = latestCameraFocus == .koreaOverview || latestCameraFocus == .currentLocation
         let completion: () -> Void = { [weak self] in
             guard let self, lastAppliedCameraRequestID == requestID else { return }
             let viewport = shouldReportViewport ? kakaoMap.map { self.visibleViewport(on: $0) } : nil
@@ -666,18 +666,6 @@ final class RodiKakaoMapView: UIView {
                 self?.coordinator?.reportCameraMoveFinished(requestID)
             }
         }
-    }
-
-    private func markProgrammaticViewportChange(requestID: Int) {
-        pendingProgrammaticViewportRequestID = requestID
-        programmaticViewportResetWorkItem?.cancel()
-
-        let resetWorkItem = DispatchWorkItem { [weak self] in
-            guard self?.pendingProgrammaticViewportRequestID == requestID else { return }
-            self?.pendingProgrammaticViewportRequestID = nil
-        }
-        programmaticViewportResetWorkItem = resetWorkItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: resetWorkItem)
     }
 
     func adjustedCameraTarget(for coordinate: RodiCoordinate, level: Int) -> RodiCoordinate {

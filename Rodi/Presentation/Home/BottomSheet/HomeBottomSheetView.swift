@@ -467,9 +467,7 @@ extension HomeBottomSheetView {
     }
 
     private var isRecommendationEmptyResult: Bool {
-        state.recommendList.items.isEmpty
-            && !state.recommendList.isInitialLoading
-            && state.recommendList.errorMessage == nil
+        state.recommendList.hasEmptyResult
     }
 
     private func recommendationHeight(

@@ -10,5 +10,6 @@ import Foundation
 enum MapLifecycle: Equatable {
     case inactive
     case activating
+    case failed
     case ready
 }

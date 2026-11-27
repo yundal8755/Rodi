@@ -3,6 +3,212 @@ import XCTest
 
 @MainActor
 final class HomeMapAndCourseRegistrationReducerTests: XCTestCase {
+    // 동기 XCTest의 마지막 release에서 발생한 크래시이므로 async로 감싸지 않는다.
+    func testMapServicesReleaseLocationOwnerSynchronously() {
+        for _ in 0..<5 {
+            weak var releasedLocation: MapLocationService?
+            autoreleasepool {
+                let location = MapLocationService()
+                releasedLocation = location
+                let home = MapService(placeRepository: HomeMapPlaceRepositoryStub(), locationService: location)
+                let registration = CourseRegistrationMapService(locationService: location)
+                withExtendedLifetime((home, registration)) {
+                    XCTAssertNotNil(releasedLocation)
+                }
+            }
+            XCTAssertNil(releasedLocation)
+        }
+    }
+
+    func testInitialViewportLoadsListAndRendersMarkersWithoutGPS() async throws {
+        let snapshot = PlaceClusterResult(
+            places: [(.course, 1), (.parking, 2)].map { (type: PlaceType, id: Int) in
+                .init(id: id, type: type, name: "장소", address: "", latitude: 37, longitude: 127)
+            },
+            levels: [.init(minLongitudeSpan: 0, maxLongitudeSpan: nil,
+                           clusters: [.init(latitude: 37, longitude: 127, count: 3, bounds: clusterViewport)],
+                           placeIDs: [1, 2])]
+        )
+        var listCalls = 0
+        let repo = HomeMapPlaceRepositoryStub(onFetchPlaces: { _ in listCalls += 1 }, clusterResult: snapshot)
+        let map = HomeMapReducer(dependencies: .init(placeRepository: repo, hasActiveSession: { false }))
+        let list = RecommendListBottomSheetReducer(placeRepository: repo, hasActiveSession: { false })
+        var state = HomeMapState()
+        state.isHomeTabSelected = true
+        state.mapLifecycle = .ready
+        state.locationState = .requesting // 위치 콜백을 보내지 않는다.
+        var sheet = RecommendListBottomSheetReducer.State()
+        XCTAssertFalse(sheet.hasEmptyResult)
+
+        XCTAssertEqual(state.initialLoadingStage, .map)
+        let completion = map.reduce(&state, with: .cameraMoveFinished(0, viewport: clusterViewport))
+        XCTAssertEqual(state.initialLoadingStage, .markers)
+        guard case let .run(_, deliverViewport) = completion.caseOf else { return XCTFail("초기 viewport 누락") }
+        var listEffect: Effect<RecommendListBottomSheetReducer.Action>?
+        await deliverViewport { action in
+            if case let .delegate(.viewportChanged(viewport, center, user)) = action {
+                listEffect = list.reduce(&sheet, with: .viewportChanged(viewport: viewport, center: center, isUserInitiated: user))
+            }
+        }
+        guard case let .run(_, loadPage) = try XCTUnwrap(listEffect).caseOf else { return XCTFail("페이지 요청 누락") }
+        var clusterEffect: Effect<HomeMapReducer.Action>?
+        await loadPage { action in
+            if case let .delegate(.firstPageRequested(query, revision)) = action {
+                clusterEffect = map.reduce(&state, with: .clusterQueryRequested(query, listRevision: revision))
+            } else if case .pageLoaded = action {
+                _ = list.reduce(&sheet, with: action)
+            }
+        }
+        guard case let .run(_, fetch) = try XCTUnwrap(clusterEffect).caseOf else { return XCTFail("마커 요청 누락") }
+        var batches: Effect<HomeMapReducer.Action>?
+        await fetch { batches = map.reduce(&state, with: $0) }
+        guard case let .run(_, render) = try XCTUnwrap(batches).caseOf else { return XCTFail("첫 배치 누락") }
+        XCTAssertEqual(state.initialLoadingStage, .markers)
+        await render { _ = map.reduce(&state, with: $0) }
+        XCTAssertNil(state.initialLoadingStage)
+        XCTAssertNil(state.userLocation)
+        XCTAssertEqual(Set(state.markers.map(\.id)), ["course-1", "parking-2", "server-cluster-0-0"])
+        XCTAssertEqual(listCalls, 1)
+        XCTAssertTrue(sheet.hasEmptyResult) // 빈 목록 응답과 클러스터 응답은 독립적
+        _ = list.reduce(&sheet, with: .viewportChanged(viewport: clusterViewport, center: .southKoreaCenter, isUserInitiated: false))
+        XCTAssertEqual(sheet.firstPageRevision, 1)
+        guard case .none = map.reduce(&state, with: .cameraMoveFinished(0, viewport: clusterViewport)).caseOf else {
+            return XCTFail("첫 viewport 재전달")
+        }
+    }
+
+    func testInitialMarkerOverlayWaitsForFinalCurrentBatchAndDoesNotBlockRetry() {
+        let map = HomeMapReducer(dependencies: .init(placeRepository: HomeMapPlaceRepositoryStub(), hasActiveSession: { false }))
+        var state = HomeMapState()
+        state.mapLifecycle = .ready
+        state.hasReceivedInitialViewport = true
+        state.markerState = .loaded
+        _ = map.reduce(&state, with: .markerRenderBatchUpdated([], generation: 0, isFinal: false))
+        _ = map.reduce(&state, with: .markerRenderBatchUpdated([], generation: -1, isFinal: true))
+        XCTAssertEqual(state.initialLoadingStage, .markers)
+        var failing = state
+        _ = map.reduce(&state, with: .markerRenderBatchUpdated([], generation: 0, isFinal: true))
+        XCTAssertNil(state.initialLoadingStage) // 정상 0건
+        _ = map.reduce(&failing, with: .serviceOutput(.clusterLoadFailed(revision: 0)))
+        XCTAssertEqual(failing.markerState, .failed)
+        XCTAssertNil(failing.initialLoadingStage)
+        _ = map.reduce(&failing, with: .clusterQueryRequested(.init(viewport: clusterViewport, practiceTypes: []), listRevision: 1))
+        XCTAssertNil(failing.initialLoadingStage)
+    }
+
+    func testFirstUsableFixFollowsOnceUnlessExplorationHasStarted() {
+        let map = HomeMapReducer(dependencies: .init(placeRepository: HomeMapPlaceRepositoryStub(), hasActiveSession: { true }))
+        let fix = RodiCoordinate(latitude: 37.5, longitude: 127)
+        for interaction: HomeMapReducer.Action? in [nil, .userBeganExploring, .searchEntryTapped, .searchPlaceSelected("선택")] {
+            var state = HomeMapState()
+            state.isHomeTabSelected = true
+            state.mapLifecycle = .ready
+            state.hasReceivedInitialViewport = true
+            state.locationState = .requesting
+            if let interaction { _ = map.reduce(&state, with: interaction) }
+            _ = map.reduce(&state, with: .serviceOutput(.currentLocationResolved(fix, source: .periodicRefresh)))
+            XCTAssertEqual(state.userLocation, fix)
+            XCTAssertEqual(state.cameraTarget, interaction == nil ? fix : .southKoreaCenter)
+            let requestID = state.cameraRequestID
+            state.locationState = .requesting
+            _ = map.reduce(&state, with: .serviceOutput(.currentLocationResolved(.southKoreaCenter, source: .periodicRefresh)))
+            XCTAssertEqual(state.cameraRequestID, requestID)
+            if interaction == nil {
+                guard case .none = map.reduce(&state, with: .cameraMoveFinished(requestID, viewport: nil)).caseOf else {
+                    return XCTFail("GPS 자동 이동이 전국 결과를 주변 조회로 바꾸면 안 됩니다.")
+                }
+            }
+        }
+    }
+
+    func testFirstRevealWaitsForKnownLocationCameraButNotForGPS() {
+        let map = HomeMapReducer(dependencies: .init(placeRepository: HomeMapPlaceRepositoryStub(), hasActiveSession: { true }))
+        var state = HomeMapState()
+        state.isHomeTabSelected = true
+        state.mapLifecycle = .ready
+        state.locationState = .requesting
+        state.hasFinishedInitialMarkerLoad = true
+        var withoutFix = state
+        let viewport = HomeMapReducer.Action.viewportChanged(center: .southKoreaCenter, zoomLevel: 6, viewport: .nationwide, isUserInitiated: false)
+        _ = map.reduce(&state, with: .serviceOutput(.currentLocationResolved(.seoulCityHall, source: .initial)))
+        _ = map.reduce(&state, with: viewport)
+        XCTAssertEqual(state.cameraFocus, .currentLocation)
+        XCTAssertEqual(state.initialLoadingStage, .map)
+        _ = map.reduce(&state, with: .cameraMoveFinished(state.cameraRequestID - 1, viewport: nil))
+        XCTAssertEqual(state.initialLoadingStage, .map)
+        _ = map.reduce(&state, with: .cameraMoveFinished(state.cameraRequestID, viewport: clusterViewport))
+        XCTAssertNil(state.initialLoadingStage)
+
+        _ = map.reduce(&withoutFix, with: viewport)
+        XCTAssertNil(withoutFix.initialLoadingStage)
+        _ = map.reduce(&withoutFix, with: .serviceOutput(.currentLocationResolved(.seoulCityHall, source: .initial)))
+        XCTAssertEqual(withoutFix.userLocation, .seoulCityHall)
+        XCTAssertEqual(withoutFix.cameraFocus, .koreaOverview)
+        XCTAssertNil(withoutFix.initialLoadingStage)
+    }
+
+    func testInitialLocationGraceKeepsNationwideMapHiddenUntilCameraSettles() {
+        let map = HomeMapReducer(dependencies: .init(placeRepository: HomeMapPlaceRepositoryStub(), hasActiveSession: { true }))
+        var state = HomeMapState()
+        state.isHomeTabSelected = true
+        state.mapLifecycle = .ready
+        state.hasReceivedInitialViewport = true
+        state.hasFinishedInitialMarkerLoad = true
+        state.locationState = .requesting
+        state.isWaitingForInitialLocation = true
+        XCTAssertEqual(state.initialLoadingStage, .location)
+
+        var timedOut = state
+        _ = map.reduce(&timedOut, with: .initialLocationWaitExpired)
+        XCTAssertNil(timedOut.initialLoadingStage)
+        _ = map.reduce(&timedOut, with: .serviceOutput(.currentLocationResolved(.seoulCityHall, source: .initial)))
+        XCTAssertEqual(timedOut.cameraFocus, .koreaOverview)
+        XCTAssertEqual(timedOut.userLocation, .seoulCityHall)
+
+        _ = map.reduce(&state, with: .serviceOutput(.currentLocationResolved(.seoulCityHall, source: .initial)))
+        XCTAssertEqual(state.cameraFocus, .currentLocation)
+        _ = map.reduce(&state, with: .initialLocationWaitExpired)
+        XCTAssertEqual(state.initialLoadingStage, .map)
+        _ = map.reduce(&state, with: .cameraMoveFinished(state.cameraRequestID, viewport: clusterViewport))
+        XCTAssertNil(state.initialLoadingStage)
+    }
+
+    func testGPSAndZoomKeepNationwideQueryUntilExplicitResearch() {
+        let list = RecommendListBottomSheetReducer(placeRepository: HomeMapPlaceRepositoryStub(), hasActiveSession: { true })
+        var state = RecommendListBottomSheetReducer.State()
+        _ = list.reduce(&state, with: .initialNationwideRequested)
+        let old = state.requestRevision
+        _ = list.reduce(&state, with: .viewportChanged(viewport: .nationwide, center: .southKoreaCenter, isUserInitiated: false))
+        _ = list.reduce(&state, with: .viewportChanged(viewport: clusterViewport, center: .seoulCityHall, isUserInitiated: true))
+        XCTAssertEqual(state.requestedViewport, .nationwide)
+        XCTAssertEqual(state.requestRevision, old)
+        XCTAssertTrue(state.isInitialLoading)
+        _ = list.reduce(&state, with: .pageLoaded(page: .init(items: [], hasNext: true, nextCursor: "next", totalCount: 21),
+                                                  viewport: .nationwide, revision: old, isAppending: false, isManualResearch: false))
+        XCTAssertTrue(state.needsResearch)
+        _ = list.reduce(&state, with: .loadNextPage)
+        XCTAssertTrue(state.isNextPageLoading)
+        _ = list.reduce(&state, with: .pageLoaded(page: .init(items: [], hasNext: false, nextCursor: nil, totalCount: 21),
+                                                  viewport: .nationwide, revision: state.requestRevision, isAppending: true, isManualResearch: false))
+        _ = list.reduce(&state, with: .reloadCurrentViewport(origin: nil))
+        XCTAssertEqual(state.requestedViewport, clusterViewport)
+    }
+
+    func testMapEngineRetryDoesNotClearPlaceDataOrTreatGPSFailureAsEngineFailure() {
+        let map = HomeMapReducer(dependencies: .init(placeRepository: HomeMapPlaceRepositoryStub(), hasActiveSession: { false }))
+        var state = HomeMapState()
+        state.mapLifecycle = .ready
+        state.markerState = .loaded
+        state.locationState = .requesting
+        _ = map.reduce(&state, with: .serviceOutput(.currentLocationPermissionDenied(source: .initial, authorizationState: .denied)))
+        XCTAssertEqual(state.mapLifecycle, .ready)
+        _ = map.reduce(&state, with: .engineFailed)
+        XCTAssertEqual(state.mapLifecycle, .failed)
+        _ = map.reduce(&state, with: .engineRetryRequested)
+        XCTAssertEqual(state.mapLifecycle, .activating)
+        XCTAssertEqual(state.markerState, .loaded)
+    }
+
     func testNationwideBrowseWaitsForMatchingCameraCompletion() {
         let reducer = HomeMapReducer(dependencies: .init(
             placeRepository: HomeMapPlaceRepositoryStub(), hasActiveSession: { true }
@@ -200,7 +406,7 @@ final class HomeMapAndCourseRegistrationReducerTests: XCTestCase {
         await task { action in
             if case let .delegate(.firstPageRequested(snapshot, _)) = action { query = snapshot }
         }
-        XCTAssertEqual(query, .init(viewport: clusterViewport, practiceTypes: [.parking]))
+        XCTAssertEqual(query, .init(viewport: .nationwide, practiceTypes: [.parking]))
     }
 
     func testRegionReloadUsesSettledViewportRatherThanPreviousViewport() async {
@@ -239,6 +445,7 @@ final class HomeMapAndCourseRegistrationReducerTests: XCTestCase {
             northEastLatitude: 37.6,
             northEastLongitude: 127.1
         )
+        state.requestRevision = 1
         state.isInitialLoading = true
 
         let effect = reducer.reduce(
@@ -447,8 +654,9 @@ private extension HomeMapAndCourseRegistrationReducerTests {
 private struct HomeMapPlaceRepositoryStub: PlaceRepository {
     var listPage = PlaceCursorPage(items: [], hasNext: false, nextCursor: nil, totalCount: 0)
     var onFetchPlaces: ((PlaceListQuery) -> Void)?
+    var clusterResult = PlaceClusterResult(places: [], levels: [])
     func fetchClusters(query: PlaceClusterQuery) async throws(NetworkError) -> PlaceClusterResult {
-        .init(places: [], levels: [])
+        clusterResult
     }
     func fetchCoordinates() async throws(NetworkError) -> [PlaceCoordinate] { [] }
     func fetchPlaces(query: PlaceListQuery, access: PlaceListAccess) async throws(NetworkError) -> PlaceCursorPage {

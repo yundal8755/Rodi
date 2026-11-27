@@ -5,6 +5,12 @@
 
 import Foundation
 
+enum HomeInitialLoadingStage: String {
+    case map = "지도를 불러오고 있어요"
+    case markers = "지도 마커를 불러오고 있어요"
+    case location = "현재 위치를 확인하고 있어요"
+}
+
 struct HomeMapState {
     var mapLifecycle: MapLifecycle = .inactive
     var isHomeTabSelected = false
@@ -22,6 +28,18 @@ struct HomeMapState {
 
     var locationState: LocationState = .idle
     var locationAuthorizationState: LocationAuthorizationState = .notDetermined
+    var hasReceivedInitialViewport = false
+    var hasFinishedInitialMarkerLoad = false
+    var initialLoadingStage: HomeInitialLoadingStage? {
+        guard mapLifecycle != .failed else { return nil }
+        guard mapLifecycle == .ready && hasReceivedInitialViewport,
+              initialLocationCameraRequestID != cameraRequestID else { return .map }
+        if !hasFinishedInitialMarkerLoad { return .markers }
+        return isWaitingForInitialLocation ? .location : nil
+    }
+    var allowsInitialLocationFocus = true
+    var isWaitingForInitialLocation = false
+    var initialLocationCameraRequestID: Int?
     var hasCompletedInitialLocationResolution = false
     var userLocation: RodiCoordinate?
     var userHeadingDegrees: Double?
@@ -31,7 +49,6 @@ struct HomeMapState {
     var markerState: MarkerState = .idle
     var markers: [RodiMapMarker] = []
     var markerRenderingGeneration = 0
-    var hasCompletedInitialMarkerRendering = false
     var clusterQuery: PlaceClusterQuery?
     var clusterRequestRevision = 0
     var clusterListRevision = 0

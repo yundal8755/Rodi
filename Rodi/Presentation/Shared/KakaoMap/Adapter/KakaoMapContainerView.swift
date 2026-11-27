@@ -158,6 +158,10 @@ struct KakaoMapContainerView: UIViewRepresentable {
             eventRelay.accept(.cameraMoveFinished(requestID: requestID, viewport: viewport))
         }
 
+        func reportUserCameraGesture() {
+            eventRelay.accept(.userCameraGesture)
+        }
+
         func reportMarkerTap(_ markerID: String) {
             eventRelay.accept(.markerTap(markerID))
         }
@@ -181,7 +185,8 @@ struct KakaoMapContainerView: UIViewRepresentable {
         }
 
         func reportFailure(_ message: String) {
-            eventRelay.accept(.failed(message))
+            // makeUIView / layoutSubviews에서도 실패가 올 수 있어 렌더 패스 밖에서 전달한다.
+            DispatchQueue.main.async { [weak self] in self?.eventRelay.accept(.failed(message)) }
         }
 
         func poiDidTapped(kakaoMap: KakaoMap, layerID: String, poiID: String, position: MapPoint) {

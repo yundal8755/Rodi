@@ -147,8 +147,8 @@ private extension HomeReducer {
         case .presentRecommendListForRegion(let origin):
             state.presentation.isBottomTabBarVisible = true
             return .send(.bottomSheet(.presentRecommendListForRegion(origin: origin)))
-        case .prepareInitialSearch(let origin):
-            return .send(.bottomSheet(.recommendList(.prepareInitialSearch(origin: origin))))
+        case .initialNationwideRequested:
+            return .send(.bottomSheet(.recommendList(.initialNationwideRequested)))
         }
         return .none
     }
@@ -161,6 +161,7 @@ private extension HomeReducer {
         case .mapNationwideBrowseRequested:
             return .send(.map(.nationwideBrowseRequested))
         case let .mapClusterQueryRequested(query, revision):
+            guard revision == state.bottomSheet.recommendList.firstPageRevision else { return .none }
             return .send(.map(.clusterQueryRequested(query, listRevision: revision)))
         case .mapPlaceResolved(let detail):
             return .send(.map(.placeResolved(detail)))

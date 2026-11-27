@@ -18,6 +18,9 @@ struct HomeMapReducer: Reducer {
         case tabSelectionChanged(Bool)
         case activityChanged(Bool)
         case locationAuthorizationRefreshRequested
+        case engineFailed
+        case engineRetryRequested
+        case userBeganExploring
         case becameReady
         case viewportChanged(center: RodiCoordinate, zoomLevel: Int, viewport: PlaceViewport, isUserInitiated: Bool)
         case markerTapped(String)
@@ -30,12 +33,12 @@ struct HomeMapReducer: Reducer {
         case searchEntryTapped
         case searchSelectionClearTapped
         case initialLocationRequested
+        case initialLocationWaitExpired
         case clusterQueryRequested(PlaceClusterQuery, listRevision: Int)
         case periodicLocationRefreshSchedulingRequested
         case periodicLocationRefreshTimerFired
         case serviceOutput(MapServiceOutAction)
-        case markerRenderBatchUpdated([RodiMapMarker], generation: Int)
-        case initialMarkerRenderingFinished(generation: Int)
+        case markerRenderBatchUpdated([RodiMapMarker], generation: Int, isFinal: Bool)
         case placeResolved(PlaceDetail)
         case searchPlaceSelected(String)
         case regionSelected(name: String, center: RodiCoordinate)
@@ -62,7 +65,7 @@ struct HomeMapReducer: Reducer {
         case viewportChanged(PlaceViewport, center: RodiCoordinate, isUserInitiated: Bool)
         case reloadAfterRegionViewport(viewport: PlaceViewport, origin: RodiCoordinate)
         case presentRecommendListForRegion(origin: RodiCoordinate)
-        case prepareInitialSearch(origin: RodiCoordinate)
+        case initialNationwideRequested
     }
 
     private enum CancellationID: Hashable {
@@ -70,6 +73,7 @@ struct HomeMapReducer: Reducer {
         case clusterLoading
         case userHeadingUpdates
         case periodicLocationRefresh
+        case initialLocationWait
     }
 
     private static let periodicLocationRefreshNanoseconds: UInt64 = 60_000_000_000
@@ -116,6 +120,8 @@ struct HomeMapReducer: Reducer {
                 let source: LocationRequestSource = state.hasCompletedInitialLocationResolution ? .foregroundRefresh : .initial
                 return authorizationRefreshEffect(source: source)
             case .denied, .restricted:
+                state.isWaitingForInitialLocation = false
+                state.initialLocationCameraRequestID = nil
                 state.locationState = .unavailable
                 state.hasCompletedInitialLocationResolution = true
                 state.userLocation = nil
@@ -126,26 +132,60 @@ struct HomeMapReducer: Reducer {
                 return .none
             }
 
+        case .engineFailed:
+            state.isWaitingForInitialLocation = false
+            state.initialLocationCameraRequestID = nil
+            state.mapLifecycle = .failed
+            return .none
+
+        case .engineRetryRequested:
+            guard state.mapLifecycle == .failed else { return .none }
+            state.mapLifecycle = .activating
+            return .none
+
+        case .userBeganExploring:
+            preserveExploration(&state)
+            return .none
+
         case .becameReady:
             guard state.mapLifecycle == .activating else { return .none }
+            let wasLoading = state.initialLoadingStage != nil
+            state.isWaitingForInitialLocation = state.isMapInteractive && state.allowsInitialLocationFocus
+                && !state.hasCompletedInitialLocationResolution && state.userLocation == nil
+                && mapService.locationAuthorizationState == .authorized
             state.mapLifecycle = .ready
+            focusInitialLocationIfPossible(&state, beforeReveal: wasLoading)
+            if state.isWaitingForInitialLocation {
+                // GPS와 지도·마커 준비를 병렬로 진행하고 첫 화면만 최대 1초 유예한다.
+                return .run { send in
+                    await send(.initialLocationRequested)
+                    do { try await Task.sleep(nanoseconds: 1_000_000_000) } catch { return }
+                    guard !Task.isCancelled else { return }
+                    await send(.initialLocationWaitExpired)
+                }
+                .cancelTask(id: CancellationID.initialLocationWait)
+            }
             return state.isMapInteractive ? initialMapDataLoadEffect() : .none
 
         case let .viewportChanged(center, _, viewport, isUserInitiated):
-            if isUserInitiated { state.isCurrentLocationButtonActive = false }
-            if viewport.longitudeSpan.isFinite, viewport.longitudeSpan > 0 {
-                state.visibleLongitudeSpan = viewport.longitudeSpan
+            guard viewport.isValidForPlaceQuery else { return .none }
+            let wasLoading = state.initialLoadingStage != nil
+            if isUserInitiated {
+                preserveExploration(&state)
+                state.isCurrentLocationButtonActive = false
             }
+            state.hasReceivedInitialViewport = true
+            focusInitialLocationIfPossible(&state, beforeReveal: wasLoading)
+            state.visibleLongitudeSpan = viewport.longitudeSpan
             if let span = state.visibleLongitudeSpan,
                let level = state.clusterResult?.levelIndex(for: span),
                state.displayedClusterLevel != level {
                 state.displayedClusterLevel = level
                 state.markerRenderingGeneration += 1
                 rebuildMarkers(&state)
-                state.hasCompletedInitialMarkerRendering = true
             }
             var delegates: [Action] = [.delegate(.viewportChanged(viewport, center: center, isUserInitiated: isUserInitiated))]
-            if !isUserInitiated, viewport.isValidForPlaceQuery,
+            if !isUserInitiated,
                state.cameraFocus != .koreaOverview,
                state.pendingRegionCameraRequestID == state.cameraRequestID,
                let origin = state.pendingRegionViewportReloadOrigin {
@@ -156,6 +196,7 @@ struct HomeMapReducer: Reducer {
             return actions(delegates)
 
         case .markerTapped(let markerID):
+            preserveExploration(&state)
             guard let marker = state.markers.first(where: { $0.id == markerID }) else { return .none }
             switch marker.kind {
             case .cluster:
@@ -165,7 +206,6 @@ struct HomeMapReducer: Reducer {
                 state.routeOverlay = nil
                 state.markerRenderingGeneration += 1
                 rebuildMarkers(&state)
-                state.hasCompletedInitialMarkerRendering = true
                 state.cameraTarget = marker.coordinate
                 state.cameraFocus = .cluster(coordinates: [
                     .init(latitude: bounds.southWestLatitude, longitude: bounds.southWestLongitude),
@@ -187,11 +227,11 @@ struct HomeMapReducer: Reducer {
                 state.cameraFocus = marker.kind == .course ? .courseMarker : .closeSingleLocation
                 requestCamera(&state)
                 rebuildMarkers(&state)
-                state.hasCompletedInitialMarkerRendering = true
                 return actions([.delegate(.bottomTabBarVisibilityChanged(false)), .delegate(.resolvePlace(placeID))])
             }
 
         case .savedPlaceSelected(let place):
+            preserveExploration(&state)
             state.isCurrentLocationButtonActive = false
             state.routeOverlay = nil
             state.selectedSearchResultName = place.name
@@ -199,11 +239,27 @@ struct HomeMapReducer: Reducer {
             return effects([.delegate(.bottomTabBarVisibilityChanged(false)), .delegate(.resolveSavedPlace(place))], cancellation: .progressiveMarkerRendering)
 
         case let .cameraMoveFinished(requestID, viewport):
+            guard requestID == state.cameraRequestID else { return .none }
+            if state.initialLocationCameraRequestID == requestID {
+                state.initialLocationCameraRequestID = nil
+                if let viewport, viewport.isValidForPlaceQuery {
+                    return reduce(&state, with: .viewportChanged(center: state.cameraTarget, zoomLevel: 0,
+                                                                 viewport: viewport, isUserInitiated: false))
+                }
+                return .none
+            }
+            if let viewport, viewport.isValidForPlaceQuery {
+                if !state.hasReceivedInitialViewport, state.cameraFocus == .koreaOverview,
+                   state.pendingRegionCameraRequestID == nil {
+                    return reduce(&state, with: .viewportChanged(center: state.cameraTarget, zoomLevel: 0,
+                                                                 viewport: viewport, isUserInitiated: false))
+                }
+            }
             guard state.animatedCameraRequestID == requestID else { return .none }
             state.animatedCameraRequestID = nil
             if state.cameraFocus == .koreaOverview,
                state.pendingRegionCameraRequestID == requestID,
-               let origin = state.pendingRegionViewportReloadOrigin, let viewport {
+               let origin = state.pendingRegionViewportReloadOrigin, let viewport, viewport.isValidForPlaceQuery {
                 state.pendingRegionCameraRequestID = nil
                 state.pendingRegionViewportReloadOrigin = nil
                 state.visibleLongitudeSpan = viewport.longitudeSpan
@@ -212,6 +268,7 @@ struct HomeMapReducer: Reducer {
             return .none
 
         case .nationwideBrowseRequested:
+            preserveExploration(&state)
             state.routeOverlay = nil
             state.selectedMarkerID = nil
             state.selectedSearchResultName = nil
@@ -233,6 +290,7 @@ struct HomeMapReducer: Reducer {
             return .send(.delegate(.prepareForCurrentLocation))
 
         case .recommendationResearchButtonTapped:
+            preserveExploration(&state)
             state.routeOverlay = nil
             state.selectedMarkerID = nil
             state.selectedSearchResultName = nil
@@ -240,6 +298,7 @@ struct HomeMapReducer: Reducer {
             return .send(.delegate(.reloadCurrentViewport(origin: state.userLocation)))
 
         case .searchEntryTapped:
+            preserveExploration(&state)
             guard hasActiveSession() else { return .send(.delegate(.requestAuthentication)) }
             state.isCurrentLocationButtonActive = false
             return .send(.delegate(.searchEntryRequested(origin: state.cameraTarget)))
@@ -258,7 +317,12 @@ struct HomeMapReducer: Reducer {
             state.locationState = .requesting
             return mapServiceEffect(.requestCurrentLocation(source: .initial))
 
+        case .initialLocationWaitExpired:
+            state.isWaitingForInitialLocation = false
+            return .none
+
         case let .clusterQueryRequested(query, listRevision):
+            guard listRevision >= state.clusterListRevision else { return .none }
             state.clusterListRevision = listRevision
             return loadClusters(query, state: &state)
 
@@ -277,14 +341,10 @@ struct HomeMapReducer: Reducer {
         case .serviceOutput(let output):
             return reduceServiceOutput(output, state: &state)
 
-        case .markerRenderBatchUpdated(let markers, let generation):
+        case .markerRenderBatchUpdated(let markers, let generation, let isFinal):
             guard state.markerState == .loaded, state.markerRenderingGeneration == generation else { return .none }
             state.markers = markers.map { .init(id: $0.id, kind: $0.kind, title: $0.title, coordinate: $0.coordinate, isSelected: $0.id == state.selectedMarkerID) }
-            return .none
-
-        case .initialMarkerRenderingFinished(let generation):
-            guard state.markerState == .loaded, state.markerRenderingGeneration == generation else { return .none }
-            state.hasCompletedInitialMarkerRendering = true
+            if isFinal { state.hasFinishedInitialMarkerLoad = true }
             return .none
 
         case .placeResolved(let detail):
@@ -292,6 +352,7 @@ struct HomeMapReducer: Reducer {
             return .send(.delegate(.bottomTabBarVisibilityChanged(false)))
 
         case .searchPlaceSelected(let name):
+            preserveExploration(&state)
             state.selectedSearchResultName = name
             state.routeOverlay = nil
             state.isListResearchButtonVisible = false
@@ -299,6 +360,7 @@ struct HomeMapReducer: Reducer {
             return .none
 
         case let .regionSelected(name, center):
+            preserveExploration(&state)
             state.selectedSearchResultName = name
             state.routeOverlay = nil
             state.selectedMarkerID = nil
@@ -318,6 +380,7 @@ struct HomeMapReducer: Reducer {
             return .none
 
         case .focusRequested(let coordinate):
+            preserveExploration(&state)
             state.cameraTarget = coordinate
             state.cameraFocus = .closeSingleLocation
             requestCamera(&state)
@@ -357,17 +420,21 @@ private extension HomeMapReducer {
             state.userLocation = coordinate
             state.lastLocationResolvedAt = Date()
             state.hasShownProlongedLocationUnavailableNotice = false
-            if source != .foregroundRefresh, source != .periodicRefresh {
+            if source == .userInitiated {
+                preserveExploration(&state)
                 state.cameraTarget = coordinate
                 state.cameraFocus = .currentLocation
                 state.cameraRequestID += 1
                 state.animatedCameraRequestID = nil
             }
+            focusInitialLocationIfPossible(&state)
+            state.isWaitingForInitialLocation = false
             if source == .periodicRefresh { return .send(.periodicLocationRefreshSchedulingRequested) }
-            return userHeadingUpdatesEffect(origin: coordinate)
+            return userHeadingUpdatesEffect()
 
         case .currentLocationUnavailable(let source):
             guard state.locationState == .requesting else { return .none }
+            state.isWaitingForInitialLocation = false
             state.locationAuthorizationState = mapService.locationAuthorizationState
             state.locationState = .unavailable
             state.hasCompletedInitialLocationResolution = true
@@ -383,13 +450,13 @@ private extension HomeMapReducer {
 
         case let .currentLocationPermissionDenied(source, authorizationState):
             guard state.locationState == .requesting else { return .none }
+            state.isWaitingForInitialLocation = false
             state.locationAuthorizationState = authorizationState
             state.locationState = .unavailable
             state.hasCompletedInitialLocationResolution = true
             state.userLocation = nil
             state.userHeadingDegrees = nil
             guard source == .userInitiated else { return .none }
-            resetToKoreaOverview(&state)
             return .send(.delegate(.showLocationSettingsAlert(true)))
 
         case let .clustersLoaded(result, revision):
@@ -406,16 +473,17 @@ private extension HomeMapReducer {
             state.markerRenderingGeneration += 1
             let markers = serverMarkers(&state)
             if isFirstResult, state.isMapInteractive {
-                return markerRenderingEffect(markers, generation: state.markerRenderingGeneration, reportsInitialCompletion: true)
+                return markerRenderingEffect(markers, generation: state.markerRenderingGeneration)
             }
             state.markers = markers
-            state.hasCompletedInitialMarkerRendering = true
+            state.hasFinishedInitialMarkerLoad = true
             return .none
 
         case .clusterLoadFailed(let revision):
             guard revision == state.clusterRequestRevision else { return .none }
             if state.clusterResult == nil {
                 state.markerState = .failed
+                state.hasFinishedInitialMarkerLoad = true
             } else {
                 state.didClusterRefreshFail = true
             }
@@ -436,14 +504,14 @@ private extension HomeMapReducer {
         switch state.mapLifecycle {
         case .inactive:
             state.mapLifecycle = .activating
-            return .none
-        case .activating:
+            return .send(.delegate(.initialNationwideRequested))
+        case .activating, .failed:
             return .none
         case .ready:
+            focusInitialLocationIfPossible(&state)
             if state.markerState == .idle { return initialMapDataLoadEffect() }
             if state.markerState == .loaded {
                 rebuildMarkers(&state)
-                state.hasCompletedInitialMarkerRendering = true
             }
             return .send(.periodicLocationRefreshSchedulingRequested)
         }
@@ -462,7 +530,6 @@ private extension HomeMapReducer {
         state.selectedMarkerID = id
         state.markerRenderingGeneration += 1
         rebuildMarkers(&state)
-        if state.markerState == .loaded { state.hasCompletedInitialMarkerRendering = true }
         state.cameraTarget = coordinate
         state.cameraFocus = focus
         requestCamera(&state)
@@ -470,6 +537,7 @@ private extension HomeMapReducer {
 
     func rebuildMarkers(_ state: inout State) {
         state.markers = serverMarkers(&state)
+        if state.clusterResult != nil { state.hasFinishedInitialMarkerLoad = true }
     }
 
     func serverMarkers(_ state: inout State) -> [RodiMapMarker] {
@@ -504,6 +572,25 @@ private extension HomeMapReducer {
             .cancelTask(id: CancellationID.clusterLoading)
     }
 
+    func preserveExploration(_ state: inout State) {
+        state.allowsInitialLocationFocus = false
+        state.isWaitingForInitialLocation = false
+        state.initialLocationCameraRequestID = nil
+    }
+
+    func focusInitialLocationIfPossible(_ state: inout State, beforeReveal: Bool? = nil) {
+        // 홈이 이미 표시된 뒤 받은 위치는 내 위치 점만 갱신한다.
+        guard state.allowsInitialLocationFocus, beforeReveal ?? (state.initialLoadingStage != nil),
+              state.hasReceivedInitialViewport,
+              state.isMapInteractive, state.mapLifecycle == .ready, let location = state.userLocation else { return }
+        state.allowsInitialLocationFocus = false
+        state.cameraTarget = location
+        state.cameraFocus = .currentLocation
+        state.cameraRequestID += 1
+        state.initialLocationCameraRequestID = state.cameraRequestID
+        state.animatedCameraRequestID = nil
+    }
+
     func requestCamera(_ state: inout State) {
         state.cameraRequestID += 1
         state.animatedCameraRequestID = state.cameraRequestID
@@ -511,14 +598,6 @@ private extension HomeMapReducer {
 
     func markerID(for type: PlaceType, id: Int) -> String {
         type == .course ? "course-\(id)" : "parking-\(id)"
-    }
-
-    func resetToKoreaOverview(_ state: inout State) {
-        state.userLocation = nil
-        state.cameraTarget = .southKoreaCenter
-        state.cameraFocus = .koreaOverview
-        state.cameraRequestID += 1
-        state.animatedCameraRequestID = nil
     }
 
     func shouldShowProlongedUnavailableNotice(for state: State) -> Bool {
@@ -538,10 +617,9 @@ private extension HomeMapReducer {
         }
     }
 
-    func userHeadingUpdatesEffect(origin: RodiCoordinate) -> Effect<Action> {
+    func userHeadingUpdatesEffect() -> Effect<Action> {
         let mapService = mapService
         return .run { send in
-            await send(.delegate(.prepareInitialSearch(origin: origin)))
             await send(.periodicLocationRefreshSchedulingRequested)
             for await degrees in mapService.userHeadingUpdates() {
                 guard !Task.isCancelled else { return }
@@ -561,17 +639,13 @@ private extension HomeMapReducer {
         .cancelTask(id: CancellationID.periodicLocationRefresh)
     }
 
-    func markerRenderingEffect(_ markers: [RodiMapMarker], generation: Int, reportsInitialCompletion: Bool) -> Effect<Action> {
+    func markerRenderingEffect(_ markers: [RodiMapMarker], generation: Int) -> Effect<Action> {
         let snapshots = markerRenderingService.progressiveSnapshots(for: markers)
         return .run { send in
             for await snapshot in snapshots {
                 guard !Task.isCancelled else { return }
-                await send(.markerRenderBatchUpdated(snapshot, generation: generation))
+                await send(.markerRenderBatchUpdated(snapshot, generation: generation, isFinal: snapshot.count == markers.count))
             }
-            guard reportsInitialCompletion, !Task.isCancelled else { return }
-            do { try await Task.sleep(nanoseconds: 120_000_000) } catch { return }
-            guard !Task.isCancelled else { return }
-            await send(.initialMarkerRenderingFinished(generation: generation))
         }
         .cancelTask(id: CancellationID.progressiveMarkerRendering)
     }

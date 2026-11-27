@@ -133,13 +133,7 @@ extension RootView {
     private var rootContent: some View {
         switch store.state.rootRoute {
         case .launching:
-            ZStack {
-                RodiColor.white
-                    .ignoresSafeArea()
-                ProgressView()
-                    .tint(RodiColor.primary)
-                    .accessibilityLabel("세션 확인 중")
-            }
+            HomeView.initialLoadingView(message: "앱을 실행 중입니다")
 
         case .onboarding(let context):
             OnboardingRouterView(

@@ -15,6 +15,7 @@ struct RecommendListBottomSheetReducer: Reducer {
     struct State {
         var items: [PlaceListItem] = []
         var activeViewport: PlaceViewport?
+        var requestedViewport: PlaceViewport?
         var latestViewport: PlaceViewport?
         var latestViewportCenter: RodiCoordinate?
         var pendingInitialSearchOrigin: RodiCoordinate?
@@ -32,6 +33,9 @@ struct RecommendListBottomSheetReducer: Reducer {
         var isAwaitingRegionViewport = false
         /// 홈 검색에서 선택한 행정구역의 첫 목록 조회 결과인지 표시합니다.
         var isRegionSearchResult = false
+        var hasEmptyResult: Bool {
+            activeViewport != nil && items.isEmpty && !isInitialLoading && !isAwaitingRegionViewport && errorMessage == nil
+        }
         var errorMessage: String?
         var needsResearch = false
         var requestRevision = 0
@@ -45,7 +49,7 @@ struct RecommendListBottomSheetReducer: Reducer {
         case expand
         case regionViewportReloadStarted(origin: RodiCoordinate, isRegionSearchResult: Bool = true)
         case viewportChanged(viewport: PlaceViewport, center: RodiCoordinate, isUserInitiated: Bool)
-        case prepareInitialSearch(origin: RodiCoordinate)
+        case initialNationwideRequested
         case reloadCurrentViewport(origin: RodiCoordinate?)
         case reloadAfterRegionViewport(viewport: PlaceViewport, origin: RodiCoordinate)
         case reloadAfterFilter
@@ -127,9 +131,22 @@ extension RecommendListBottomSheetReducer {
             return .none
 
         case let .viewportChanged(viewport, center, isUserInitiated):
+            guard viewport.isValidForPlaceQuery else { return .none }
             let previousViewport = state.latestViewport
             state.latestViewport = viewport
             state.latestViewportCenter = center
+            if state.requestRevision == 0 {
+                return reduce(&state, with: .initialNationwideRequested)
+            }
+
+            if state.requestedViewport == .nationwide, !state.isAwaitingRegionViewport {
+                // 카메라 이동은 현재 결과를 무효화하지 않는다. 재검색을 눌렀을 때만 범위를 좁힌다.
+                if isUserInitiated, previousViewport != viewport {
+                    state.needsResearch = true
+                    return displayStateEffect(state)
+                }
+                return .none
+            }
 
             if state.isManualResearchLoading, previousViewport != viewport {
                 state.requestRevision += 1
@@ -139,7 +156,7 @@ extension RecommendListBottomSheetReducer {
                 return cancelPlaceListLoadingAndNotifyDisplay(state)
             }
 
-            if isUserInitiated {
+            if isUserInitiated, previousViewport != viewport {
                 let hasInFlightRequest = state.isInitialLoading || state.isNextPageLoading
                 if hasInFlightRequest {
                     state.requestRevision += 1
@@ -153,18 +170,9 @@ extension RecommendListBottomSheetReducer {
                 if state.activeViewport != nil { return displayStateEffect(state) }
             }
 
-            if state.requestRevision == 0 {
-                return loadFirstPage(viewport: viewport, origin: state.pendingInitialSearchOrigin ?? center, state: &state, isManualResearch: false)
-            }
-
-        case .prepareInitialSearch(let origin):
+        case .initialNationwideRequested:
             guard state.requestRevision == 0 else { return .none }
-            state.pendingInitialSearchOrigin = origin
-            if let viewport = state.latestViewport,
-               let center = state.latestViewportCenter,
-               center.distanceKilometers(to: origin) <= 0.5 {
-                return .send(.viewportChanged(viewport: viewport, center: center, isUserInitiated: false))
-            }
+            return loadFirstPage(viewport: .nationwide, origin: .southKoreaCenter, state: &state, isManualResearch: false)
 
         case .reloadCurrentViewport(let origin):
             guard !state.isInitialLoading,
@@ -179,15 +187,20 @@ extension RecommendListBottomSheetReducer {
             if !state.isRegionSearchResult {
                 state.latestViewport = viewport
                 state.latestViewportCenter = origin
+                return loadFirstPage(viewport: .nationwide, origin: origin, state: &state, isManualResearch: false)
             }
             return loadFirstPage(viewport: viewport, origin: origin, state: &state, isManualResearch: false)
 
         case .reloadAfterFilter:
             guard !state.isAwaitingRegionViewport else { return .none }
+            if state.requestedViewport == .nationwide {
+                return loadFirstPage(viewport: .nationwide, origin: state.requestOrigin ?? .southKoreaCenter,
+                                     state: &state, isManualResearch: false)
+            }
             return researchCurrentViewport(origin: nil, state: &state)
 
         case .loadNextPage:
-            guard !state.needsResearch,
+            guard !state.needsResearch || state.activeViewport == .nationwide,
                   !state.isInitialLoading,
                   !state.isNextPageLoading,
                   state.hasNext,
@@ -211,7 +224,7 @@ extension RecommendListBottomSheetReducer {
                 state.items = page.items
                 state.activeViewport = viewport
                 state.pendingInitialSearchOrigin = nil
-                state.needsResearch = false
+                if viewport != .nationwide { state.needsResearch = false }
             }
             state.hasNext = page.hasNext
             state.nextCursor = page.nextCursor
@@ -274,6 +287,8 @@ extension RecommendListBottomSheetReducer {
         }
         state.requestRevision += 1
         state.firstPageRevision = state.requestRevision
+        state.requestedViewport = viewport
+        state.needsResearch = false
         state.isAwaitingRegionViewport = false
         state.isInitialLoading = true
         state.isNextPageLoading = false

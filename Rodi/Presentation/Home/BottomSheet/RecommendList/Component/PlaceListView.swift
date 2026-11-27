@@ -9,6 +9,7 @@ import SwiftUI
 struct PlaceListView: View {
     let items: [PlaceListItem]
     let isInitialLoading: Bool
+    let hasEmptyResult: Bool
     let isAwaitingRegionViewport: Bool
     let isRegionSearchResult: Bool
     let isNextPageLoading: Bool
@@ -30,7 +31,7 @@ struct PlaceListView: View {
                     .frame(maxWidth: .infinity, minHeight: 180)
             } else if items.isEmpty, let errorMessage {
                 PlaceListMessageView(message: errorMessage, action: reloadAction)
-            } else if items.isEmpty {
+            } else if hasEmptyResult {
                 PlaceListEmptyResultView(
                     isExpanded: isExpanded,
                     isCentered: isRegionSearchResult,

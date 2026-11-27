@@ -98,6 +98,10 @@ struct PlaceCoordinate: Equatable, Identifiable {
 }
 
 struct PlaceViewport: Equatable {
+    /// 홈의 기본 조회 범위. 카메라 배율이나 화면 비율과 관계없이 도서 지역도 포함한다.
+    static let nationwide = PlaceViewport(southWestLatitude: 32, southWestLongitude: 124,
+                                          northEastLatitude: 39.5, northEastLongitude: 132.5)
+
     let southWestLatitude: Double
     let southWestLongitude: Double
     let northEastLatitude: Double

@@ -45,7 +45,8 @@ struct RecommendListBottomSheetView: View {
 
             PlaceListView(
                 items: state.items,
-                isInitialLoading: state.isInitialLoading,
+                isInitialLoading: state.isInitialLoading || state.firstPageRevision == 0,
+                hasEmptyResult: state.hasEmptyResult,
                 isAwaitingRegionViewport: state.isAwaitingRegionViewport,
                 isRegionSearchResult: state.isRegionSearchResult,
                 isNextPageLoading: state.isNextPageLoading,
